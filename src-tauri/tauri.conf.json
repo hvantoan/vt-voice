@@ -18,7 +18,10 @@
         "height": 560,
         "resizable": false,
         "center": true,
-        "visible": false
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false
       },
       {
         "label": "overlay",

@@ -28,6 +28,14 @@ Tauri v2 enforces runtime permissions through explicit capability declarations:
 - Security boundaries, window scopes, and granted permissions are defined in [`src-tauri/capabilities/default.json`](../src-tauri/capabilities/default.json).
 - The webview process is denied access to native APIs and plugins unless explicitly authorized in the capability configuration.
 
+## Multi-Provider AI Engine & Credential Security
+
+`vt-voice` features a modular AI architecture supporting **Groq**, **OpenRouter**, and **Custom OpenAI-compatible endpoints**:
+
+- **Credential Security (DPAPI)**: API keys are isolated per provider and stored strictly in the native Windows Credential Vault via DPAPI (`keyring` crate under service name `vt-voice`). Zero plaintext keys exist in configuration files (`settings.json`) or application logs. Keys presented to the Webview UI are always masked (`sk-or-••••••••abcd`).
+- **Dynamic STT Model Discovery**: Retrieves available transcription-capable models dynamically from OpenRouter (`/api/v1/models?output_modalities=transcription`) with in-memory TTL caching and offline fallback catalogs.
+- **Pure STT Mode**: Allows bypassing the LLM grammar correction stage, delivering raw speech-to-text directly to the active cursor in under 300ms while preserving technical Vietnamese-English vocabulary via primed initial prompts.
+
 ## Configuration & Tooling Owners
 
 Build lifecycle hooks and configuration parameters are owned by their respective configuration manifests:

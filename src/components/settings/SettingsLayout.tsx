@@ -27,11 +27,15 @@ export const SettingsLayout: React.FC = () => {
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [vadTimeout, setVadTimeout] = useState<number>(700);
 
+  const [activeProvider, setActiveProvider] = useState<string>("groq");
+  const [sttModel, setSttModel] = useState<string>("whisper-large-v3-turbo");
+  const [enablePolish, setEnablePolish] = useState<boolean>(true);
+  const [customEndpoint, setCustomEndpoint] = useState<string>("");
+
   const [apiKey, setApiKey] = useState<string>("");
   const [systemPrompt, setSystemPrompt] = useState<string>("");
   const [customVocab, setCustomVocab] = useState<string[]>([]);
   const [defaultPrompt, setDefaultPrompt] = useState<string>("");
-
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -47,16 +51,21 @@ export const SettingsLayout: React.FC = () => {
           setAutostart(cfg.autostart);
           setStartMinimized(cfg.start_minimized);
           setVadTimeout(cfg.vad_timeout_ms || 700);
+          setActiveProvider(cfg.active_provider || cfg.ai_provider || "groq");
+          setSttModel(cfg.stt_model || "whisper-large-v3-turbo");
+          setEnablePolish(cfg.enable_polish !== undefined ? cfg.enable_polish : true);
+          setCustomEndpoint(cfg.custom_endpoint || "");
           setSystemPrompt(cfg.system_prompt || "");
           setDefaultPrompt(cfg.system_prompt || "");
           setCustomVocab(cfg.custom_vocabulary || []);
-        }
-      })
-      .catch(() => {});
 
-    invoke<string | null>("get_api_key")
-      .then((key) => {
-        if (key) setApiKey(key);
+          const provider = cfg.active_provider || cfg.ai_provider || "groq";
+          invoke<string | null>("get_masked_provider_api_key", { provider })
+            .then((key) => {
+              if (key) setApiKey(key);
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => {});
   }, []);
@@ -70,19 +79,23 @@ export const SettingsLayout: React.FC = () => {
         audio_device_name: selectedDevice,
         autostart,
         start_minimized: startMinimized,
-        ai_provider: "groq",
-        stt_model: "whisper-large-v3-turbo",
+        active_provider: activeProvider,
+        stt_model: sttModel,
         polish_model: "llama-3.3-70b-versatile",
+        enable_polish: enablePolish,
+        custom_endpoint: customEndpoint.trim() ? customEndpoint.trim() : null,
         system_prompt: systemPrompt,
         custom_vocabulary: customVocab,
         vad_timeout_ms: vadTimeout,
       };
 
       await invoke("save_app_config", { config });
-      if (apiKey.trim()) {
-        await invoke("save_api_key", { key: apiKey.trim() });
+      if (apiKey.trim() && !apiKey.includes("••••")) {
+        await invoke("save_provider_api_key", {
+          provider: activeProvider,
+          key: apiKey.trim(),
+        });
       }
-
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch {
@@ -103,15 +116,29 @@ export const SettingsLayout: React.FC = () => {
     await window.minimize();
   };
 
+  const handleTitleBarMouseDown = async (e: React.MouseEvent) => {
+    // Only drag on primary left-click and ignore clicks on action buttons
+    if (e.button === 0 && !(e.target as HTMLElement).closest("button")) {
+      try {
+        const window = getCurrentWindow();
+        await window.startDragging();
+      } catch {
+        // Ignore dragging errors
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen bg-zinc-950 text-zinc-100 select-none overflow-hidden border border-zinc-800/80 rounded-lg">
       {/* Windows 11 Title Bar */}
       <div
         data-tauri-drag-region
-        className="flex items-center justify-between h-9 px-3 bg-zinc-950/90 border-b border-zinc-800/80 cursor-default"
+        onMouseDown={handleTitleBarMouseDown}
+        className="flex items-center justify-between h-9 px-3 bg-zinc-950/90 border-b border-zinc-800/80 cursor-default select-none"
       >
         <div className="flex items-center gap-2 pointer-events-none">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+          <img src="/tauri.svg" alt="vt-voice" className="w-4 h-4 object-contain" />
+          <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
           <span className="text-xs font-semibold text-zinc-300 tracking-tight">vt-voice Cài đặt</span>
           <span className="text-[10px] text-zinc-500 font-mono">v0.1.0</span>
         </div>
@@ -245,6 +272,14 @@ export const SettingsLayout: React.FC = () => {
 
           {activeTab === "ai" && (
             <AiTab
+              activeProvider={activeProvider}
+              setActiveProvider={setActiveProvider}
+              sttModel={sttModel}
+              setSttModel={setSttModel}
+              enablePolish={enablePolish}
+              setEnablePolish={setEnablePolish}
+              customEndpoint={customEndpoint}
+              setCustomEndpoint={setCustomEndpoint}
               apiKey={apiKey}
               setApiKey={setApiKey}
               systemPrompt={systemPrompt}

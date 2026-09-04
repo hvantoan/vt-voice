@@ -13,10 +13,15 @@ impl TrayManager {
 
         let menu = Menu::with_items(app, &[&settings_i, &quit_i])?;
 
-        let tray = TrayIconBuilder::with_id(TRAY_ID)
+        let mut builder = TrayIconBuilder::with_id(TRAY_ID)
             .tooltip("vt-voice: Sẵn sàng (Ready)")
             .menu(&menu)
-            .show_menu_on_left_click(false)
+            .show_menu_on_left_click(false);
+        if let Some(icon) = app.default_window_icon() {
+            builder = builder.icon(icon.clone());
+        }
+
+        let tray = builder
             .on_menu_event(|app, event| match event.id.as_ref() {
                 "settings" => {
                     if let Some(window) = app.get_webview_window("main") {

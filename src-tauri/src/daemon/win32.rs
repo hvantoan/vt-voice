@@ -6,6 +6,39 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
 };
 
+#[link(name = "dwmapi")]
+extern "system" {
+    fn DwmSetWindowAttribute(
+        hwnd: HWND,
+        dw_attribute: u32,
+        pv_attribute: *const std::ffi::c_void,
+        cb_attribute: u32,
+    ) -> i32;
+}
+
+/// Configure main window HWND to force dark mode and suppress Windows 11 DWM white border
+pub fn setup_main_window_theme(hwnd: HWND) {
+    unsafe {
+        // DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+        let dark_mode: i32 = 1;
+        let _ = DwmSetWindowAttribute(
+            hwnd,
+            20,
+            &dark_mode as *const _ as *const _,
+            std::mem::size_of::<i32>() as u32,
+        );
+
+        // DWMWA_BORDER_COLOR = 34, DWMWA_COLOR_NONE = 0xFFFFFFFE (suppresses border completely)
+        let border_color: u32 = 0xFFFFFFFE;
+        let _ = DwmSetWindowAttribute(
+            hwnd,
+            34,
+            &border_color as *const _ as *const _,
+            std::mem::size_of::<u32>() as u32,
+        );
+    }
+}
+
 /// Configure overlay window HWND with non-activating extended styles
 pub fn apply_overlay_styles(hwnd: HWND) {
     unsafe {
