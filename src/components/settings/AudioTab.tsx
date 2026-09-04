@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { Info, Activity } from "lucide-react";
+import { Info, Activity, Mic, AlertCircle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 
 interface AudioDevice {
   id: string;
@@ -14,6 +22,7 @@ interface AudioTabProps {
   setSelectedDevice: (device: string | null) => void;
   vadTimeout: number;
   setVadTimeout: (ms: number) => void;
+  onVadTimeoutCommit?: (ms: number) => void;
 }
 
 export const AudioTab: React.FC<AudioTabProps> = ({
@@ -21,10 +30,12 @@ export const AudioTab: React.FC<AudioTabProps> = ({
   setSelectedDevice,
   vadTimeout,
   setVadTimeout,
+  onVadTimeoutCommit,
 }) => {
   const [devices, setDevices] = useState<AudioDevice[]>([]);
   const [currentLevel, setCurrentLevel] = useState<number>(0);
   const [isTestingMic, setIsTestingMic] = useState<boolean>(false);
+  const [micError, setMicError] = useState<string | null>(null);
 
   useEffect(() => {
     // Load audio devices from backend
@@ -36,7 +47,9 @@ export const AudioTab: React.FC<AudioTabProps> = ({
           setSelectedDevice(defaultDev.name);
         }
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        console.error("Lỗi lấy danh sách thiết bị âm thanh:", err);
+      });
 
     // Listen to real-time audio levels
     const unlistenAudio = listen<number>("audio-level", (e) => {
@@ -45,17 +58,54 @@ export const AudioTab: React.FC<AudioTabProps> = ({
 
     return () => {
       unlistenAudio.then((f) => f());
+      invoke("stop_test_mic").catch(() => {});
     };
   }, [selectedDevice, setSelectedDevice]);
 
-  const toggleTestMic = async () => {
+  // Clean up mic test on component unmount
+  useEffect(() => {
+    return () => {
+      invoke("stop_test_mic").catch(() => {});
+    };
+  }, []);
+
+  const handleDeviceChange = async (value: string | null) => {
     if (isTestingMic) {
       await invoke("stop_test_mic").catch(() => {});
       setIsTestingMic(false);
       setCurrentLevel(0);
+    }
+    setSelectedDevice(value);
+  };
+
+  const toggleTestMic = async () => {
+    setMicError(null);
+    if (isTestingMic) {
+      try {
+        await invoke("stop_test_mic");
+      } catch (err: unknown) {
+        console.error("Lỗi khi dừng test mic:", err);
+      } finally {
+        setIsTestingMic(false);
+        setCurrentLevel(0);
+      }
     } else {
-      await invoke("start_test_mic", { deviceName: selectedDevice }).catch(() => {});
       setIsTestingMic(true);
+      try {
+        await invoke("start_test_mic", {
+          deviceName: selectedDevice || null,
+        });
+      } catch (err: unknown) {
+        const errorMsg =
+          typeof err === "string"
+            ? err
+            : err instanceof Error
+            ? err.message
+            : "Không thể mở microphone đã chọn. Vui lòng kiểm tra quyền truy cập microphone.";
+        setMicError(errorMsg);
+        setIsTestingMic(false);
+        setCurrentLevel(0);
+      }
     }
   };
 
@@ -70,19 +120,37 @@ export const AudioTab: React.FC<AudioTabProps> = ({
         <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-4">
           <div>
             <label className="block text-xs font-medium text-zinc-300 mb-2">Microphone đầu vào</label>
-            <div className="relative">
-              <select
-                value={selectedDevice || ""}
-                onChange={(e) => setSelectedDevice(e.target.value || null)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500/60 transition-colors"
-              >
-                {devices.map((d) => (
-                  <option key={d.id} value={d.name}>
-                    {d.name} {d.is_default ? "(Mặc định của hệ thống)" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              value={selectedDevice || ""}
+              onValueChange={(value) => handleDeviceChange(value || null)}
+            >
+              <SelectTrigger className="w-full bg-zinc-950/80 border-zinc-800 text-xs text-zinc-200 h-9 rounded-lg focus:ring-emerald-500/50">
+                <SelectValue placeholder="Chọn microphone..." />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-950/95 backdrop-blur-xl border-zinc-800 text-zinc-200 w-[var(--radix-select-trigger-width)] max-w-[var(--radix-select-trigger-width)]">
+                {devices.length === 0 ? (
+                  <div className="p-2 text-xs text-zinc-500 text-center">Không tìm thấy thiết bị</div>
+                ) : (
+                  devices.map((d) => (
+                    <SelectItem
+                      key={d.id}
+                      value={d.name}
+                      className="text-xs focus:bg-zinc-900 focus:text-zinc-100 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Mic className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                        <span className="truncate">{d.name}</span>
+                        {d.is_default && (
+                          <span className="text-[10px] text-emerald-400 font-medium ml-1.5 shrink-0">
+                            (Mặc định)
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Live Level Meter */}
@@ -95,22 +163,29 @@ export const AudioTab: React.FC<AudioTabProps> = ({
               <button
                 type="button"
                 onClick={toggleTestMic}
-                className={`text-[11px] px-2.5 py-1 rounded border transition-colors ${
+                className={`text-[11px] px-2.5 py-1 rounded-md border font-medium transition-colors ${
                   isTestingMic
-                    ? "bg-rose-500/20 border-rose-500 text-rose-300"
-                    : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700"
+                    ? "bg-rose-500/20 border-rose-500/60 text-rose-300 hover:bg-rose-500/30"
+                    : "bg-zinc-800/80 border-zinc-700 text-zinc-300 hover:bg-zinc-700"
                 }`}
               >
                 {isTestingMic ? "Dừng thử" : "Thử Mic"}
               </button>
             </div>
 
-            <div className="w-full h-3 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800 p-0.5 flex">
+            <div className="w-full h-2.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800 p-0.5 flex">
               <div
                 className="h-full rounded-full transition-all duration-75 bg-gradient-to-r from-emerald-500 via-amber-400 to-rose-500"
                 style={{ width: `${Math.round(currentLevel * 100)}%` }}
               />
             </div>
+
+            {micError && (
+              <div className="flex items-center gap-1.5 mt-2 text-xs text-rose-400">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{micError}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -119,20 +194,22 @@ export const AudioTab: React.FC<AudioTabProps> = ({
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-semibold text-zinc-200">Khoảng ngắt im lặng (Silence Timeout)</span>
-            <span className="text-xs font-mono text-emerald-400">{vadTimeout} ms</span>
+            <span className="text-xs font-mono text-emerald-400 font-semibold">{vadTimeout} ms</span>
           </div>
           <p className="text-[11px] text-zinc-400 mb-3">
             Thời gian yên lặng liên tục để hệ thống nhận biết bạn đã nói xong ở chế độ Toggle.
           </p>
-          <input
-            type="range"
-            min="300"
-            max="2000"
-            step="50"
-            value={vadTimeout}
-            onChange={(e) => setVadTimeout(Number(e.target.value))}
-            className="w-full accent-emerald-500 bg-zinc-950 cursor-pointer"
-          />
+          <div className="py-2">
+            <Slider
+              value={[vadTimeout]}
+              min={300}
+              max={2000}
+              step={50}
+              onValueChange={([val]) => setVadTimeout(val)}
+              onValueCommit={([val]) => (onVadTimeoutCommit ? onVadTimeoutCommit(val) : setVadTimeout(val))}
+              className="w-full"
+            />
+          </div>
           <div className="flex justify-between text-[10px] text-zinc-500 mt-1">
             <span>Nhanh (300ms)</span>
             <span>Cân bằng (700ms)</span>

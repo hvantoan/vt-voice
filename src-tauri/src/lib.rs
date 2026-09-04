@@ -72,8 +72,23 @@ fn save_api_key_cmd(key: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn save_provider_api_key(provider: String, key: String) -> Result<(), String> {
-    storage::set_provider_key(&provider, &key).map_err(|e| e.to_string())
+fn save_provider_api_key(
+    provider: String,
+    key: Option<String>,
+    api_key: Option<String>,
+) -> Result<(), String> {
+    let key_to_save = key
+        .or(api_key)
+        .ok_or_else(|| "Missing required parameter `key` or `apiKey`".to_string())?;
+
+    let trimmed = key_to_save.trim();
+    if trimmed.is_empty() {
+        return Err("API key cannot be empty".to_string());
+    }
+    if trimmed.contains('•') {
+        return Err("Cannot save a masked API key".to_string());
+    }
+    storage::set_provider_key(&provider, trimmed).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -106,10 +121,17 @@ async fn test_ai_connection(
 async fn test_provider_connection(
     state: State<'_, AppState>,
     provider: String,
-    api_key: String,
+    api_key: Option<String>,
     endpoint: Option<String>,
 ) -> Result<u64, String> {
-    ai::test_provider_connection(&provider, &state.http_client, &api_key, endpoint.as_deref())
+    let key = match api_key {
+        Some(k) if !k.trim().is_empty() && !k.contains('•') => k,
+        _ => storage::get_provider_key(&provider)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "Chưa cấu hình API key cho provider này".to_string())?,
+    };
+
+    ai::test_provider_connection(&provider, &state.http_client, &key, endpoint.as_deref())
         .await
         .map_err(|e| e.to_string())
 }
@@ -237,6 +259,10 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--minimized"]),
+        ))
         .manage(state)
         .setup(move |app| {
             let app_handle = app.handle().clone();

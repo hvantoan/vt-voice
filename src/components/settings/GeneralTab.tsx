@@ -1,6 +1,8 @@
 import React from "react";
 import { HotkeyRecorder, KeyBinding } from "./HotkeyRecorder";
 import { Mic, Radio, Rocket, Monitor } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 
 interface GeneralTabProps {
   hotkeyMode: "push_to_talk" | "toggle";
@@ -32,39 +34,43 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
         </p>
 
         <div className="grid grid-cols-2 gap-3">
-          <div
+          <Card
             onClick={() => setHotkeyMode("push_to_talk")}
-            className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+            className={`cursor-pointer transition-all border ${
               hotkeyMode === "push_to_talk"
                 ? "bg-zinc-900 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
                 : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
             }`}
           >
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <Mic className={`w-4 h-4 ${hotkeyMode === "push_to_talk" ? "text-emerald-400" : "text-zinc-400"}`} />
-              <span className="text-xs font-semibold text-zinc-200">Push-to-Talk (Giữ để nói)</span>
-            </div>
-            <p className="text-[11px] text-zinc-400 leading-relaxed">
-              Nhấn giữ phím tắt để ghi âm. Khi thả phím, hệ thống tự động xử lý và dán kết quả tại con trỏ.
-            </p>
-          </div>
+            <CardContent className="p-3.5">
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <Mic className={`w-4 h-4 ${hotkeyMode === "push_to_talk" ? "text-emerald-400" : "text-zinc-400"}`} />
+                <span className="text-xs font-semibold text-zinc-200">Push-to-Talk (Giữ để nói)</span>
+              </div>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Nhấn giữ phím tắt để ghi âm. Khi thả phím, hệ thống tự động xử lý và dán kết quả tại con trỏ.
+              </p>
+            </CardContent>
+          </Card>
 
-          <div
+          <Card
             onClick={() => setHotkeyMode("toggle")}
-            className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+            className={`cursor-pointer transition-all border ${
               hotkeyMode === "toggle"
                 ? "bg-zinc-900 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
                 : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
             }`}
           >
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <Radio className={`w-4 h-4 ${hotkeyMode === "toggle" ? "text-emerald-400" : "text-zinc-400"}`} />
-              <span className="text-xs font-semibold text-zinc-200">Toggle-to-Talk (Bật / Tắt)</span>
-            </div>
-            <p className="text-[11px] text-zinc-400 leading-relaxed">
-              Nhấn 1 lần để bắt đầu ghi âm. Nhấn lại lần nữa để kết thúc và tự động dán kết quả.
-            </p>
-          </div>
+            <CardContent className="p-3.5">
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <Radio className={`w-4 h-4 ${hotkeyMode === "toggle" ? "text-emerald-400" : "text-zinc-400"}`} />
+                <span className="text-xs font-semibold text-zinc-200">Toggle-to-Talk (Bật / Tắt)</span>
+              </div>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Nhấn một lần để bắt đầu thu âm, nhấn lại lần nữa hoặc giữ yên lặng để tự động hoàn tất và dán văn bản.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -85,15 +91,14 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
           <div className="flex items-center gap-2.5">
             <Rocket className="w-4 h-4 text-zinc-400" />
             <div>
-              <div className="text-xs text-zinc-200">Khởi động cùng Windows</div>
+              <div className="text-xs text-zinc-200 font-medium">Khởi động cùng Windows</div>
               <div className="text-[11px] text-zinc-500">Tự động chạy daemon khi mở máy tính</div>
             </div>
           </div>
-          <input
-            type="checkbox"
+          <Switch
             checked={autostart}
-            onChange={(e) => setAutostart(e.target.checked)}
-            className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+            onCheckedChange={setAutostart}
+            className="data-[state=checked]:bg-emerald-600"
           />
         </div>
 
@@ -101,15 +106,14 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
           <div className="flex items-center gap-2.5">
             <Monitor className="w-4 h-4 text-zinc-400" />
             <div>
-              <div className="text-xs text-zinc-200">Khởi động ẩn xuống khay hệ thống</div>
+              <div className="text-xs text-zinc-200 font-medium">Khởi động ẩn xuống khay hệ thống</div>
               <div className="text-[11px] text-zinc-500">Không mở cửa sổ cài đặt lúc khởi động</div>
             </div>
           </div>
-          <input
-            type="checkbox"
+          <Switch
             checked={startMinimized}
-            onChange={(e) => setStartMinimized(e.target.checked)}
-            className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+            onCheckedChange={setStartMinimized}
+            className="data-[state=checked]:bg-emerald-600"
           />
         </div>
       </div>

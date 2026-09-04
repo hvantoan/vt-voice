@@ -41,7 +41,7 @@ windows-sys = { version = "0.59", features = [
     "Win32_System_ProcessStatus",
 ] }
 reqwest = { version = "0.12", features = ["multipart", "json", "rustls-tls"], default-features = false }
-keyring = "3"
+keyring = { version = "3", features = ["windows-native"] }
 regex = "1"
 dirs = "6"
 chrono = { version = "0.4", features = ["serde"] }
