@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vt-voice Design System & Interactive Wireframe Hub</title>
+  <!-- Google Fonts: Plus Jakarta Sans + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'Segoe UI', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'Cascadia Code', 'Consolas', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Acrylic / Mica Styles */
+    .mica-card {
+      background: rgba(18, 18, 22, 0.75);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+    }
+    .mica-card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 font-sans min-h-screen selection:bg-emerald-500/30 selection:text-emerald-200">
+
+  <!-- TOP HEADER / HERO -->
+  <header class="border-b border-white/[0.08] bg-black/40 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <!-- App Brand -->
+      <div class="flex items-center gap-3">
+        <!-- Sonic Spark Icon -->
+        <svg class="w-8 h-8 flex-shrink-0" viewBox="0 0 128 128" fill="none">
+          <defs>
+            <linearGradient id="sonicSparkHub" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#34d399" />
+              <stop offset="50%" stop-color="#22d3ee" />
+              <stop offset="100%" stop-color="#6366f1" />
+            </linearGradient>
+          </defs>
+          <rect x="8" y="8" width="112" height="112" rx="28" fill="#18181b" stroke="#27272a" stroke-width="4"/>
+          <rect x="48" y="26" width="32" height="50" rx="16" stroke="url(#sonicSparkHub)" stroke-width="8"/>
+          <path d="M42 56 C42 68, 52 78, 64 78 C76 78, 86 68, 86 56 M64 78 L64 94 M50 94 L78 94 M60 38 L68 48 L61 51 L69 62" 
+                stroke="url(#sonicSparkHub)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-bold tracking-tight text-white">vt-voice</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Design Specs &amp; Wireframes</span>
+          </div>
+          <p class="text-[11px] text-zinc-400">Windows 11 Background Voice-to-Text Desktop Daemon (Tauri v2 + React)</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div class="flex items-center gap-3">
+        <a href="../design-guidelines.md" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-medium border border-white/10 transition-colors">
+          <svg class="w-3.5 h-3.5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10M6 10h10"/></svg>
+          <span>Design Guidelines</span>
+        </a>
+        <a href="overlay.html" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-medium border border-white/10 transition-colors">
+          <span>Open Overlay Demo</span>
+          <svg class="w-3 h-3 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+        </a>
+        <a href="settings.html" target="_blank" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-semibold shadow-sm transition-all">
+          <span>Open Settings UI</span>
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="max-w-7xl mx-auto px-6 py-8 space-y-12">
+
+    <!-- HERO METRICS STRIP -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="mica-card rounded-xl p-4">
+        <div class="text-[11px] font-medium text-zinc-400">End-to-End Latency</div>
+        <div class="text-xl font-bold font-mono text-emerald-400 mt-1">~490 ms</div>
+        <div class="text-[11px] text-zinc-500 mt-0.5">Groq Whisper Turbo + Llama 3.3</div>
+      </div>
+
+      <div class="mica-card rounded-xl p-4">
+        <div class="text-[11px] font-medium text-zinc-400">Desktop Focus Strategy</div>
+        <div class="text-base font-bold text-zinc-100 mt-1">SW_SHOWNOACTIVATE</div>
+        <div class="text-[11px] text-zinc-500 mt-0.5">Zero caret loss in VS Code / IDEs</div>
+      </div>
+
+      <div class="mica-card rounded-xl p-4">
+        <div class="text-[11px] font-medium text-zinc-400">Memory Footprint</div>
+        <div class="text-xl font-bold font-mono text-zinc-100 mt-1">&lt; 25 MB RAM</div>
+        <div class="text-[11px] text-zinc-500 mt-0.5">Tauri v2 + Native WASAPI cpal</div>
+      </div>
+
+      <div class="mica-card rounded-xl p-4">
+        <div class="text-[11px] font-medium text-zinc-400">Vietnamese Code-Switching</div>
+        <div class="text-base font-bold text-indigo-400 mt-1">Primed Initial Prompt</div>
+        <div class="text-[11px] text-zinc-500 mt-0.5">Technical terms (PR, k8s, deploy)</div>
+      </div>
+    </section>
+
+    <!-- LIVE INTERACTIVE EMBED / PREVIEW VIEWER -->
+    <section class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-bold text-white tracking-tight">Interactive Prototype Sandbox</h2>
+          <p class="text-xs text-zinc-400">Switch between the Settings dashboard and the Floating Pill desktop overlay below.</p>
+        </div>
+
+        <!-- Wireframe Switcher Tabs -->
+        <div class="inline-flex p-1 rounded-xl bg-zinc-900 border border-white/10 text-xs">
+          <button id="viewSettingsBtn" onclick="switchView('settings')" class="px-4 py-1.5 rounded-lg font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 transition-all">
+            Settings Window (720×560)
+          </button>
+          <button id="viewOverlayBtn" onclick="switchView('overlay')" class="px-4 py-1.5 rounded-lg font-medium text-zinc-400 hover:text-zinc-200 transition-all">
+            Floating Pill Overlay
+          </button>
+        </div>
+      </div>
+
+      <!-- Embedded Iframe Container -->
+      <div class="w-full h-[620px] rounded-2xl border border-white/10 overflow-hidden bg-black/60 shadow-2xl relative">
+        <iframe id="previewFrame" src="settings.html" class="w-full h-full border-none"></iframe>
+      </div>
+    </section>
+
+    <!-- DESIGN TOKENS & SYSTEM SHOWCASE -->
+    <section class="space-y-6 pt-4 border-t border-white/10">
+      <div>
+        <h2 class="text-lg font-bold text-white tracking-tight">Design Tokens &amp; Visual Architecture</h2>
+        <p class="text-xs text-zinc-400">Mica / Acrylic glassmorphism, ergonomic dark color scale, and typography tokens.</p>
+      </div>
+
+      <!-- Swatches Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+        <div class="p-3 rounded-xl bg-zinc-950 border border-white/10">
+          <div class="w-full h-10 rounded-lg bg-[#09090b] border border-white/10 mb-2"></div>
+          <div class="text-xs font-semibold text-zinc-200">Canvas Base</div>
+          <div class="text-[10px] font-mono text-zinc-500">zinc-950 • #09090b</div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-zinc-900/60 border border-white/10">
+          <div class="w-full h-10 rounded-lg bg-[#18181b] border border-white/10 mb-2"></div>
+          <div class="text-xs font-semibold text-zinc-200">Surface Card</div>
+          <div class="text-[10px] font-mono text-zinc-500">zinc-900 • #18181b</div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-zinc-900/60 border border-white/10">
+          <div class="w-full h-10 rounded-lg bg-[#10b981] mb-2 shadow-sm shadow-emerald-500/20"></div>
+          <div class="text-xs font-semibold text-emerald-400">Emerald Accent</div>
+          <div class="text-[10px] font-mono text-zinc-500">emerald-500 • #10b981</div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-zinc-900/60 border border-white/10">
+          <div class="w-full h-10 rounded-lg bg-[#6366f1] mb-2 shadow-sm shadow-indigo-500/20"></div>
+          <div class="text-xs font-semibold text-indigo-400">AI / LLM Accent</div>
+          <div class="text-[10px] font-mono text-zinc-500">indigo-500 • #6366f1</div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-zinc-900/60 border border-white/10">
+          <div class="w-full h-10 rounded-lg bg-[#f43f5e] mb-2 shadow-sm shadow-rose-500/20"></div>
+          <div class="text-xs font-semibold text-rose-400">Recording State</div>
+          <div class="text-[10px] font-mono text-zinc-500">rose-500 • #f43f5e</div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-zinc-900/60 border border-white/10">
+          <div class="w-full h-10 rounded-lg bg-[#fbbf24] mb-2 shadow-sm shadow-amber-500/20"></div>
+          <div class="text-xs font-semibold text-amber-400">Processing State</div>
+          <div class="text-[10px] font-mono text-zinc-500">amber-400 • #fbbf24</div>
+        </div>
+      </div>
+
+      <!-- Typography Specimen -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- UI Font Specimen -->
+        <div class="mica-card rounded-xl p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-zinc-200">UI Font: Plus Jakarta Sans</span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-white/5">Weights: 400, 500, 600, 700</span>
+          </div>
+          <p class="text-sm font-semibold text-zinc-100 leading-relaxed">
+            "Deploy lên staging cho anh để test memory leak trong microservice nhé."
+          </p>
+          <p class="text-xs text-zinc-400 leading-relaxed">
+            Tiếng Việt với đầy đủ dấu thanh: ă, â, đ, ê, ô, ơ, ư, dấu hỏi (?), ngã (~), nặng (.). Chiều cao dòng tiêu chuẩn <code class="text-emerald-400 font-mono">leading-normal</code> ngăn chặn hoàn toàn hiện tượng mất dấu.
+          </p>
+        </div>
+
+        <!-- Monospace Specimen -->
+        <div class="mica-card rounded-xl p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-zinc-200">Technical Font: JetBrains Mono</span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-white/5">Tabular Numerals</span>
+          </div>
+          <div class="space-y-1 font-mono text-xs">
+            <div class="flex justify-between text-zinc-300">
+              <span>Latency Breakdown:</span>
+              <span class="text-emerald-400">STT 215ms + LLM 284ms = 499ms</span>
+            </div>
+            <div class="flex justify-between text-zinc-400">
+              <span>Global Keybind:</span>
+              <span class="text-zinc-200 bg-zinc-800 px-1.5 py-0.5 rounded">WH_KEYBOARD_LL: Right Alt</span>
+            </div>
+            <div class="flex justify-between text-zinc-400">
+              <span>Audio Format:</span>
+              <span class="text-zinc-300">16,000 Hz / Mono S16LE / WASAPI</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="mt-16 border-t border-white/[0.08] py-8 bg-black/40 text-center text-xs text-zinc-500 font-mono">
+    <p>vt-voice Design System &amp; Interactive Wireframes — Built for Windows 11 Tauri v2 Desktop Daemon</p>
+    <p class="text-[11px] text-zinc-600 mt-1">Zero-Focus Stealing • Under 500ms End-to-End Latency • Vietnamese Code-Switching Optimized</p>
+  </footer>
+
+  <script>
+    function switchView(view) {
+      const frame = document.getElementById('previewFrame');
+      const settingsBtn = document.getElementById('viewSettingsBtn');
+      const overlayBtn = document.getElementById('viewOverlayBtn');
+
+      if (view === 'settings') {
+        frame.src = 'settings.html';
+        settingsBtn.className = 'px-4 py-1.5 rounded-lg font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 transition-all';
+        overlayBtn.className = 'px-4 py-1.5 rounded-lg font-medium text-zinc-400 hover:text-zinc-200 transition-all';
+      } else {
+        frame.src = 'overlay.html';
+        overlayBtn.className = 'px-4 py-1.5 rounded-lg font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 transition-all';
+        settingsBtn.className = 'px-4 py-1.5 rounded-lg font-medium text-zinc-400 hover:text-zinc-200 transition-all';
+      }
+    }
+  </script>
+</body>
+</html>

@@ -4,17 +4,34 @@
   "version": "0.1.0",
   "identifier": "com.itvan.vt-voice",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "bun run build",
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
-        "title": "vt-voice",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "vt-voice Settings",
+        "width": 720,
+        "height": 560,
+        "resizable": false,
+        "center": true,
+        "visible": false
+      },
+      {
+        "label": "overlay",
+        "title": "vt-voice Overlay",
+        "width": 280,
+        "height": 48,
+        "resizable": false,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "shadow": false
       }
     ],
     "security": {

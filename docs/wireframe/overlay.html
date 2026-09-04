@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vt-voice Floating Pill Overlay — Interactive Demo</title>
+  <!-- Google Fonts: Plus Jakarta Sans + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'Segoe UI', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'Cascadia Code', 'Consolas', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Windows 11 Bloom Dark Desktop Simulation */
+    .desktop-wallpaper {
+      background: radial-gradient(circle at 50% 30%, #1e1b4b 0%, #09090b 70%, #000000 100%);
+      background-size: cover;
+    }
+
+    /* Ambient Bloom Glow */
+    .bloom-light {
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, rgba(16, 185, 129, 0.12) 40%, transparent 70%);
+      filter: blur(80px);
+    }
+
+    /* Floating Overlay Pill Spec */
+    .overlay-pill {
+      background: rgba(9, 9, 11, 0.88);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8),
+                  0 0 20px rgba(0, 0, 0, 0.5),
+                  inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Shimmer animation for processing text */
+    @keyframes textShimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .shimmer-text {
+      background: linear-gradient(90deg, #f4f4f5 20%, #fbbf24 50%, #f4f4f5 80%);
+      background-size: 200% auto;
+      color: transparent;
+      -webkit-background-clip: text;
+      background-clip: text;
+      animation: textShimmer 2.2s linear infinite;
+    }
+
+    /* Audio wave bars */
+    .wave-bar {
+      width: 2.5px;
+      border-radius: 9999px;
+      background: #f43f5e;
+      transition: height 0.08s ease-out;
+    }
+
+    /* Windows 11 Taskbar simulation */
+    .win11-taskbar {
+      background: rgba(18, 18, 22, 0.82);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="bg-black text-zinc-100 font-sans h-screen w-screen overflow-hidden select-none desktop-wallpaper flex flex-col justify-between relative">
+
+  <!-- Ambient Bloom Lighting Behind Active Workspace -->
+  <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+    <div class="w-[600px] h-[400px] bloom-light rounded-full"></div>
+  </div>
+
+  <!-- TOP TOOLBAR: State Controller for Design Wireframe Preview -->
+  <header class="relative z-40 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 bg-zinc-950/80 backdrop-blur-md border-b border-white/10">
+    <div class="flex items-center gap-3">
+      <a href="index.html" class="flex items-center gap-2 text-xs font-mono text-zinc-400 hover:text-emerald-400 transition-colors">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        <span>Overview</span>
+      </a>
+      <span class="text-zinc-600">|</span>
+      <h1 class="text-xs font-semibold tracking-wide text-zinc-200">Floating Pill Overlay Wireframe</h1>
+      <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-white/5">260×44px Desktop Anchor</span>
+    </div>
+
+    <!-- State Buttons Controller -->
+    <div class="flex flex-wrap items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-white/5">
+      <button onclick="setOverlayState('listening')" id="btn-listening" class="state-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-500/20 text-rose-300 border border-rose-500/30 transition-all flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+        1. Listening
+      </button>
+
+      <button onclick="setOverlayState('processing')" id="btn-processing" class="state-btn px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition-all flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5 text-amber-400 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        2. Processing
+      </button>
+
+      <button onclick="setOverlayState('success')" id="btn-success" class="state-btn px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition-all flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        3. Pasted
+      </button>
+
+      <button onclick="setOverlayState('error')" id="btn-error" class="state-btn px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition-all flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+        4. Error
+      </button>
+
+      <button onclick="setOverlayState('idle')" id="btn-idle" class="state-btn px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition-all">
+        0. Hidden
+      </button>
+
+      <button onclick="runAutoCycle()" id="btn-cycle" class="ml-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-zinc-950 transition-colors flex items-center gap-1 shadow-sm">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Auto Demo
+      </button>
+    </div>
+  </header>
+
+  <!-- SIMULATED BACKGROUND APPLICATION: VS Code Editor Window -->
+  <!-- Demonstrates that vt-voice does NOT steal window focus or move the blinking text caret -->
+  <main class="relative z-10 flex-1 flex items-center justify-center p-6 pointer-events-none">
+    <div class="w-full max-w-4xl h-[400px] bg-zinc-900/70 backdrop-blur-lg rounded-xl border border-white/10 shadow-2xl overflow-hidden flex flex-col pointer-events-auto">
+      <!-- VS Code Window Header -->
+      <div class="h-9 bg-zinc-950/80 border-b border-white/5 px-3 flex items-center justify-between text-xs text-zinc-400">
+        <div class="flex items-center gap-2">
+          <div class="flex gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-zinc-700"></span>
+            <span class="w-3 h-3 rounded-full bg-zinc-700"></span>
+            <span class="w-3 h-3 rounded-full bg-zinc-700"></span>
+          </div>
+          <span class="font-mono text-[11px] ml-2 text-zinc-300">src/components/voice-daemon.rs — Visual Studio Code</span>
+        </div>
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          Target Window Active (Caret Focused)
+        </span>
+      </div>
+
+      <!-- Code Editor Content with Blinking Cursor -->
+      <div class="flex-1 p-5 font-mono text-xs text-zinc-300 leading-relaxed bg-[#0d0d11]/80 overflow-hidden relative">
+        <div class="space-y-1">
+          <p><span class="text-indigo-400">pub async fn</span> <span class="text-blue-400">handle_speech_insertion</span>(text: &amp;<span class="text-teal-400">str</span>) -&gt; <span class="text-teal-400">Result</span>&lt;(), <span class="text-teal-400">Error</span>&gt; {</p>
+          <p class="pl-4 text-zinc-500">// 1. Non-activating Win32 clipboard paste (Ctrl+V)</p>
+          <p class="pl-4"><span class="text-indigo-400">let</span> clipboard = <span class="text-blue-400">snapshot_user_clipboard</span>()?;</p>
+          <p class="pl-4"><span class="text-blue-400">inject_synthesized_paste</span>(text).<span class="text-indigo-400">await</span>;</p>
+          <p class="pl-4 text-zinc-500">// 2. Real-time transcription inserted here at active cursor:</p>
+          <p class="pl-4 text-emerald-300 bg-emerald-500/10 p-2 rounded border border-emerald-500/20 inline-block my-1">
+            "Deploy lên staging cho anh để test memory leak trong microservice nhé."<span class="inline-block w-2 h-4 bg-emerald-400 ml-1 translate-y-0.5 animate-pulse"></span>
+          </p>
+          <p class="pl-4"><span class="text-blue-400">restore_clipboard_delayed</span>(clipboard, <span class="text-amber-400">300</span>).<span class="text-indigo-400">await</span>;</p>
+          <p class="pl-4"><span class="text-teal-400">Ok</span>(())</p>
+          <p>}</p>
+        </div>
+
+        <!-- Explanatory Watermark Badge -->
+        <div class="absolute bottom-4 right-4 p-3 rounded-lg bg-zinc-950/80 border border-white/10 text-[11px] font-sans text-zinc-400 max-w-sm backdrop-blur-md">
+          <strong class="text-zinc-200 block mb-0.5">Win32 SW_SHOWNOACTIVATE Guarantee</strong>
+          Notice the blinking green caret in the editor code. When the floating pill below activates, Windows sends zero focus change messages. The editor never loses cursor context!
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== THE FLOATING PILL OVERLAY ==================== -->
+  <!-- Anchored Bottom-Center Above Taskbar -->
+  <div class="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 transform" id="overlayContainer">
+
+    <!-- The Pill Capsule -->
+    <div class="overlay-pill px-4 py-2.5 rounded-full flex items-center gap-3.5 select-none min-w-[240px] max-w-[290px] justify-between">
+
+      <!-- LEFT: Status Indicator Beacon / Spinner / Icon -->
+      <div class="flex items-center gap-2.5 flex-shrink-0" id="pillLeftSection">
+        <!-- Recording Beacon (State 1) -->
+        <div id="icon-listening" class="relative flex items-center justify-center">
+          <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+          <span class="absolute w-4 h-4 rounded-full bg-rose-500/50 animate-ping"></span>
+        </div>
+
+        <!-- Spinner (State 2) -->
+        <div id="icon-processing" class="hidden">
+          <svg class="w-4 h-4 text-amber-400 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          </svg>
+        </div>
+
+        <!-- Success Check (State 3) -->
+        <div id="icon-success" class="hidden">
+          <div class="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
+            <svg class="w-2.5 h-2.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Error Icon (State 4) -->
+        <div id="icon-error" class="hidden">
+          <svg class="w-4 h-4 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" x2="12" y1="8" y2="12"/>
+            <line x1="12" x2="12.01" y1="16" y2="16"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- CENTER: Dynamic Text Label -->
+      <div class="flex-1 text-left whitespace-nowrap overflow-hidden">
+        <span id="pillLabel" class="text-xs font-semibold text-zinc-100 tracking-tight">Listening...</span>
+      </div>
+
+      <!-- RIGHT: Waveform Bars / Latency / Counter -->
+      <div class="flex items-center gap-2.5 flex-shrink-0" id="pillRightSection">
+
+        <!-- Waveform Visualizer (State 1) -->
+        <div id="waveformContainer" class="flex items-center gap-[3px] h-5">
+          <div class="wave-bar h-2" id="wb1"></div>
+          <div class="wave-bar h-4" id="wb2"></div>
+          <div class="wave-bar h-3" id="wb3"></div>
+          <div class="wave-bar h-5" id="wb4"></div>
+          <div class="wave-bar h-2" id="wb5"></div>
+        </div>
+
+        <!-- Counter / Duration Badge (State 1) -->
+        <span id="recordTimer" class="font-mono text-[11px] text-zinc-400 tabular-nums">00:03</span>
+
+        <!-- Processing Pill Badge (State 2) -->
+        <span id="processingBadge" class="hidden font-mono text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+          Groq LPU
+        </span>
+
+        <!-- Success Latency Badge (State 3) -->
+        <span id="successBadge" class="hidden font-mono text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+          492ms
+        </span>
+
+        <!-- Error Dismiss Hint (State 4) -->
+        <span id="errorBadge" class="hidden font-mono text-[10px] text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
+          Esc
+        </span>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- BOTTOM BAR: Windows 11 Taskbar Simulation -->
+  <footer class="relative z-30 h-12 win11-taskbar px-4 flex items-center justify-between select-none">
+    <!-- Left: Weather Widget / Windows Logo -->
+    <div class="flex items-center gap-3">
+      <button class="w-8 h-8 rounded-md flex items-center justify-center hover:bg-white/10 transition-colors" title="Start">
+        <svg class="w-4 h-4 text-[#00adef]" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.902-1.799"/>
+        </svg>
+      </button>
+      <div class="hidden sm:flex items-center gap-2 px-2 py-1 rounded bg-white/5 text-[11px] text-zinc-300">
+        <span>🌤️ 28°C Haze</span>
+      </div>
+    </div>
+
+    <!-- Center: App Icons on Taskbar -->
+    <div class="flex items-center gap-1.5">
+      <div class="w-9 h-9 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center cursor-pointer border-b-2 border-emerald-400" title="Visual Studio Code (Active)">
+        <svg class="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      </div>
+      <div class="w-9 h-9 rounded-md bg-transparent hover:bg-white/10 flex items-center justify-center cursor-pointer" title="Terminal">
+        <svg class="w-5 h-5 text-zinc-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+      </div>
+      <div class="w-9 h-9 rounded-md bg-transparent hover:bg-white/10 flex items-center justify-center cursor-pointer" title="Edge Browser">
+        <svg class="w-5 h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+      </div>
+    </div>
+
+    <!-- Right: System Tray & Clock -->
+    <div class="flex items-center gap-3 text-xs text-zinc-400 font-mono">
+      <!-- vt-voice Tray Icon with Status Indicator -->
+      <div class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white/10 cursor-pointer" title="vt-voice: Active in background" onclick="setOverlayState('listening')">
+        <span class="w-2 h-2 rounded-full bg-emerald-400" id="trayDot"></span>
+        <svg class="w-3.5 h-3.5 text-zinc-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" x2="12" y1="19" y2="22"/>
+        </svg>
+      </div>
+
+      <div class="flex items-center gap-2 text-[11px] text-zinc-300">
+        <span>ENG</span>
+        <span>14:32</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    const overlayContainer = document.getElementById('overlayContainer');
+    const pillLabel = document.getElementById('pillLabel');
+    const trayDot = document.getElementById('trayDot');
+
+    // Icons
+    const iconListening = document.getElementById('icon-listening');
+    const iconProcessing = document.getElementById('icon-processing');
+    const iconSuccess = document.getElementById('icon-success');
+    const iconError = document.getElementById('icon-error');
+
+    // Badges & Right Section
+    const waveformContainer = document.getElementById('waveformContainer');
+    const recordTimer = document.getElementById('recordTimer');
+    const processingBadge = document.getElementById('processingBadge');
+    const successBadge = document.getElementById('successBadge');
+    const errorBadge = document.getElementById('errorBadge');
+
+    let waveInterval;
+    let timerInterval;
+    let timerSeconds = 0;
+
+    function resetPill() {
+      // Hide all icons
+      iconListening.classList.add('hidden');
+      iconProcessing.classList.add('hidden');
+      iconSuccess.classList.add('hidden');
+      iconError.classList.add('hidden');
+
+      // Hide all right badges
+      waveformContainer.classList.add('hidden');
+      recordTimer.classList.add('hidden');
+      processingBadge.classList.add('hidden');
+      successBadge.classList.add('hidden');
+      errorBadge.classList.add('hidden');
+
+      clearInterval(waveInterval);
+      clearInterval(timerInterval);
+      pillLabel.className = 'text-xs font-semibold text-zinc-100 tracking-tight';
+    }
+
+    function setOverlayState(state) {
+      resetPill();
+      overlayContainer.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+      overlayContainer.classList.add('opacity-100', 'translate-y-0');
+
+      // Highlight active button in controller
+      document.querySelectorAll('.state-btn').forEach(b => {
+        b.classList.remove('bg-rose-500/20', 'text-rose-300', 'border-rose-500/30', 'bg-amber-500/20', 'text-amber-300', 'border-amber-500/30', 'bg-emerald-500/20', 'text-emerald-300', 'border-emerald-500/30');
+      });
+
+      if (state === 'listening') {
+        iconListening.classList.remove('hidden');
+        waveformContainer.classList.remove('hidden');
+        recordTimer.classList.remove('hidden');
+        pillLabel.innerText = 'Listening...';
+        trayDot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-pulse';
+
+        // Start dynamic waveform simulation
+        waveInterval = setInterval(() => {
+          const bars = [document.getElementById('wb1'), document.getElementById('wb2'), document.getElementById('wb3'), document.getElementById('wb4'), document.getElementById('wb5')];
+          bars.forEach(b => {
+            const h = Math.floor(4 + Math.random() * 16);
+            b.style.height = `${h}px`;
+          });
+        }, 90);
+
+        // Start timer
+        timerSeconds = 0;
+        recordTimer.innerText = '00:00';
+        timerInterval = setInterval(() => {
+          timerSeconds++;
+          const s = timerSeconds.toString().padStart(2, '0');
+          recordTimer.innerText = `00:${s}`;
+        }, 1000);
+
+      } else if (state === 'processing') {
+        iconProcessing.classList.remove('hidden');
+        processingBadge.classList.remove('hidden');
+        pillLabel.innerText = 'Polishing grammar...';
+        pillLabel.classList.add('shimmer-text');
+        trayDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+
+      } else if (state === 'success') {
+        iconSuccess.classList.remove('hidden');
+        successBadge.classList.remove('hidden');
+        pillLabel.innerText = 'Pasted to cursor!';
+        pillLabel.classList.add('text-emerald-300');
+        trayDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+
+        // Auto-dismiss after 1.8s
+        setTimeout(() => {
+          if (pillLabel.innerText.includes('Pasted')) {
+            setOverlayState('idle');
+          }
+        }, 1800);
+
+      } else if (state === 'error') {
+        iconError.classList.remove('hidden');
+        errorBadge.classList.remove('hidden');
+        pillLabel.innerText = 'Microphone Not Found';
+        pillLabel.classList.add('text-rose-300');
+        trayDot.className = 'w-2 h-2 rounded-full bg-rose-500';
+
+      } else if (state === 'idle') {
+        overlayContainer.classList.remove('opacity-100', 'translate-y-0');
+        overlayContainer.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+        trayDot.className = 'w-2 h-2 rounded-full bg-zinc-500';
+      }
+    }
+
+    // Auto Cycle Life-Cycle Demo
+    function runAutoCycle() {
+      setOverlayState('listening');
+      setTimeout(() => {
+        setOverlayState('processing');
+        setTimeout(() => {
+          setOverlayState('success');
+        }, 1200);
+      }, 2500);
+    }
+
+    // Initialize in Listening State
+    setOverlayState('listening');
+  </script>
+</body>
+</html>

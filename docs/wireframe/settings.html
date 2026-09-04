@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vt-voice Settings — Windows 11 Daemon</title>
+  <!-- Google Fonts: Plus Jakarta Sans + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'Segoe UI', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'Cascadia Code', 'Consolas', 'monospace'],
+          },
+          colors: {
+            zinc: {
+              850: '#1e1e24',
+              900: '#18181b',
+              950: '#09090b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+    
+    /* Acrylic / Mica Glassmorphism */
+    .mica-window {
+      background: rgba(14, 14, 17, 0.94);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .acrylic-card {
+      background: rgba(24, 24, 27, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .acrylic-card:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Range slider custom styling */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 9999px;
+      height: 6px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #10b981;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+      transition: transform 0.1s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    /* Pulse wave animations */
+    @keyframes audioPulse {
+      0%, 100% { height: 4px; }
+      50% { height: 18px; }
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 font-sans min-h-screen flex items-center justify-center p-4 selection:bg-emerald-500/30 selection:text-emerald-200">
+
+  <!-- Main Container: Realistic Windows 11 Desktop Framing -->
+  <div class="w-full max-w-[820px] mica-window rounded-2xl overflow-hidden flex flex-col transition-all duration-300">
+
+    <!-- Windows 11 Fluent Titlebar -->
+    <header class="h-11 px-4 flex items-center justify-between border-b border-white/[0.06] select-none bg-black/20">
+      <!-- Left: App Identity -->
+      <div class="flex items-center gap-2.5">
+        <!-- Sonic Spark Icon -->
+        <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 128 128" fill="none">
+          <defs>
+            <linearGradient id="sonicSparkHeader" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#34d399" />
+              <stop offset="50%" stop-color="#22d3ee" />
+              <stop offset="100%" stop-color="#6366f1" />
+            </linearGradient>
+          </defs>
+          <rect x="8" y="8" width="112" height="112" rx="28" fill="#18181b" stroke="#27272a" stroke-width="4"/>
+          <rect x="48" y="26" width="32" height="50" rx="16" stroke="url(#sonicSparkHeader)" stroke-width="8"/>
+          <path d="M42 56 C42 68, 52 78, 64 78 C76 78, 86 68, 86 56 M64 78 L64 94 M50 94 L78 94 M60 38 L68 48 L61 51 L69 62" 
+                stroke="url(#sonicSparkHeader)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="text-xs font-semibold tracking-wide text-zinc-200">vt-voice</span>
+        <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-white/5">v1.0.0</span>
+        <span class="inline-flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Daemon Active
+        </span>
+      </div>
+
+      <!-- Right: Win11 Window Buttons -->
+      <div class="flex items-center -mr-2">
+        <button class="w-10 h-8 flex items-center justify-center text-zinc-400 hover:bg-white/10 hover:text-white transition-colors" title="Minimize">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+        </button>
+        <button class="w-10 h-8 flex items-center justify-center text-zinc-400 hover:bg-white/10 hover:text-white transition-colors" title="Maximize">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        </button>
+        <button class="w-10 h-8 flex items-center justify-center text-zinc-400 hover:bg-rose-600 hover:text-white transition-colors" title="Hide to Tray">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace: Sidebar + Content Panels -->
+    <div class="flex flex-1 min-h-[520px]">
+
+      <!-- Navigation Sidebar (200px) -->
+      <aside class="w-52 border-r border-white/[0.06] p-3 flex flex-col justify-between bg-black/10 select-none">
+        <!-- Navigation Items -->
+        <nav class="space-y-1" id="navGroup">
+          <button data-tab="general" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 transition-all text-left">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span>General</span>
+          </button>
+
+          <button data-tab="audio" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition-all text-left">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" x2="12" y1="19" y2="22"/>
+            </svg>
+            <span>Audio & Input</span>
+          </button>
+
+          <button data-tab="ai" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition-all text-left">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
+            </svg>
+            <span>AI & Models</span>
+          </button>
+
+          <button data-tab="history" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition-all text-left">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>History & Logs</span>
+          </button>
+        </nav>
+
+        <!-- Sidebar Footer: Telemetry status -->
+        <div class="pt-4 border-t border-white/[0.06] space-y-2">
+          <div class="px-2 py-1.5 rounded-lg bg-zinc-900/60 border border-white/5 text-[10px] font-mono text-zinc-400 space-y-1">
+            <div class="flex justify-between items-center">
+              <span>RAM:</span>
+              <span class="text-emerald-400 font-semibold">24.6 MB</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span>CPU:</span>
+              <span class="text-zinc-300">0.0% (Idle)</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span>IPC:</span>
+              <span class="text-zinc-300">WASAPI / Win32</span>
+            </div>
+          </div>
+          <div class="text-[10px] text-zinc-500 px-2 text-center">
+            Tauri v2 + Rust Background
+          </div>
+        </div>
+      </aside>
+
+      <!-- Content Area (580px) -->
+      <main class="flex-1 p-6 overflow-y-auto max-h-[520px]">
+
+        <!-- ==================== TAB 1: GENERAL ==================== -->
+        <section id="tab-general" class="tab-content space-y-6">
+          <div>
+            <h2 class="text-base font-semibold text-zinc-100 tracking-tight">General Configuration</h2>
+            <p class="text-xs text-zinc-400 mt-0.5">Control hotkey activation mode, desktop insertion, and daemon launch behaviors.</p>
+          </div>
+
+          <!-- Hotkey Configuration Card -->
+          <div class="acrylic-card rounded-xl p-4 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-zinc-200">Global Activation Hotkey</span>
+                <p class="text-[11px] text-zinc-400 mt-0.5">Operates via low-level Win32 hook (<code class="font-mono text-emerald-400">WH_KEYBOARD_LL</code>) with zero latency.</p>
+              </div>
+              <button id="recordBtn" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-white/10 text-xs font-mono transition-all">
+                <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping hidden" id="recordPing"></span>
+                <span id="recordText">Right Alt</span>
+                <span class="text-[10px] text-zinc-400">(Record)</span>
+              </button>
+            </div>
+
+            <!-- Mode Selector: Push-to-Talk vs Toggle -->
+            <div class="pt-2 border-t border-white/5 grid grid-cols-2 gap-3">
+              <label class="cursor-pointer">
+                <input type="radio" name="hotkeyMode" value="ptt" checked class="peer sr-only">
+                <div class="p-3 rounded-lg border border-white/5 bg-zinc-900/40 peer-checked:border-emerald-500/50 peer-checked:bg-emerald-500/10 transition-all">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-zinc-200 peer-checked:text-emerald-300">Push-to-Talk (Hold)</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">Recommended</span>
+                  </div>
+                  <p class="text-[11px] text-zinc-400 mt-1 leading-relaxed">Hold key to record speech, release to automatically transcribe & insert.</p>
+                </div>
+              </label>
+
+              <label class="cursor-pointer">
+                <input type="radio" name="hotkeyMode" value="toggle" class="peer sr-only">
+                <div class="p-3 rounded-lg border border-white/5 bg-zinc-900/40 peer-checked:border-emerald-500/50 peer-checked:bg-emerald-500/10 transition-all">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-zinc-200 peer-checked:text-emerald-300">Toggle-to-Talk</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">Hands-free</span>
+                  </div>
+                  <p class="text-[11px] text-zinc-400 mt-1 leading-relaxed">Tap once to begin listening, tap again to finish and paste.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Text Insertion Method Card -->
+          <div class="acrylic-card rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-zinc-200">Active Cursor Text Insertion</span>
+                <p class="text-[11px] text-zinc-400 mt-0.5">Method used to inject transcribed words into active editor (VS Code, Slack, Notepad).</p>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 flex items-start gap-3">
+              <svg class="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                <path d="m9 12 2 2 4-4"/>
+              </svg>
+              <div>
+                <span class="text-xs font-medium text-emerald-300">Simulated Clipboard Paste (Ctrl+V) with Async Restore</span>
+                <p class="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                  Preserves Vietnamese IMEs (Unikey / EVKey) without character corruption or dropped accent marks. Your existing clipboard contents are restored 300ms later.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Startup & Daemon Toggles -->
+          <div class="acrylic-card rounded-xl p-4 space-y-3">
+            <span class="text-xs font-semibold text-zinc-200 block mb-2">Startup & System Integration</span>
+
+            <!-- Toggle 1 -->
+            <div class="flex items-center justify-between py-1">
+              <div>
+                <span class="text-xs text-zinc-200">Start with Windows</span>
+                <p class="text-[11px] text-zinc-400">Launch silently in background when computer boots (HKCU Run).</p>
+              </div>
+              <button type="button" class="toggle-switch w-11 h-6 bg-emerald-500 rounded-full p-1 transition-colors duration-200 flex items-center" data-active="true">
+                <div class="w-4 h-4 bg-white rounded-full transition-transform duration-200 translate-x-5"></div>
+              </button>
+            </div>
+
+            <!-- Toggle 2 -->
+            <div class="flex items-center justify-between py-1 border-t border-white/5">
+              <div>
+                <span class="text-xs text-zinc-200">Start Minimized to System Tray</span>
+                <p class="text-[11px] text-zinc-400">Do not open settings window on launch; stay in background.</p>
+              </div>
+              <button type="button" class="toggle-switch w-11 h-6 bg-emerald-500 rounded-full p-1 transition-colors duration-200 flex items-center" data-active="true">
+                <div class="w-4 h-4 bg-white rounded-full transition-transform duration-200 translate-x-5"></div>
+              </button>
+            </div>
+
+            <!-- Toggle 3 -->
+            <div class="flex items-center justify-between py-1 border-t border-white/5">
+              <div>
+                <span class="text-xs text-zinc-200">Audio Earcon Chimes</span>
+                <p class="text-[11px] text-zinc-400">Play subtle auditory click when speech recording starts and finishes.</p>
+              </div>
+              <button type="button" class="toggle-switch w-11 h-6 bg-zinc-700 rounded-full p-1 transition-colors duration-200 flex items-center" data-active="false">
+                <div class="w-4 h-4 bg-white rounded-full transition-transform duration-200 translate-x-0"></div>
+              </button>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ==================== TAB 2: AUDIO & INPUT ==================== -->
+        <section id="tab-audio" class="tab-content space-y-6 hidden">
+          <div>
+            <h2 class="text-base font-semibold text-zinc-100 tracking-tight">Audio & Input Capture</h2>
+            <p class="text-xs text-zinc-400 mt-0.5">Configure WASAPI native hardware microphone capture and silence sensitivity.</p>
+          </div>
+
+          <!-- Microphone Selection -->
+          <div class="acrylic-card rounded-xl p-4 space-y-4">
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-zinc-200">Default Input Microphone (WASAPI)</label>
+              <select class="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500/50">
+                <option value="default">Microphone Array (Realtek(R) Audio) — System Default</option>
+                <option value="headset">Headset Microphone (Jabra Evolve2 65 Flex)</option>
+                <option value="virtual">Voicemeeter Virtual Audio Output</option>
+              </select>
+            </div>
+
+            <!-- Real-time Input Sensitivity Meter -->
+            <div class="space-y-2 pt-2 border-t border-white/5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-zinc-300 font-medium">Input Level (Live RMS):</span>
+                <span class="font-mono text-emerald-400 text-[11px]" id="micDb">-24 dB</span>
+              </div>
+              
+              <!-- Audio Level Visual Bar -->
+              <div class="w-full h-3 bg-zinc-950 rounded-full overflow-hidden p-0.5 border border-white/5 flex items-center">
+                <div id="meterBar" class="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-rose-500 rounded-full transition-all duration-75 w-[42%]"></div>
+              </div>
+              
+              <div class="flex justify-between text-[10px] text-zinc-500 font-mono">
+                <span>-60 dB (Silence)</span>
+                <span>Noise Threshold (-30 dB)</span>
+                <span>0 dB (Max)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- VAD Silence Timeout -->
+          <div class="acrylic-card rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-zinc-200">Voice Activity Detection (VAD) Silence Timeout</span>
+                <p class="text-[11px] text-zinc-400 mt-0.5">Automatically completes transcription after continuous silence.</p>
+              </div>
+              <span class="text-xs font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20" id="vadVal">700 ms</span>
+            </div>
+
+            <input type="range" min="300" max="2500" step="50" value="700" class="w-full" id="vadSlider">
+
+            <div class="flex justify-between text-[10px] text-zinc-500 font-mono">
+              <span>300ms (Fast)</span>
+              <span>700ms (Balanced)</span>
+              <span>2500ms (Patient)</span>
+            </div>
+          </div>
+
+          <!-- Audio Stream Pipeline Specs -->
+          <div class="acrylic-card rounded-xl p-4 space-y-2">
+            <span class="text-xs font-semibold text-zinc-200 block">Low-Level Audio Pipeline Specs</span>
+            <div class="grid grid-cols-3 gap-2 pt-1">
+              <div class="p-2 rounded-lg bg-zinc-900/60 border border-white/5 text-center">
+                <div class="text-[10px] text-zinc-400">Sample Rate</div>
+                <div class="text-xs font-mono font-semibold text-zinc-200 mt-0.5">16,000 Hz</div>
+              </div>
+              <div class="p-2 rounded-lg bg-zinc-900/60 border border-white/5 text-center">
+                <div class="text-[10px] text-zinc-400">Format</div>
+                <div class="text-xs font-mono font-semibold text-zinc-200 mt-0.5">Mono S16LE</div>
+              </div>
+              <div class="p-2 rounded-lg bg-zinc-900/60 border border-white/5 text-center">
+                <div class="text-[10px] text-zinc-400">Buffer Ring</div>
+                <div class="text-xs font-mono font-semibold text-emerald-400 mt-0.5">&lt; 3ms Latency</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ==================== TAB 3: AI & MODELS ==================== -->
+        <section id="tab-ai" class="tab-content space-y-6 hidden">
+          <div>
+            <h2 class="text-base font-semibold text-zinc-100 tracking-tight">AI & Model Pipeline</h2>
+            <p class="text-xs text-zinc-400 mt-0.5">Select high-speed STT transcription and Vietnamese-English grammar polishing models.</p>
+          </div>
+
+          <!-- Provider Radio Selection -->
+          <div class="grid grid-cols-3 gap-3">
+            <label class="cursor-pointer">
+              <input type="radio" name="aiProvider" value="groq" checked class="peer sr-only">
+              <div class="p-3 rounded-xl border border-white/5 bg-zinc-900/40 peer-checked:border-emerald-500/50 peer-checked:bg-emerald-500/10 transition-all text-center">
+                <div class="flex items-center justify-center gap-1.5">
+                  <span class="text-xs font-semibold text-zinc-200 peer-checked:text-emerald-300">Groq Cloud</span>
+                  <span class="text-[9px] px-1 py-0.2 bg-emerald-500/20 text-emerald-400 font-mono rounded">Fastest</span>
+                </div>
+                <div class="text-[11px] font-mono text-emerald-400 mt-1">~500ms Total</div>
+                <div class="text-[10px] text-zinc-400 mt-0.5">Whisper Turbo + Llama 3.3</div>
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="aiProvider" value="openai" class="peer sr-only">
+              <div class="p-3 rounded-xl border border-white/5 bg-zinc-900/40 peer-checked:border-emerald-500/50 peer-checked:bg-emerald-500/10 transition-all text-center">
+                <span class="text-xs font-semibold text-zinc-200 peer-checked:text-emerald-300 block">OpenAI Cloud</span>
+                <div class="text-[11px] font-mono text-zinc-400 mt-1">~1,800ms</div>
+                <div class="text-[10px] text-zinc-500 mt-0.5">Whisper-1 + 4o-mini</div>
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="aiProvider" value="local" class="peer sr-only">
+              <div class="p-3 rounded-xl border border-white/5 bg-zinc-900/40 peer-checked:border-emerald-500/50 peer-checked:bg-emerald-500/10 transition-all text-center">
+                <span class="text-xs font-semibold text-zinc-200 peer-checked:text-emerald-300 block">Local Offline</span>
+                <div class="text-[11px] font-mono text-zinc-400 mt-1">~1,500ms</div>
+                <div class="text-[10px] text-zinc-500 mt-0.5">whisper-rs + Ollama</div>
+              </div>
+            </label>
+          </div>
+
+          <!-- API Key Input & Connection Test -->
+          <div class="acrylic-card rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-semibold text-zinc-200">Groq API Key</label>
+              <span class="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                <svg class="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Stored via Windows Credential Vault (DPAPI)
+              </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="relative flex-1">
+                <input type="password" id="apiKeyInput" value="gsk_98e1f08a94bca120938f01b" class="w-full bg-zinc-900 border border-white/10 rounded-lg pl-3 pr-10 py-2 text-xs font-mono text-zinc-200 focus:outline-none focus:border-emerald-500/50">
+                <button id="toggleEye" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+              <button id="testApiBtn" class="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold text-xs transition-colors flex items-center gap-1.5 flex-shrink-0">
+                <span id="testSpinner" class="hidden w-3 h-3 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin"></span>
+                <span id="testBtnText">Test Connection</span>
+              </button>
+            </div>
+
+            <!-- Verification Status Notice -->
+            <div id="testStatus" class="hidden p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center justify-between">
+              <span class="flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                API Verified: Groq LPU Whisper & Llama endpoints active
+              </span>
+              <span class="font-mono text-[11px] text-emerald-400 font-semibold">184 ms</span>
+            </div>
+          </div>
+
+          <!-- Model Configurations -->
+          <div class="acrylic-card rounded-xl p-4 space-y-3">
+            <span class="text-xs font-semibold text-zinc-200 block">Engine Model Parameters</span>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <label class="text-[11px] text-zinc-400">STT Audio Transcriber</label>
+                <select class="w-full bg-zinc-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 font-mono">
+                  <option value="turbo">whisper-large-v3-turbo (220ms)</option>
+                  <option value="v3">whisper-large-v3 (320ms)</option>
+                </select>
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-[11px] text-zinc-400">Grammar & Polish LLM</label>
+                <select class="w-full bg-zinc-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 font-mono">
+                  <option value="llama70b">llama-3.3-70b-versatile (280ms)</option>
+                  <option value="llama8b">llama-3.1-8b-instant (120ms)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- System Prompt Editor -->
+          <div class="acrylic-card rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-semibold text-zinc-200">Vi-En Code-Switching System Prompt</label>
+              <button id="resetPromptBtn" class="text-[11px] text-emerald-400 hover:underline">Reset to Default</button>
+            </div>
+            <textarea id="promptArea" rows="4" class="w-full bg-zinc-900 border border-white/10 rounded-lg p-3 text-[11px] font-mono text-zinc-300 leading-relaxed focus:outline-none focus:border-emerald-500/50">You are an ultra-fast text polishing engine for mixed Vietnamese-English developer speech.
+Rules:
+1. Strip verbal fillers (ừm, à, kiểu như, repeated words).
+2. Fix punctuation and capitalize acronyms (API, PR, CI/CD, SQL, Docker, K8s).
+3. Correct phonetic loanwords to standard English developer terminology.
+4. PRESERVE original meaning and natural tone.
+5. RETURN ONLY FINAL POLISHED TEXT. ZERO PREFACE.</textarea>
+            <div class="flex justify-between text-[10px] text-zinc-500">
+              <span>Conditions grammar and technical casing</span>
+              <span id="charCount" class="font-mono">382 chars</span>
+            </div>
+          </div>
+
+          <!-- Custom Vocabulary Tags -->
+          <div class="acrylic-card rounded-xl p-4 space-y-2">
+            <label class="text-xs font-semibold text-zinc-200">Custom Technical Vocabulary Priming (Whisper)</label>
+            <p class="text-[11px] text-zinc-400">Tokens injected into Whisper's <code class="text-emerald-400 font-mono">initial_prompt</code> to prevent phonetic loanword distortion.</p>
+
+            <div class="flex flex-wrap gap-1.5 pt-1" id="tagList">
+              <span class="vocab-tag inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[11px] font-mono border border-white/5">
+                k8s <button class="hover:text-rose-400" onclick="this.parentElement.remove()">×</button>
+              </span>
+              <span class="vocab-tag inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[11px] font-mono border border-white/5">
+                pull request <button class="hover:text-rose-400" onclick="this.parentElement.remove()">×</button>
+              </span>
+              <span class="vocab-tag inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[11px] font-mono border border-white/5">
+                deploy <button class="hover:text-rose-400" onclick="this.parentElement.remove()">×</button>
+              </span>
+              <span class="vocab-tag inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[11px] font-mono border border-white/5">
+                staging <button class="hover:text-rose-400" onclick="this.parentElement.remove()">×</button>
+              </span>
+              <span class="vocab-tag inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[11px] font-mono border border-white/5">
+                refactor <button class="hover:text-rose-400" onclick="this.parentElement.remove()">×</button>
+              </span>
+              <span class="vocab-tag inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[11px] font-mono border border-white/5">
+                microservice <button class="hover:text-rose-400" onclick="this.parentElement.remove()">×</button>
+              </span>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+              <input type="text" id="newTagInput" placeholder="Add keyword (e.g. GraphQL, Tailwind, Redis)..." class="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-mono text-zinc-200 focus:outline-none focus:border-emerald-500/50">
+              <button id="addTagBtn" class="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium border border-white/10 transition-colors">Add</button>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ==================== TAB 4: HISTORY & LOGS ==================== -->
+        <section id="tab-history" class="tab-content space-y-6 hidden">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-semibold text-zinc-100 tracking-tight">Transcription History & Logs</h2>
+              <p class="text-xs text-zinc-400 mt-0.5">Recent voice inputs, latency benchmarks, and clipboard restorations.</p>
+            </div>
+            <div class="flex gap-2">
+              <button class="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-[11px] text-zinc-300 border border-white/5 transition-colors">Export CSV</button>
+              <button class="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-[11px] text-zinc-300 border border-white/5 transition-colors">Clear</button>
+            </div>
+          </div>
+
+          <!-- History Item 1 -->
+          <div class="acrylic-card rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Success</span>
+                <span class="text-[11px] text-zinc-400 font-mono">14:28:10</span>
+                <span class="text-[11px] text-zinc-500">• 3.4s audio (108 KB)</span>
+              </div>
+              <!-- Latency Chip Breakdown -->
+              <div class="flex items-center gap-1.5 text-[10px] font-mono">
+                <span class="text-zinc-400">STT 215ms</span>
+                <span class="text-zinc-600">+</span>
+                <span class="text-zinc-400">LLM 284ms</span>
+                <span class="text-zinc-600">=</span>
+                <span class="text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">499ms</span>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <div class="text-[11px] text-zinc-500 line-through">
+                "ừm deploy lên staging cho anh để test cái memory leak trong microservice nhé"
+              </div>
+              <div class="text-xs text-zinc-100 font-medium bg-black/30 p-2.5 rounded-lg border border-white/5 flex items-center justify-between">
+                <span>"Deploy lên staging cho anh để test memory leak trong microservice nhé."</span>
+                <button class="copy-btn text-zinc-400 hover:text-emerald-400 p-1" title="Copy text">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- History Item 2 -->
+          <div class="acrylic-card rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Success</span>
+                <span class="text-[11px] text-zinc-400 font-mono">14:12:05</span>
+                <span class="text-[11px] text-zinc-500">• 2.8s audio (89 KB)</span>
+              </div>
+              <div class="flex items-center gap-1.5 text-[10px] font-mono">
+                <span class="text-zinc-400">STT 198ms</span>
+                <span class="text-zinc-600">+</span>
+                <span class="text-zinc-400">LLM 271ms</span>
+                <span class="text-zinc-600">=</span>
+                <span class="text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">469ms</span>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <div class="text-[11px] text-zinc-500 line-through">
+                "tạo pull request mới từ branch feature audio hotkey và merge vào develop"
+              </div>
+              <div class="text-xs text-zinc-100 font-medium bg-black/30 p-2.5 rounded-lg border border-white/5 flex items-center justify-between">
+                <span>"Tạo pull request (PR) mới từ branch feature/audio-hotkey và merge vào develop."</span>
+                <button class="copy-btn text-zinc-400 hover:text-emerald-400 p-1" title="Copy text">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- History Item 3 -->
+          <div class="acrylic-card rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Success</span>
+                <span class="text-[11px] text-zinc-400 font-mono">13:55:40</span>
+                <span class="text-[11px] text-zinc-500">• 4.2s audio (134 KB)</span>
+              </div>
+              <div class="flex items-center gap-1.5 text-[10px] font-mono">
+                <span class="text-zinc-400">STT 235ms</span>
+                <span class="text-zinc-600">+</span>
+                <span class="text-zinc-400">LLM 305ms</span>
+                <span class="text-zinc-600">=</span>
+                <span class="text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">540ms</span>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <div class="text-[11px] text-zinc-500 line-through">
+                "fix bug conflict trong file Cargo chấm toml do tauri plugin store"
+              </div>
+              <div class="text-xs text-zinc-100 font-medium bg-black/30 p-2.5 rounded-lg border border-white/5 flex items-center justify-between">
+                <span>"Fix bug conflict trong file Cargo.toml do tauri-plugin-store."</span>
+                <button class="copy-btn text-zinc-400 hover:text-emerald-400 p-1" title="Copy text">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- Window Footer Bar -->
+    <footer class="h-10 px-4 border-t border-white/[0.06] bg-black/30 flex items-center justify-between text-xs">
+      <div class="flex items-center gap-3 text-zinc-500 text-[11px]">
+        <span>Hotkey: <strong class="text-zinc-300 font-mono" id="footerHotkey">Right Alt</strong></span>
+        <span>•</span>
+        <span>Provider: <strong class="text-emerald-400 font-mono">Groq LPU Cloud</strong></span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="saveChangesBtn" class="px-3 py-1 rounded-md bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold text-xs transition-all shadow-sm shadow-emerald-500/20 active:scale-95">
+          Save Preferences
+        </button>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Toast Notification Template -->
+  <div id="toast" class="fixed bottom-6 right-6 px-4 py-2.5 rounded-xl bg-zinc-900 border border-emerald-500/40 text-emerald-300 text-xs font-medium shadow-2xl flex items-center gap-2 transition-all duration-300 opacity-0 translate-y-2 pointer-events-none z-50">
+    <svg class="w-4 h-4 text-emerald-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+    <span id="toastMsg">Preferences saved successfully!</span>
+  </div>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    // Tab switching
+    const navItems = document.querySelectorAll('.nav-item');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    navItems.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetTab = btn.getAttribute('data-tab');
+
+        // Update nav buttons
+        navItems.forEach(item => {
+          item.classList.remove('text-emerald-400', 'bg-emerald-500/10', 'border', 'border-emerald-500/20');
+          item.classList.add('text-zinc-400', 'hover:text-zinc-200', 'hover:bg-white/5');
+        });
+        btn.classList.remove('text-zinc-400', 'hover:text-zinc-200', 'hover:bg-white/5');
+        btn.classList.add('text-emerald-400', 'bg-emerald-500/10', 'border', 'border-emerald-500/20');
+
+        // Update tabs
+        tabContents.forEach(tab => {
+          if (tab.id === `tab-${targetTab}`) {
+            tab.classList.remove('hidden');
+          } else {
+            tab.classList.add('hidden');
+          }
+        });
+      });
+    });
+
+    // Toggle Switches
+    document.querySelectorAll('.toggle-switch').forEach(toggle => {
+      toggle.addEventListener('click', () => {
+        const active = toggle.getAttribute('data-active') === 'true';
+        const thumb = toggle.querySelector('div');
+        if (active) {
+          toggle.setAttribute('data-active', 'false');
+          toggle.classList.remove('bg-emerald-500');
+          toggle.classList.add('bg-zinc-700');
+          thumb.classList.remove('translate-x-5');
+          thumb.classList.add('translate-x-0');
+        } else {
+          toggle.setAttribute('data-active', 'true');
+          toggle.classList.remove('bg-zinc-700');
+          toggle.classList.add('bg-emerald-500');
+          thumb.classList.remove('translate-x-0');
+          thumb.classList.add('translate-x-5');
+        }
+      });
+    });
+
+    // Hotkey Keybind Recorder
+    const recordBtn = document.getElementById('recordBtn');
+    const recordText = document.getElementById('recordText');
+    const recordPing = document.getElementById('recordPing');
+    const footerHotkey = document.getElementById('footerHotkey');
+    let isRecordingKey = false;
+
+    recordBtn.addEventListener('click', () => {
+      isRecordingKey = true;
+      recordText.innerText = 'Press Key...';
+      recordPing.classList.remove('hidden');
+      recordBtn.classList.add('ring-2', 'ring-rose-500');
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (!isRecordingKey) return;
+      e.preventDefault();
+
+      let keyName = e.code;
+      if (e.code === 'AltRight' || e.key === 'AltGraph') keyName = 'Right Alt';
+      else if (e.code === 'ControlRight') keyName = 'Right Ctrl';
+      else if (e.code === 'ShiftRight') keyName = 'Right Shift';
+      else if (e.code === 'Space') keyName = 'Ctrl + Space';
+      else keyName = e.key.toUpperCase();
+
+      recordText.innerText = keyName;
+      footerHotkey.innerText = keyName;
+      recordPing.classList.add('hidden');
+      recordBtn.classList.remove('ring-2', 'ring-rose-500');
+      isRecordingKey = false;
+      showToast(`Global hotkey bound to ${keyName}`);
+    });
+
+    // VAD Slider
+    const vadSlider = document.getElementById('vadSlider');
+    const vadVal = document.getElementById('vadVal');
+    vadSlider.addEventListener('input', (e) => {
+      vadVal.innerText = `${e.target.value} ms`;
+    });
+
+    // Live Audio Meter Simulation
+    const meterBar = document.getElementById('meterBar');
+    const micDb = document.getElementById('micDb');
+    setInterval(() => {
+      // Simulate random ambient speech variations
+      const pct = Math.floor(25 + Math.random() * 45);
+      meterBar.style.width = `${pct}%`;
+      const db = -Math.floor(60 - (pct / 100 * 50));
+      micDb.innerText = `${db} dB`;
+    }, 120);
+
+    // API Key Eye Toggle
+    const toggleEye = document.getElementById('toggleEye');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    toggleEye.addEventListener('click', () => {
+      apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+    });
+
+    // Test API Connection
+    const testApiBtn = document.getElementById('testApiBtn');
+    const testSpinner = document.getElementById('testSpinner');
+    const testBtnText = document.getElementById('testBtnText');
+    const testStatus = document.getElementById('testStatus');
+
+    testApiBtn.addEventListener('click', () => {
+      testSpinner.classList.remove('hidden');
+      testBtnText.innerText = 'Connecting...';
+      testApiBtn.disabled = true;
+      testStatus.classList.add('hidden');
+
+      setTimeout(() => {
+        testSpinner.classList.add('hidden');
+        testBtnText.innerText = 'Test Connection';
+        testApiBtn.disabled = false;
+        testStatus.classList.remove('hidden');
+        showToast('Groq Cloud API connection verified: 184ms');
+      }, 700);
+    });
+
+    // Prompt Reset & Character Count
+    const promptArea = document.getElementById('promptArea');
+    const charCount = document.getElementById('charCount');
+    const resetPromptBtn = document.getElementById('resetPromptBtn');
+
+    promptArea.addEventListener('input', () => {
+      charCount.innerText = `${promptArea.value.length} chars`;
+    });
+
+    resetPromptBtn.addEventListener('click', () => {
+      promptArea.value = `You are an ultra-fast text polishing engine for mixed Vietnamese-English developer speech.\nRules:\n1. Strip verbal fillers (ừm, à, kiểu như, repeated words).\n2. Fix punctuation and capitalize acronyms (API, PR, CI/CD, SQL, Docker, K8s).\n3. Correct phonetic loanwords to standard English developer terminology.\n4. PRESERVE original meaning and natural tone.\n5. RETURN ONLY FINAL POLISHED TEXT. ZERO PREFACE.`;
+      charCount.innerText = `${promptArea.value.length} chars`;
+      showToast('System prompt reset to default');
+    });
+
+    // Vocabulary Tag Input
+    const tagList = document.getElementById('tagList');
+    const newTagInput = document.getElementById('newTagInput');
+    const addTagBtn = document.getElementById('addTagBtn');
+
+    function addTag() {
+      const val = newTagInput.value.trim();
+      if (!val) return;
+      const tag = document.createElement('span');
+      tag.className = 'vocab-tag inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[11px] font-mono border border-white/5';
+      tag.innerHTML = `${val} <button class="hover:text-rose-400" onclick="this.parentElement.remove()">×</button>`;
+      tagList.appendChild(tag);
+      newTagInput.value = '';
+      showToast(`Added '${val}' to Whisper initial prompt`);
+    }
+
+    addTagBtn.addEventListener('click', addTag);
+    newTagInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addTag();
+    });
+
+    // Copy Buttons
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        showToast('Transcription copied to clipboard!');
+      });
+    });
+
+    // Save Changes Toast
+    document.getElementById('saveChangesBtn').addEventListener('click', () => {
+      showToast('All settings saved to %APPDATA%/settings.json');
+    });
+
+    // Toast Utility
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toastMsg');
+    let toastTimeout;
+
+    function showToast(msg) {
+      clearTimeout(toastTimeout);
+      toastMsg.innerText = msg;
+      toast.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
+      }, 2500);
+    }
+  </script>
+</body>
+</html>
