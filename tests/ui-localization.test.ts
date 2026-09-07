@@ -189,5 +189,29 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
       expect(content).toContain('current_state.starts_with("error: ")');
       expect(content).toContain("localize_error_msg");
     });
+
+    test("AiTab localizes API key placeholders, action tooltips, help text, and reload button", () => {
+      const aiTabPath = path.join(componentsDir, "settings/AiTab.tsx");
+      const content = fs.readFileSync(aiTabPath, "utf-8");
+
+      expect(content).toContain('t("ai.api_key_placeholder_groq")');
+      expect(content).toContain('t("ai.api_key_placeholder_openrouter")');
+      expect(content).toContain('t("ai.api_key_placeholder_custom")');
+      expect(content).toContain('title={t("ai.test_connection_tooltip")}');
+      expect(content).toContain('title={t("ai.change_key_tooltip")}');
+      expect(content).toContain('title={t("ai.delete_key_tooltip")}');
+      expect(content).toContain('t("ai.key_configured_help_prefix")');
+      expect(content).toContain('t("ai.key_unconfigured_help_prefix")');
+      expect(content).toContain('t("ai.connection_success_latency")');
+      expect(content).toContain('t("ai.reload_models")');
+    });
+
+    test("Rust tray daemon serializes tray state and locale updates", () => {
+      const trayPath = path.resolve(__dirname, "../src-tauri/src/daemon/tray.rs");
+      const content = fs.readFileSync(trayPath, "utf-8");
+
+      expect(content).toContain("TRAY_UPDATE_LOCK");
+      expect(content).toContain("TRAY_UPDATE_LOCK.lock()");
+    });
   });
 });

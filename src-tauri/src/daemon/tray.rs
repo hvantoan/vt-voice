@@ -7,6 +7,7 @@ pub const TRAY_ID: &str = "main-tray";
 
 static CURRENT_LOCALE: Mutex<String> = Mutex::new(String::new());
 static CURRENT_STATE: Mutex<String> = Mutex::new(String::new());
+static TRAY_UPDATE_LOCK: Mutex<()> = Mutex::new(());
 
 pub struct TrayStrings {
     pub settings: &'static str,
@@ -67,14 +68,10 @@ impl TrayManager {
         if let Some(provider) = trimmed.strip_prefix("Chưa cài đặt API key cho ") {
             return format!("API key not configured for {}", provider);
         }
-        if let Some(detail) = trimmed.strip_prefix("Lỗi Groq: ") {
-            return format!("Groq error: {}", detail);
-        }
-        if let Some(detail) = trimmed.strip_prefix("Lỗi OpenRouter: ") {
-            return format!("OpenRouter error: {}", detail);
-        }
-        if let Some(detail) = trimmed.strip_prefix("Lỗi Custom: ") {
-            return format!("Custom error: {}", detail);
+        if let Some(rest) = trimmed.strip_prefix("Lỗi ") {
+            if let Some((prov, detail)) = rest.split_once(": ") {
+                return format!("{} error: {}", prov, detail);
+            }
         }
 
         msg.to_string()
@@ -133,12 +130,14 @@ impl TrayManager {
     }
 
     pub fn update_tray_locale(app: &AppHandle, locale: &str) -> Result<(), tauri::Error> {
+        let strings = TrayStrings::for_locale(locale);
+        let menu = Self::create_menu(app, &strings)?;
+
+        let _guard = TRAY_UPDATE_LOCK.lock();
         *CURRENT_LOCALE.lock() = locale.to_string();
         let current_state = CURRENT_STATE.lock().clone();
-        let strings = TrayStrings::for_locale(locale);
 
         if let Some(tray) = app.tray_by_id(TRAY_ID) {
-            let menu = Self::create_menu(app, &strings)?;
             let _ = tray.set_menu(Some(menu));
 
             let tooltip = if current_state.starts_with("error: ") {
@@ -158,6 +157,7 @@ impl TrayManager {
     }
 
     pub fn set_idle(app: &AppHandle) {
+        let _guard = TRAY_UPDATE_LOCK.lock();
         *CURRENT_STATE.lock() = "ready".to_string();
         let locale = CURRENT_LOCALE.lock().clone();
         let strings = TrayStrings::for_locale(&locale);
@@ -167,6 +167,7 @@ impl TrayManager {
     }
 
     pub fn set_recording(app: &AppHandle) {
+        let _guard = TRAY_UPDATE_LOCK.lock();
         *CURRENT_STATE.lock() = "recording".to_string();
         let locale = CURRENT_LOCALE.lock().clone();
         let strings = TrayStrings::for_locale(&locale);
@@ -176,6 +177,7 @@ impl TrayManager {
     }
 
     pub fn set_processing(app: &AppHandle) {
+        let _guard = TRAY_UPDATE_LOCK.lock();
         *CURRENT_STATE.lock() = "processing".to_string();
         let locale = CURRENT_LOCALE.lock().clone();
         let strings = TrayStrings::for_locale(&locale);
@@ -185,6 +187,7 @@ impl TrayManager {
     }
 
     pub fn set_error(app: &AppHandle, msg: &str) {
+        let _guard = TRAY_UPDATE_LOCK.lock();
         *CURRENT_STATE.lock() = format!("error: {}", msg);
         let locale = CURRENT_LOCALE.lock().clone();
         let strings = TrayStrings::for_locale(&locale);

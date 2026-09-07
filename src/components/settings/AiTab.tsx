@@ -385,7 +385,7 @@ export const AiTab: React.FC<AiTabProps> = ({
               {t("ai.provider_title")}
             </label>
             <span className="text-[10px] text-zinc-500 font-mono">
-              Độc lập API key và mô hình
+              {t("ai.provider_independent_hint")}
             </span>
           </div>
 
@@ -463,7 +463,7 @@ export const AiTab: React.FC<AiTabProps> = ({
           {activeProvider === "custom" && (
             <div className="pt-2 border-t border-zinc-800/60 space-y-1.5">
               <label className="text-[11px] font-medium text-zinc-300">
-                Custom STT Audio Endpoint URL
+                {t("ai.custom_endpoint_label")}
               </label>
               <input
                 type="text"
@@ -532,10 +532,10 @@ export const AiTab: React.FC<AiTabProps> = ({
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder={
                     activeProvider === "groq"
-                      ? "Nhập Groq API Key (gsk_...)"
+                      ? t("ai.api_key_placeholder_groq")
                       : activeProvider === "openrouter"
-                        ? "Nhập OpenRouter API Key (sk-or-v1-...)"
-                        : "Nhập Custom API Key (Bearer key...)"
+                        ? t("ai.api_key_placeholder_openrouter")
+                        : t("ai.api_key_placeholder_custom")
                   }
                   className={cn(
                     "w-full rounded-lg pl-3 pr-10 py-2 text-xs font-mono transition-colors focus:outline-none",
@@ -569,7 +569,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                     onClick={handleTestConnection}
                     disabled={testingConnection}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-medium text-zinc-200 transition-colors disabled:opacity-50"
-                    title="Kiểm tra kết nối với API Key đã lưu"
+                    title={t("ai.test_connection_tooltip")}
                   >
                     {testingConnection ? (
                       <>
@@ -594,7 +594,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                       setLatencyResult(null);
                     }}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-medium text-zinc-300 transition-colors"
-                    title="Nhập API Key mới để thay thế"
+                    title={t("ai.change_key_tooltip")}
                   >
                     <Pencil className="w-3.5 h-3.5 text-zinc-400" />
                     <span>{t("ai.change_key")}</span>
@@ -605,7 +605,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                     onClick={handleDeleteKey}
                     disabled={deletingKey}
                     className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-zinc-900 hover:bg-rose-950/50 border border-zinc-800 hover:border-rose-800/60 text-xs font-medium text-zinc-400 hover:text-rose-300 transition-colors disabled:opacity-50"
-                    title="Xóa API Key khỏi Windows Vault"
+                    title={t("ai.delete_key_tooltip")}
                   >
                     {deletingKey ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -678,15 +678,18 @@ export const AiTab: React.FC<AiTabProps> = ({
               <p className="text-[11px] text-zinc-500 mt-1.5 flex items-center gap-1.5">
                 <Check className="w-3 h-3 text-emerald-400" />
                 <span>
-                  Khóa được lưu bảo mật trong Windows Vault. Nhấn{" "}
-                  <strong>Kiểm tra</strong> để thử độ trễ hoặc{" "}
-                  <strong>Đổi key</strong> để cập nhật.
+                  {t("ai.key_configured_help_prefix")}{" "}
+                  <strong>{t("ai.test_connection")}</strong>{" "}
+                  {t("ai.key_configured_help_mid")}{" "}
+                  <strong>{t("ai.change_key")}</strong>{" "}
+                  {t("ai.key_configured_help_suffix")}
                 </span>
               </p>
             ) : (
               <p className="text-[11px] text-zinc-500 mt-1.5">
-                Nhập API Key và nhấn <strong>Lưu Key</strong>. Khóa sẽ được mã
-                hóa an toàn qua Windows DPAPI.
+                {t("ai.key_unconfigured_help_prefix")}{" "}
+                <strong>{t("common.save")}</strong>
+                {t("ai.key_unconfigured_help_suffix")}
               </p>
             )}
             {/* Feedback Badges */}
@@ -700,7 +703,7 @@ export const AiTab: React.FC<AiTabProps> = ({
             {latencyResult !== null && (
               <div className="flex items-center gap-1.5 mt-2 text-xs text-emerald-400">
                 <Check className="w-3.5 h-3.5" />
-                <span>Kết nối thành công! Độ trễ phản hồi:</span>
+                <span>{t("ai.connection_success_latency")}</span>
                 <span className="font-mono font-semibold px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30">
                   {latencyResult} ms
                 </span>
@@ -731,7 +734,7 @@ export const AiTab: React.FC<AiTabProps> = ({
               <RefreshCw
                 className={`w-3 h-3 ${loadingModels ? "animate-spin" : ""}`}
               />
-              <span>Tải lại danh sách</span>
+              <span>{t("ai.reload_models")}</span>
             </button>
           </div>
 
@@ -915,7 +918,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                             {sttModel}
                           </span>
                           <span className="text-[10px] text-zinc-500 font-mono">
-                            Mô hình tùy chỉnh
+                            {t("common.custom")}
                           </span>
                         </div>
                         <Check className="h-4 w-4 shrink-0 text-emerald-400 ml-2 opacity-100" />
@@ -928,8 +931,7 @@ export const AiTab: React.FC<AiTabProps> = ({
           </Popover>
 
           <p className="text-[10px] text-zinc-500">
-            Mô hình Whisper chuyển đổi âm thanh giọng nói thành văn bản thô theo
-            chuẩn OpenAI.
+            {t("ai.stt_model_hint")}
           </p>
         </div>
 
@@ -976,7 +978,7 @@ export const AiTab: React.FC<AiTabProps> = ({
               type="text"
               value={newTag}
               onChange={(e) => setNewTag(e.target.value)}
-              placeholder="Thêm từ mới (vd: Next.js, Redis, Tailwind)..."
+              placeholder={t("ai.custom_vocab_placeholder")}
               className="flex-1 bg-zinc-950/80 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500/60"
             />
             <button
@@ -1045,8 +1047,7 @@ export const AiTab: React.FC<AiTabProps> = ({
         ) : (
           <div className="p-3 rounded-xl bg-zinc-900/30 border border-dashed border-zinc-800/80 text-center">
             <p className="text-[11px] text-zinc-500">
-              Chế độ Pure STT đang bật: Bỏ qua bước sửa ngữ pháp bằng LLM để đạt
-              độ trễ tối thiểu &lt;300ms.
+              {t("ai.pure_stt_active_desc")}
             </p>
           </div>
         )}
