@@ -105,5 +105,60 @@ fn main() {
     assert!(ctrl_mouse4.matches_release(0xA2));
     println!("✓ Combo Ctrl + Mouse 4: PASS");
 
-    println!("\nALL 12 TESTS PASSED! Both ANY single key and ANY combination are fully supported!");
+    // 6. Verify real should_reset_hotkey_state function (avoids resetting active recording on unrelated autosaves)
+    {
+        use types::{should_reset_hotkey_state, HotkeyMode};
+
+        let current_binding = ctrl_mouse4.clone();
+        let same_binding = ctrl_mouse4.clone();
+        let different_binding = KeyBinding::default();
+
+        // 6.1 Identical binding & identical mode -> should NOT reset state
+        assert!(
+            !should_reset_hotkey_state(
+                Some(&current_binding),
+                &same_binding,
+                HotkeyMode::PushToTalk,
+                HotkeyMode::PushToTalk
+            ),
+            "Unchanged hotkey config must not reset active hotkey state"
+        );
+
+        // 6.2 Changed mode -> MUST reset state
+        assert!(
+            should_reset_hotkey_state(
+                Some(&current_binding),
+                &same_binding,
+                HotkeyMode::PushToTalk,
+                HotkeyMode::Toggle
+            ),
+            "Changing hotkey mode must reset active hotkey state"
+        );
+
+        // 6.3 Changed binding -> MUST reset state
+        assert!(
+            should_reset_hotkey_state(
+                Some(&current_binding),
+                &different_binding,
+                HotkeyMode::PushToTalk,
+                HotkeyMode::PushToTalk
+            ),
+            "Changing key binding must reset active hotkey state"
+        );
+
+        // 6.4 Initial state (no current binding) -> MUST reset/initialize state
+        assert!(
+            should_reset_hotkey_state(
+                None,
+                &current_binding,
+                HotkeyMode::PushToTalk,
+                HotkeyMode::PushToTalk
+            ),
+            "Initial hotkey config must reset/initialize state"
+        );
+
+        println!("✓ Real should_reset_hotkey_state logic: PASS");
+    }
+
+    println!("\nALL 13 TESTS PASSED! Both ANY single key, ANY combination, and state preservation are fully verified!");
 }

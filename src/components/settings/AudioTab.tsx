@@ -37,6 +37,9 @@ export const AudioTab: React.FC<AudioTabProps> = ({
   const [isTestingMic, setIsTestingMic] = useState<boolean>(false);
   const [micError, setMicError] = useState<string | null>(null);
 
+  const selectedDeviceRef = useRef(selectedDevice);
+  selectedDeviceRef.current = selectedDevice;
+
   const setSelectedDeviceRef = useRef(setSelectedDevice);
   setSelectedDeviceRef.current = setSelectedDevice;
 
@@ -45,7 +48,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({
     invoke<AudioDevice[]>("get_audio_devices")
       .then((devs) => {
         setDevices(devs);
-        if (!selectedDevice && devs.length > 0) {
+        if (!selectedDeviceRef.current && devs.length > 0) {
           const defaultDev = devs.find((d) => d.is_default) || devs[0];
           setSelectedDeviceRef.current(defaultDev.name);
         }

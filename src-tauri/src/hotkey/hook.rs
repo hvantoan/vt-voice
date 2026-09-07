@@ -16,7 +16,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     WM_USER, WM_XBUTTONDOWN, WM_XBUTTONUP,
 };
 
-use super::types::{HotkeyEvent, HotkeyMode, KeyBinding};
+use super::types::{should_reset_hotkey_state, HotkeyEvent, HotkeyMode, KeyBinding};
 
 const WM_HOTKEY_EVENT: u32 = WM_USER + 1;
 
@@ -304,10 +304,15 @@ impl HotkeyManager {
     }
 
     pub fn update_config(&self, binding: KeyBinding, mode: HotkeyMode) {
-        *CURRENT_BINDING.lock() = Some(binding);
-        *CURRENT_MODE.lock() = mode;
-        IS_HELD.store(false, Ordering::SeqCst);
-        IS_TOGGLED_ON.store(false, Ordering::SeqCst);
+        let mut current_binding = CURRENT_BINDING.lock();
+        let mut current_mode = CURRENT_MODE.lock();
+
+        if should_reset_hotkey_state(current_binding.as_ref(), &binding, *current_mode, mode) {
+            *current_binding = Some(binding);
+            *current_mode = mode;
+            IS_HELD.store(false, Ordering::SeqCst);
+            IS_TOGGLED_ON.store(false, Ordering::SeqCst);
+        }
     }
 
     pub fn stop(&mut self) {

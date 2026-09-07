@@ -128,6 +128,19 @@ pub enum HotkeyEvent {
     Released,
 }
 
+/// Determines whether active hotkey tracking flags (IS_HELD / IS_TOGGLED_ON)
+/// must be reset when transitioning to a new hotkey configuration.
+///
+/// Returns true if either the key binding or hotkey mode has changed.
+pub fn should_reset_hotkey_state(
+    current_binding: Option<&KeyBinding>,
+    new_binding: &KeyBinding,
+    current_mode: HotkeyMode,
+    new_mode: HotkeyMode,
+) -> bool {
+    current_binding != Some(new_binding) || current_mode != new_mode
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,5 +256,43 @@ mod tests {
         assert!(ctrl_mouse4.matches_release(0x05));
         // Releasing Ctrl releases
         assert!(ctrl_mouse4.matches_release(0xA2));
+    }
+
+    #[test]
+    fn test_should_reset_hotkey_state() {
+        let binding1 = KeyBinding::default();
+        let binding2 = KeyBinding::new_single(0x20, "Space");
+
+        // Unchanged
+        assert!(!should_reset_hotkey_state(
+            Some(&binding1),
+            &binding1,
+            HotkeyMode::PushToTalk,
+            HotkeyMode::PushToTalk
+        ));
+
+        // Mode changed
+        assert!(should_reset_hotkey_state(
+            Some(&binding1),
+            &binding1,
+            HotkeyMode::PushToTalk,
+            HotkeyMode::Toggle
+        ));
+
+        // Binding changed
+        assert!(should_reset_hotkey_state(
+            Some(&binding1),
+            &binding2,
+            HotkeyMode::PushToTalk,
+            HotkeyMode::PushToTalk
+        ));
+
+        // Initial none
+        assert!(should_reset_hotkey_state(
+            None,
+            &binding1,
+            HotkeyMode::PushToTalk,
+            HotkeyMode::PushToTalk
+        ));
     }
 }
