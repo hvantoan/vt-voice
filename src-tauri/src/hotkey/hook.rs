@@ -11,11 +11,12 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetMessageW, PostThreadMessageW, SetWindowsHookExW,
-    TranslateMessage, UnhookWindowsHookEx, HHOOK, MSG, WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP,
-    WM_QUIT, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_USER,
+    TranslateMessage, UnhookWindowsHookEx, HHOOK, MSG, WH_KEYBOARD_LL, WH_MOUSE_LL,
+    WM_KEYDOWN, WM_KEYUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_QUIT, WM_SYSKEYDOWN, WM_SYSKEYUP,
+    WM_USER, WM_XBUTTONDOWN, WM_XBUTTONUP,
 };
 
-use super::types::{HotkeyEvent, HotkeyMode, KeyBinding};
+use super::types::{should_reset_hotkey_state, HotkeyEvent, HotkeyMode, KeyBinding};
 
 const WM_HOTKEY_EVENT: u32 = WM_USER + 1;
 
@@ -24,6 +25,17 @@ const WM_HOTKEY_EVENT: u32 = WM_USER + 1;
 pub struct KbdLlHookStruct {
     pub vk_code: u32,
     pub scan_code: u32,
+    pub flags: u32,
+    pub time: u32,
+    pub extra_info: usize,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct MsLlHookStruct {
+    pub pt_x: i32,
+    pub pt_y: i32,
+    pub mouse_data: u32,
     pub flags: u32,
     pub time: u32,
     pub extra_info: usize,
@@ -43,6 +55,60 @@ pub enum HookError {
     ThreadNotRunning,
 }
 
+unsafe fn handle_input_event(
+    binding: &KeyBinding,
+    vk: u32,
+    is_down: bool,
+    is_up: bool,
+    ctrl: bool,
+    alt: bool,
+    shift: bool,
+    win: bool,
+) {
+    let mode = *CURRENT_MODE.lock();
+    let thread_id = HOOK_THREAD_ID.load(Ordering::SeqCst);
+    if thread_id == 0 {
+        return;
+    }
+
+    match mode {
+        HotkeyMode::PushToTalk => {
+            if is_down && !IS_HELD.load(Ordering::SeqCst) {
+                if binding.matches_press(vk, ctrl, alt, shift, win) {
+                    IS_HELD.store(true, Ordering::SeqCst);
+                    // 1 = Pressed
+                    PostThreadMessageW(thread_id, WM_HOTKEY_EVENT, 1, 0);
+                }
+            } else if is_up && IS_HELD.load(Ordering::SeqCst) {
+                if binding.matches_release(vk) {
+                    IS_HELD.store(false, Ordering::SeqCst);
+                    // 2 = Released
+                    PostThreadMessageW(thread_id, WM_HOTKEY_EVENT, 2, 0);
+                }
+            }
+        }
+        HotkeyMode::Toggle => {
+            if is_down && !IS_HELD.load(Ordering::SeqCst) {
+                if binding.matches_press(vk, ctrl, alt, shift, win) {
+                    IS_HELD.store(true, Ordering::SeqCst);
+                    let currently_on = IS_TOGGLED_ON.load(Ordering::SeqCst);
+                    if currently_on {
+                        IS_TOGGLED_ON.store(false, Ordering::SeqCst);
+                        PostThreadMessageW(thread_id, WM_HOTKEY_EVENT, 2, 0);
+                    } else {
+                        IS_TOGGLED_ON.store(true, Ordering::SeqCst);
+                        PostThreadMessageW(thread_id, WM_HOTKEY_EVENT, 1, 0);
+                    }
+                }
+            } else if is_up && IS_HELD.load(Ordering::SeqCst) {
+                if binding.matches_release(vk) {
+                    IS_HELD.store(false, Ordering::SeqCst);
+                }
+            }
+        }
+    }
+}
+
 unsafe extern "system" fn low_level_keyboard_proc(
     code: i32,
     wparam: WPARAM,
@@ -55,74 +121,100 @@ unsafe extern "system" fn low_level_keyboard_proc(
         let is_down = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN;
         let is_up = msg == WM_KEYUP || msg == WM_SYSKEYUP;
 
-        let mut vk = kbd.vk_code;
-        let is_extended = (kbd.flags & 0x01) != 0;
+        if is_down || is_up {
+            let mut vk = kbd.vk_code;
+            let is_extended = (kbd.flags & 0x01) != 0;
 
-        if vk == VK_MENU as u32 {
-            vk = if is_extended {
-                VK_RMENU as u32
-            } else {
-                VK_LMENU as u32
-            };
-        } else if vk == VK_CONTROL as u32 {
-            vk = if is_extended {
-                VK_RCONTROL as u32
-            } else {
-                VK_LCONTROL as u32
-            };
+            if vk == VK_MENU as u32 {
+                vk = if is_extended {
+                    VK_RMENU as u32
+                } else {
+                    VK_LMENU as u32
+                };
+            } else if vk == VK_CONTROL as u32 {
+                vk = if is_extended {
+                    VK_RCONTROL as u32
+                } else {
+                    VK_LCONTROL as u32
+                };
+            } else if vk == VK_SHIFT as u32 {
+                vk = if kbd.scan_code == 0x36 {
+                    VK_RSHIFT as u32
+                } else {
+                    VK_LSHIFT as u32
+                };
+            }
+
+            let ctrl = (GetAsyncKeyState(VK_CONTROL as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_LCONTROL as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_RCONTROL as i32) as u16 & 0x8000) != 0;
+
+            let alt = (GetAsyncKeyState(VK_MENU as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_LMENU as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_RMENU as i32) as u16 & 0x8000) != 0;
+
+            let shift = (GetAsyncKeyState(VK_SHIFT as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_LSHIFT as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_RSHIFT as i32) as u16 & 0x8000) != 0;
+
+            let win = (GetAsyncKeyState(VK_LWIN as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_RWIN as i32) as u16 & 0x8000) != 0;
+
+            let binding_opt = CURRENT_BINDING.lock().clone();
+            if let Some(binding) = binding_opt {
+                handle_input_event(&binding, vk, is_down, is_up, ctrl, alt, shift, win);
+            }
         }
+    }
 
-        let ctrl = (GetAsyncKeyState(VK_CONTROL as i32) as u16 & 0x8000) != 0
-            || (GetAsyncKeyState(VK_LCONTROL as i32) as u16 & 0x8000) != 0
-            || (GetAsyncKeyState(VK_RCONTROL as i32) as u16 & 0x8000) != 0;
+    CallNextHookEx(0 as HHOOK, code, wparam, lparam)
+}
 
-        let alt = (GetAsyncKeyState(VK_MENU as i32) as u16 & 0x8000) != 0
-            || (GetAsyncKeyState(VK_LMENU as i32) as u16 & 0x8000) != 0
-            || (GetAsyncKeyState(VK_RMENU as i32) as u16 & 0x8000) != 0;
+unsafe extern "system" fn low_level_mouse_proc(
+    code: i32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
+    if code >= 0 && lparam != 0 {
+        let msg = wparam as u32;
 
-        let shift = (GetAsyncKeyState(VK_SHIFT as i32) as u16 & 0x8000) != 0
-            || (GetAsyncKeyState(VK_LSHIFT as i32) as u16 & 0x8000) != 0
-            || (GetAsyncKeyState(VK_RSHIFT as i32) as u16 & 0x8000) != 0;
+        let (is_down, is_up, vk) = match msg {
+            WM_XBUTTONDOWN => {
+                let ms = *(lparam as *const MsLlHookStruct);
+                let xbutton = (ms.mouse_data >> 16) & 0xFFFF;
+                let vk = if xbutton == 1 { 0x05 } else if xbutton == 2 { 0x06 } else { 0 };
+                (true, false, vk)
+            }
+            WM_XBUTTONUP => {
+                let ms = *(lparam as *const MsLlHookStruct);
+                let xbutton = (ms.mouse_data >> 16) & 0xFFFF;
+                let vk = if xbutton == 1 { 0x05 } else if xbutton == 2 { 0x06 } else { 0 };
+                (false, true, vk)
+            }
+            WM_MBUTTONDOWN => (true, false, 0x04),
+            WM_MBUTTONUP => (false, true, 0x04),
+            _ => (false, false, 0),
+        };
 
-        let win = (GetAsyncKeyState(VK_LWIN as i32) as u16 & 0x8000) != 0
-            || (GetAsyncKeyState(VK_RWIN as i32) as u16 & 0x8000) != 0;
+        if vk != 0 {
+            let ctrl = (GetAsyncKeyState(VK_CONTROL as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_LCONTROL as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_RCONTROL as i32) as u16 & 0x8000) != 0;
 
-        let binding_opt = CURRENT_BINDING.lock().clone();
-        if let Some(binding) = binding_opt {
-            if binding.matches(vk, ctrl, alt, shift, win) {
-                let mode = *CURRENT_MODE.lock();
-                let thread_id = HOOK_THREAD_ID.load(Ordering::SeqCst);
+            let alt = (GetAsyncKeyState(VK_MENU as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_LMENU as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_RMENU as i32) as u16 & 0x8000) != 0;
 
-                if thread_id != 0 {
-                    match mode {
-                        HotkeyMode::PushToTalk => {
-                            if is_down && !IS_HELD.load(Ordering::SeqCst) {
-                                IS_HELD.store(true, Ordering::SeqCst);
-                                // 1 = Pressed
-                                PostThreadMessageW(thread_id, WM_HOTKEY_EVENT, 1, 0);
-                            } else if is_up && IS_HELD.load(Ordering::SeqCst) {
-                                IS_HELD.store(false, Ordering::SeqCst);
-                                // 2 = Released
-                                PostThreadMessageW(thread_id, WM_HOTKEY_EVENT, 2, 0);
-                            }
-                        }
-                        HotkeyMode::Toggle => {
-                            if is_down && !IS_HELD.load(Ordering::SeqCst) {
-                                IS_HELD.store(true, Ordering::SeqCst);
-                                let currently_on = IS_TOGGLED_ON.load(Ordering::SeqCst);
-                                if currently_on {
-                                    IS_TOGGLED_ON.store(false, Ordering::SeqCst);
-                                    PostThreadMessageW(thread_id, WM_HOTKEY_EVENT, 2, 0);
-                                } else {
-                                    IS_TOGGLED_ON.store(true, Ordering::SeqCst);
-                                    PostThreadMessageW(thread_id, WM_HOTKEY_EVENT, 1, 0);
-                                }
-                            } else if is_up {
-                                IS_HELD.store(false, Ordering::SeqCst);
-                            }
-                        }
-                    }
-                }
+            let shift = (GetAsyncKeyState(VK_SHIFT as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_LSHIFT as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_RSHIFT as i32) as u16 & 0x8000) != 0;
+
+            let win = (GetAsyncKeyState(VK_LWIN as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_RWIN as i32) as u16 & 0x8000) != 0;
+
+            let binding_opt = CURRENT_BINDING.lock().clone();
+            if let Some(binding) = binding_opt {
+                handle_input_event(&binding, vk, is_down, is_up, ctrl, alt, shift, win);
             }
         }
     }
@@ -161,15 +253,22 @@ impl HotkeyManager {
             let thread_id = GetCurrentThreadId();
             HOOK_THREAD_ID.store(thread_id, Ordering::SeqCst);
 
-            let hook: HHOOK = SetWindowsHookExW(
+            let kbd_hook: HHOOK = SetWindowsHookExW(
                 WH_KEYBOARD_LL,
                 Some(low_level_keyboard_proc),
                 0 as HMODULE,
                 0,
             );
 
-            if hook.is_null() {
-                eprintln!("[HotkeyManager] Failed to set hook");
+            let mouse_hook: HHOOK = SetWindowsHookExW(
+                WH_MOUSE_LL,
+                Some(low_level_mouse_proc),
+                0 as HMODULE,
+                0,
+            );
+
+            if kbd_hook.is_null() && mouse_hook.is_null() {
+                eprintln!("[HotkeyManager] Failed to set hooks");
                 running_flag.store(false, Ordering::SeqCst);
                 return;
             }
@@ -191,8 +290,11 @@ impl HotkeyManager {
                 DispatchMessageW(&msg);
             }
 
-            if !hook.is_null() {
-                UnhookWindowsHookEx(hook);
+            if !kbd_hook.is_null() {
+                UnhookWindowsHookEx(kbd_hook);
+            }
+            if !mouse_hook.is_null() {
+                UnhookWindowsHookEx(mouse_hook);
             }
             running_flag.store(false, Ordering::SeqCst);
         });
@@ -202,10 +304,15 @@ impl HotkeyManager {
     }
 
     pub fn update_config(&self, binding: KeyBinding, mode: HotkeyMode) {
-        *CURRENT_BINDING.lock() = Some(binding);
-        *CURRENT_MODE.lock() = mode;
-        IS_HELD.store(false, Ordering::SeqCst);
-        IS_TOGGLED_ON.store(false, Ordering::SeqCst);
+        let mut current_binding = CURRENT_BINDING.lock();
+        let mut current_mode = CURRENT_MODE.lock();
+
+        if should_reset_hotkey_state(current_binding.as_ref(), &binding, *current_mode, mode) {
+            *current_binding = Some(binding);
+            *current_mode = mode;
+            IS_HELD.store(false, Ordering::SeqCst);
+            IS_TOGGLED_ON.store(false, Ordering::SeqCst);
+        }
     }
 
     pub fn stop(&mut self) {

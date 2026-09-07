@@ -57,6 +57,10 @@ fn save_app_config(
     config: AppConfig,
 ) -> Result<(), String> {
     save_config(&config).map_err(|e| e.to_string())?;
+    state
+        .hotkey_manager
+        .lock()
+        .update_config(config.hotkey_binding.clone(), config.hotkey_mode);
     *state.config.lock() = config;
     Ok(())
 }

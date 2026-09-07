@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Info, Activity, Mic, AlertCircle } from "lucide-react";
@@ -37,34 +37,35 @@ export const AudioTab: React.FC<AudioTabProps> = ({
   const [isTestingMic, setIsTestingMic] = useState<boolean>(false);
   const [micError, setMicError] = useState<string | null>(null);
 
+  const selectedDeviceRef = useRef(selectedDevice);
+  selectedDeviceRef.current = selectedDevice;
+
+  const setSelectedDeviceRef = useRef(setSelectedDevice);
+  setSelectedDeviceRef.current = setSelectedDevice;
+
   useEffect(() => {
     // Load audio devices from backend
     invoke<AudioDevice[]>("get_audio_devices")
       .then((devs) => {
         setDevices(devs);
-        if (!selectedDevice && devs.length > 0) {
+        if (!selectedDeviceRef.current && devs.length > 0) {
           const defaultDev = devs.find((d) => d.is_default) || devs[0];
-          setSelectedDevice(defaultDev.name);
+          setSelectedDeviceRef.current(defaultDev.name);
         }
       })
       .catch((err: unknown) => {
         console.error("Lỗi lấy danh sách thiết bị âm thanh:", err);
       });
+  }, []);
 
-    // Listen to real-time audio levels
+  // Listen to real-time audio levels and clean up mic test on unmount
+  useEffect(() => {
     const unlistenAudio = listen<number>("audio-level", (e) => {
       setCurrentLevel(Math.min(1.0, Math.max(0.0, e.payload)));
     });
 
     return () => {
       unlistenAudio.then((f) => f());
-      invoke("stop_test_mic").catch(() => {});
-    };
-  }, [selectedDevice, setSelectedDevice]);
-
-  // Clean up mic test on component unmount
-  useEffect(() => {
-    return () => {
       invoke("stop_test_mic").catch(() => {});
     };
   }, []);
@@ -100,8 +101,8 @@ export const AudioTab: React.FC<AudioTabProps> = ({
           typeof err === "string"
             ? err
             : err instanceof Error
-            ? err.message
-            : "Không thể mở microphone đã chọn. Vui lòng kiểm tra quyền truy cập microphone.";
+              ? err.message
+              : "Không thể mở microphone đã chọn. Vui lòng kiểm tra quyền truy cập microphone.";
         setMicError(errorMsg);
         setIsTestingMic(false);
         setCurrentLevel(0);
@@ -112,14 +113,19 @@ export const AudioTab: React.FC<AudioTabProps> = ({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-semibold text-zinc-100 mb-1">Thiết bị thu âm (Microphone)</h3>
+        <h3 className="text-sm font-semibold text-zinc-100 mb-1">
+          Thiết bị thu âm
+        </h3>
         <p className="text-xs text-zinc-400 mb-3">
-          Chọn microphone thu giọng nói và kiểm tra mức âm lượng đầu vào theo thời gian thực.
+          Chọn microphone thu giọng nói và kiểm tra mức âm lượng đầu vào theo
+          thời gian thực.
         </p>
 
         <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-2">Microphone đầu vào</label>
+            <label className="block text-xs font-medium text-zinc-300 mb-2">
+              Microphone đầu vào
+            </label>
             <Select
               value={selectedDevice || ""}
               onValueChange={(value) => handleDeviceChange(value || null)}
@@ -129,7 +135,9 @@ export const AudioTab: React.FC<AudioTabProps> = ({
               </SelectTrigger>
               <SelectContent className="bg-zinc-950/95 backdrop-blur-xl border-zinc-800 text-zinc-200 w-[var(--radix-select-trigger-width)] max-w-[var(--radix-select-trigger-width)]">
                 {devices.length === 0 ? (
-                  <div className="p-2 text-xs text-zinc-500 text-center">Không tìm thấy thiết bị</div>
+                  <div className="p-2 text-xs text-zinc-500 text-center">
+                    Không tìm thấy thiết bị
+                  </div>
                 ) : (
                   devices.map((d) => (
                     <SelectItem
@@ -158,7 +166,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
                 <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                Mức âm lượng đầu vào (Input Meter)
+                Mức âm lượng đầu vào
               </span>
               <button
                 type="button"
@@ -193,11 +201,16 @@ export const AudioTab: React.FC<AudioTabProps> = ({
       <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-4">
         <div>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-semibold text-zinc-200">Khoảng ngắt im lặng (Silence Timeout)</span>
-            <span className="text-xs font-mono text-emerald-400 font-semibold">{vadTimeout} ms</span>
+            <span className="text-xs font-semibold text-zinc-200">
+              Khoảng ngắt im lặng
+            </span>
+            <span className="text-xs font-mono text-emerald-400 font-semibold">
+              {vadTimeout} ms
+            </span>
           </div>
           <p className="text-[11px] text-zinc-400 mb-3">
-            Thời gian yên lặng liên tục để hệ thống nhận biết bạn đã nói xong ở chế độ Toggle.
+            Thời gian yên lặng liên tục để hệ thống nhận biết bạn đã nói xong ở
+            chế độ Toggle.
           </p>
           <div className="py-2">
             <Slider
@@ -206,7 +219,11 @@ export const AudioTab: React.FC<AudioTabProps> = ({
               max={2000}
               step={50}
               onValueChange={([val]) => setVadTimeout(val)}
-              onValueCommit={([val]) => (onVadTimeoutCommit ? onVadTimeoutCommit(val) : setVadTimeout(val))}
+              onValueCommit={([val]) =>
+                onVadTimeoutCommit
+                  ? onVadTimeoutCommit(val)
+                  : setVadTimeout(val)
+              }
               className="w-full"
             />
           </div>
@@ -221,7 +238,12 @@ export const AudioTab: React.FC<AudioTabProps> = ({
       <div className="p-3.5 rounded-xl bg-zinc-900/30 border border-zinc-800/80 flex items-start gap-2.5">
         <Info className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5" />
         <div className="text-[11px] text-zinc-400 leading-relaxed">
-          Định dạng âm thanh: <strong className="text-zinc-200">16,000 Hz Mono S16LE PCM WAV</strong>. Âm thanh được chuyển đổi tự động bằng thuật toán sinc nội suy đa luồng mà không làm trễ thao tác gõ của bạn.
+          Định dạng âm thanh:{" "}
+          <strong className="text-zinc-200">
+            16,000 Hz Mono S16LE PCM WAV
+          </strong>
+          . Âm thanh được chuyển đổi tự động bằng thuật toán sinc nội suy đa
+          luồng mà không làm trễ thao tác gõ của bạn.
         </div>
       </div>
     </div>
