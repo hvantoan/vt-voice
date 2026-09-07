@@ -7,6 +7,8 @@ export const KNOWN_IPC_ERRORS: Record<string, TranslationKey> = {
   "Could not determine config directory": "errors.no_config_dir",
   "Cửa sổ Admin: Nhấn Ctrl+V để dán": "errors.admin_window_paste",
   "admin_window_paste": "errors.admin_window_paste",
+  "Chưa cấu hình API key cho provider này": "errors.api_key_not_configured",
+  "api_key_not_configured": "errors.api_key_not_configured",
 };
 
 export type TranslateFn = (

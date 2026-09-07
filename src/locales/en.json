@@ -69,7 +69,9 @@
     "vad_title": "Voice Activity Detection",
     "vad_desc": "Silence timeout to automatically finish recording in Toggle mode",
     "vad_timeout_label": "Silence Timeout",
-    "vad_timeout_ms": "{ms} ms"
+    "vad_timeout_ms": "{ms} ms",
+    "audio_format_hint": "Audio format: 16,000 Hz Mono S16LE PCM WAV (optimized for Whisper)",
+    "no_devices": "No recording devices found"
   },
   "ai": {
     "provider_title": "AI Provider",
@@ -148,7 +150,9 @@
     "provider_independent_hint": "Independent API key & model settings",
     "custom_endpoint_label": "Custom STT Audio Endpoint URL",
     "stt_model_hint": "Whisper model converts speech audio into raw text following OpenAI standards.",
-    "pure_stt_active_desc": "Pure STT mode active: Bypasses LLM grammar polish for minimal latency (<300ms)."
+    "pure_stt_active_desc": "Pure STT mode active: Bypasses LLM grammar polish for minimal latency (<300ms).",
+    "vault_badge": "Windows Credential Vault (DPAPI)",
+    "custom_model": "Custom model"
   },
   "history": {
     "title": "Transcription History",
@@ -204,6 +208,7 @@
     "recording_error": "Recording error: {error}",
     "api_key_missing_provider": "API key not configured for {provider}",
     "provider_error": "{provider} error: {error}",
-    "paste_error": "Paste error: {error}"
+    "paste_error": "Paste error: {error}",
+    "api_key_not_configured": "API key not configured for this provider"
   }
 }

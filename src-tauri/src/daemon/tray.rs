@@ -19,8 +19,38 @@ pub struct TrayStrings {
 }
 
 impl TrayStrings {
+    pub fn resolve_locale(locale: &str) -> String {
+        if locale == "system" || locale.trim().is_empty() {
+            #[cfg(target_os = "windows")]
+            {
+                extern "system" {
+                    fn GetUserDefaultUILanguage() -> u16;
+                }
+                let lang_id = unsafe { GetUserDefaultUILanguage() };
+                let primary_lang = lang_id & 0x3ff;
+                if primary_lang == 0x2a {
+                    "vi".to_string()
+                } else {
+                    "en".to_string()
+                }
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                if let Ok(lang) = std::env::var("LANG").or_else(|_| std::env::var("LC_ALL")) {
+                    if lang.to_lowercase().starts_with("vi") {
+                        return "vi".to_string();
+                    }
+                }
+                "en".to_string()
+            }
+        } else {
+            locale.to_string()
+        }
+    }
+
     pub fn for_locale(locale: &str) -> Self {
-        match locale {
+        let effective = Self::resolve_locale(locale);
+        match effective.as_str() {
             "en" => Self {
                 settings: "Settings",
                 quit: "Quit",
@@ -52,6 +82,9 @@ impl TrayManager {
         let trimmed = msg.trim();
         if trimmed == "Cửa sổ Admin: Nhấn Ctrl+V để dán" {
             return "Admin window: Press Ctrl+V to paste".to_string();
+        }
+        if trimmed == "Chưa cấu hình API key cho provider này" {
+            return "API key not configured for this provider".to_string();
         }
         if let Some(detail) = trimmed.strip_prefix("Lỗi thu âm: ") {
             return format!("Recording error: {}", detail);
@@ -130,11 +163,12 @@ impl TrayManager {
     }
 
     pub fn update_tray_locale(app: &AppHandle, locale: &str) -> Result<(), tauri::Error> {
-        let strings = TrayStrings::for_locale(locale);
+        let effective = TrayStrings::resolve_locale(locale);
+        let strings = TrayStrings::for_locale(&effective);
         let menu = Self::create_menu(app, &strings)?;
 
         let _guard = TRAY_UPDATE_LOCK.lock();
-        *CURRENT_LOCALE.lock() = locale.to_string();
+        *CURRENT_LOCALE.lock() = effective.clone();
         let current_state = CURRENT_STATE.lock().clone();
 
         if let Some(tray) = app.tray_by_id(TRAY_ID) {
@@ -142,7 +176,7 @@ impl TrayManager {
 
             let tooltip = if current_state.starts_with("error: ") {
                 let msg = &current_state["error: ".len()..];
-                let localized_msg = Self::localize_error_msg(msg, locale);
+                let localized_msg = Self::localize_error_msg(msg, &effective);
                 format!("{}{}", strings.tooltip_error_prefix, localized_msg)
             } else {
                 match current_state.as_str() {
@@ -220,12 +254,18 @@ mod tests {
         assert_eq!(vi.tooltip_processing, "vt-voice: Đang xử lý AI...");
         assert_eq!(vi.tooltip_error_prefix, "vt-voice: Lỗi - ");
 
-        // Fallback to Vietnamese for unknown / system
+        // System resolves to OS effective locale
         let fallback = TrayStrings::for_locale("system");
-        assert_eq!(fallback.settings, "Cài đặt");
-        assert_eq!(fallback.quit, "Thoát");
-    }
+        let expected = TrayStrings::resolve_locale("system");
+        let expected_strings = TrayStrings::for_locale(&expected);
+        assert_eq!(fallback.settings, expected_strings.settings);
+        assert_eq!(fallback.quit, expected_strings.quit);
 
+        // Unknown fallback defaults to Vietnamese
+        let unknown = TrayStrings::for_locale("unknown");
+        assert_eq!(unknown.settings, "Cài đặt");
+        assert_eq!(unknown.quit, "Thoát");
+    }
     #[test]
     fn test_tray_error_localization() {
         let raw_mic = "Lỗi thu âm: Device busy";

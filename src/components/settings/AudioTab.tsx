@@ -57,7 +57,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({
         }
       })
       .catch((err: unknown) => {
-        console.error("Lỗi lấy danh sách thiết bị âm thanh:", err);
+        console.error("Failed to list audio devices:", err);
       });
   }, []);
 
@@ -88,7 +88,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({
       try {
         await invoke("stop_test_mic");
       } catch (err: unknown) {
-        console.error("Lỗi khi dừng test mic:", err);
+        console.error("Failed to stop mic test:", err);
       } finally {
         setIsTestingMic(false);
         setCurrentLevel(0);
@@ -100,7 +100,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({
           deviceName: selectedDevice || undefined,
         });
       } catch (err: unknown) {
-        console.error("Lỗi khi bắt đầu test mic:", err);
+        console.error("Failed to start mic test:", err);
         setMicError(translateIpcError(err, t));
         setIsTestingMic(false);
         setCurrentLevel(0);
@@ -133,7 +133,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({
               <SelectContent className="bg-zinc-950/95 backdrop-blur-xl border-zinc-800 text-zinc-200 w-[var(--radix-select-trigger-width)] max-w-[var(--radix-select-trigger-width)]">
                 {devices.length === 0 ? (
                   <div className="p-2 text-xs text-zinc-500 text-center">
-                    {t("errors.device_not_found", { device: "" })}
+                    {t("audio.no_devices")}
                   </div>
                 ) : (
                   devices.map((d) => (
@@ -234,9 +234,9 @@ export const AudioTab: React.FC<AudioTabProps> = ({
       <div className="p-3.5 rounded-xl bg-zinc-900/30 border border-zinc-800/80 flex items-start gap-2.5">
         <Info className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5" />
         <div className="text-[11px] text-zinc-400 leading-relaxed">
-          <strong className="text-zinc-200">
-            16,000 Hz Mono S16LE PCM WAV
-          </strong>
+          <span className="font-medium text-zinc-300">
+            {t("audio.audio_format_hint")}
+          </span>
         </div>
       </div>
     </div>

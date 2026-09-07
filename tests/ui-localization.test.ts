@@ -213,5 +213,37 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
       expect(content).toContain("TRAY_UPDATE_LOCK");
       expect(content).toContain("TRAY_UPDATE_LOCK.lock()");
     });
+
+    test("AiTab localizes vault badge, custom model label, and custom endpoint placeholder", () => {
+      const aiTabPath = path.join(componentsDir, "settings/AiTab.tsx");
+      const content = fs.readFileSync(aiTabPath, "utf-8");
+
+      expect(content).toContain('t("ai.vault_badge")');
+      expect(content).toContain('t("ai.custom_endpoint_placeholder")');
+      expect(content).toContain('t("ai.custom_model")');
+    });
+
+    test("AudioTab localizes audio format hint", () => {
+      const audioTabPath = path.join(componentsDir, "settings/AudioTab.tsx");
+      const content = fs.readFileSync(audioTabPath, "utf-8");
+
+      expect(content).toContain('t("audio.audio_format_hint")');
+    });
+
+    test("AudioTab uses dedicated audio.no_devices translation", () => {
+      const audioTabPath = path.join(componentsDir, "settings/AudioTab.tsx");
+      const content = fs.readFileSync(audioTabPath, "utf-8");
+
+      expect(content).toContain('t("audio.no_devices")');
+      expect(content).not.toContain('t("errors.device_not_found", { device: "" })');
+    });
+
+    test("Rust tray resolves system locale to OS effective locale before update", () => {
+      const trayPath = path.resolve(__dirname, "../src-tauri/src/daemon/tray.rs");
+      const content = fs.readFileSync(trayPath, "utf-8");
+
+      expect(content).toContain("resolve_locale");
+      expect(content).toContain("TrayStrings::resolve_locale");
+    });
   });
 });

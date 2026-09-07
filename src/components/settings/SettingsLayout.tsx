@@ -198,7 +198,7 @@ export const SettingsLayout: React.FC = () => {
           setSaveStatus("idle");
         }, 2000);
       } catch (err) {
-        console.error("Lỗi tự động lưu cấu hình:", err);
+        console.error("Failed to auto-save config:", err);
         setSaveStatus("error");
       } finally {
         setIsSaving(false);
@@ -236,7 +236,7 @@ export const SettingsLayout: React.FC = () => {
           await disable();
         }
       } catch (err) {
-        console.warn("Lỗi autostart plugin:", err);
+        console.warn("Autostart plugin error:", err);
       }
       saveConfigPatch({ autostart: val });
     },
@@ -426,6 +426,7 @@ export const SettingsLayout: React.FC = () => {
             size="icon"
             onClick={handleMinimize}
             className="w-8 h-7 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 rounded"
+            title={t("common.minimize")}
           >
             <Minus className="w-3.5 h-3.5" />
           </Button>
@@ -435,6 +436,7 @@ export const SettingsLayout: React.FC = () => {
             size="icon"
             onClick={handleClose}
             className="w-8 h-7 text-zinc-400 hover:text-zinc-100 hover:bg-rose-900/80 rounded"
+            title={t("common.close")}
           >
             <X className="w-3.5 h-3.5" />
           </Button>

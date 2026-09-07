@@ -67,7 +67,8 @@ fn save_app_config(
         .lock()
         .update_config(config.hotkey_binding.clone(), config.hotkey_mode);
     if locale_changed {
-        let _ = TrayManager::update_tray_locale(&app, &config.locale);
+        let effective_locale = daemon::tray::TrayStrings::resolve_locale(&config.locale);
+        let _ = TrayManager::update_tray_locale(&app, &effective_locale);
         let _ = app.emit("locale-changed", &config.locale);
     }
     *state.config.lock() = config;
@@ -286,7 +287,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
 
             // 1. Build System Tray
-            let initial_locale = config.lock().locale.clone();
+            let initial_locale = daemon::tray::TrayStrings::resolve_locale(&config.lock().locale);
             let _ = TrayManager::build(&app_handle);
             let _ = TrayManager::update_tray_locale(&app_handle, &initial_locale);
             // 2. Setup Overlay Window HWND properties

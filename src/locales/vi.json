@@ -69,7 +69,9 @@
     "vad_title": "Tự động phát hiện im lặng",
     "vad_desc": "Khoảng lặng để tự động dừng ghi âm khi dùng chế độ Toggle",
     "vad_timeout_label": "Thời gian chờ im lặng",
-    "vad_timeout_ms": "{ms} mili-giây"
+    "vad_timeout_ms": "{ms} mili-giây",
+    "audio_format_hint": "Định dạng âm thanh: 16,000 Hz Mono S16LE PCM WAV (tối ưu cho Whisper)",
+    "no_devices": "Không tìm thấy thiết bị thu âm"
   },
   "ai": {
     "provider_title": "Nhà cung cấp AI",
@@ -148,7 +150,9 @@
     "provider_independent_hint": "Độc lập API key và mô hình",
     "custom_endpoint_label": "Địa chỉ Endpoint STT tùy chỉnh",
     "stt_model_hint": "Mô hình Whisper chuyển đổi âm thanh giọng nói thành văn bản thô theo chuẩn OpenAI.",
-    "pure_stt_active_desc": "Chế độ Pure STT đang bật: Bỏ qua bước sửa ngữ pháp bằng LLM để đạt độ trễ tối thiểu <300ms."
+    "pure_stt_active_desc": "Chế độ Pure STT đang bật: Bỏ qua bước sửa ngữ pháp bằng LLM để đạt độ trễ tối thiểu <300ms.",
+    "vault_badge": "Windows Credential Vault (DPAPI)",
+    "custom_model": "Mô hình tùy chỉnh"
   },
   "history": {
     "title": "Lịch sử nhận diện",
@@ -204,6 +208,7 @@
     "recording_error": "Lỗi thu âm: {error}",
     "api_key_missing_provider": "Chưa cài đặt API key cho {provider}",
     "provider_error": "Lỗi {provider}: {error}",
-    "paste_error": "Lỗi dán: {error}"
+    "paste_error": "Lỗi dán: {error}",
+    "api_key_not_configured": "Chưa cấu hình API key cho nhà cung cấp này"
   }
 }

@@ -113,4 +113,10 @@ describe("IPC Error Translation Bridge - Phase 2 (TDD)", () => {
     expect(translateIpcError(raw, mockTranslateVi)).toBe("Lỗi dán: Clipboard locked by another process");
     expect(translateIpcError(raw, mockTranslateEn)).toBe("Paste error: Clipboard locked by another process");
   });
+
+  test("translates unconfigured provider key for provider correctly", () => {
+    const raw = "Chưa cấu hình API key cho provider này";
+    expect(translateIpcError(raw, mockTranslateVi)).toBe(vi.errors.api_key_not_configured);
+    expect(translateIpcError(raw, mockTranslateEn)).toBe(en.errors.api_key_not_configured);
+  });
 });

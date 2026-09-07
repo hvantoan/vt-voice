@@ -74,9 +74,9 @@ export const PROVIDERS: ProviderOption[] = [
     id: "groq",
     name: "Groq Cloud",
     nameKey: "ai.providers.groq.name",
-    badge: "Siêu nhanh",
+    badge: "Ultra Fast",
     badgeKey: "ai.providers.groq.badge",
-    description: "Độ trễ thấp nhất (<250ms), tối ưu tốc độ thời gian thực",
+    description: "Lowest latency (<250ms), optimized for real-time speed",
     descriptionKey: "ai.providers.groq.description",
     icon: Zap,
     badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
@@ -85,9 +85,9 @@ export const PROVIDERS: ProviderOption[] = [
     id: "openrouter",
     name: "OpenRouter",
     nameKey: "ai.providers.openrouter.name",
-    badge: "Đa Model",
+    badge: "Multi-Model",
     badgeKey: "ai.providers.openrouter.badge",
-    description: "Cổng kết nối đa mô hình (Whisper, Gemini Flash, ...)",
+    description: "Multi-model gateway (Whisper, Gemini Flash, ...)",
     descriptionKey: "ai.providers.openrouter.description",
     icon: Sparkles,
     badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30",
@@ -200,6 +200,7 @@ export const AiTab: React.FC<AiTabProps> = ({
     }, 800);
     return () => clearTimeout(timer);
   }, [systemPrompt]);
+
 
   const checkKeyStatuses = async () => {
     const statuses: Record<string, boolean> = {};
@@ -480,7 +481,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                     e.currentTarget.blur();
                   }
                 }}
-                placeholder="http://localhost:8000/v1/audio/transcriptions"
+                placeholder={t("ai.custom_endpoint_placeholder")}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs font-mono text-zinc-200 focus:outline-none focus:border-emerald-500/60"
               />
               <p className="text-[10px] text-zinc-500">
@@ -513,7 +514,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                 <TooltipTrigger asChild>
                   <div className="flex items-center gap-1 text-[10px] text-zinc-500 font-mono cursor-help">
                     <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                    <span>Windows Credential Vault (DPAPI)</span>
+                    <span>{t("ai.vault_badge")}</span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent className="bg-zinc-950/95 border-zinc-800 text-xs text-zinc-300">
@@ -918,7 +919,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                             {sttModel}
                           </span>
                           <span className="text-[10px] text-zinc-500 font-mono">
-                            {t("common.custom")}
+                            {t("ai.custom_model")}
                           </span>
                         </div>
                         <Check className="h-4 w-4 shrink-0 text-emerald-400 ml-2 opacity-100" />
