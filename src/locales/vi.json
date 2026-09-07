@@ -74,6 +74,23 @@
   "ai": {
     "provider_title": "Nhà cung cấp AI",
     "provider_desc": "Chọn nền tảng xử lý mô hình giọng nói và tinh chỉnh văn bản",
+    "providers": {
+      "groq": {
+        "name": "Groq Cloud",
+        "badge": "Siêu nhanh",
+        "description": "Độ trễ thấp nhất (<250ms), tối ưu tốc độ thời gian thực"
+      },
+      "openrouter": {
+        "name": "OpenRouter",
+        "badge": "Đa Model",
+        "description": "Cổng kết nối đa mô hình (Whisper, Gemini Flash, ...)"
+      },
+      "custom": {
+        "name": "Tùy chỉnh (Self-hosted)",
+        "badge": "Tùy chỉnh",
+        "description": "Endpoint OpenAI-compatible tự host (Whisper.cpp, vLLM)"
+      }
+    },
     "api_key_title": "Khóa API",
     "api_key_desc": "Khóa API được mã hóa và bảo vệ an toàn bằng Windows Credential Manager",
     "api_key_placeholder": "Nhập khóa API...",
@@ -143,7 +160,7 @@
       "mouse_5": "Chuột 5",
       "middle_mouse": "Chuột giữa",
       "ctrl_space": "Ctrl + Space",
-      "alt_space": "Alt + Space"
+      "f7": "F7"
     }
   },
   "overlay": {
@@ -166,6 +183,11 @@
     "missing_param_key": "Thiếu tham số khóa API bắt buộc",
     "no_config_dir": "Không thể xác định thư mục cấu hình",
     "device_not_found": "Thiết bị không tìm thấy: {device}",
-    "generic": "Đã xảy ra lỗi: {error}"
+    "generic": "Đã xảy ra lỗi: {error}",
+    "admin_window_paste": "Cửa sổ Admin: Nhấn Ctrl+V để dán",
+    "recording_error": "Lỗi thu âm: {error}",
+    "api_key_missing_provider": "Chưa cài đặt API key cho {provider}",
+    "provider_error": "Lỗi {provider}: {error}",
+    "paste_error": "Lỗi dán: {error}"
   }
 }

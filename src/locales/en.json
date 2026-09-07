@@ -74,6 +74,23 @@
   "ai": {
     "provider_title": "AI Provider",
     "provider_desc": "Select backend provider for speech transcription and text polishing",
+    "providers": {
+      "groq": {
+        "name": "Groq Cloud",
+        "badge": "Ultra Fast",
+        "description": "Lowest latency (<250ms), optimized for real-time speed"
+      },
+      "openrouter": {
+        "name": "OpenRouter",
+        "badge": "Multi-Model",
+        "description": "Multi-model gateway (Whisper, Gemini Flash, ...)"
+      },
+      "custom": {
+        "name": "Self-hosted / Custom",
+        "badge": "Custom",
+        "description": "OpenAI-compatible local endpoint (Whisper.cpp, vLLM)"
+      }
+    },
     "api_key_title": "API Key",
     "api_key_desc": "API keys are encrypted and securely stored in Windows Credential Manager",
     "api_key_placeholder": "Enter your API key...",
@@ -143,7 +160,7 @@
       "mouse_5": "Mouse 5",
       "middle_mouse": "Middle Mouse",
       "ctrl_space": "Ctrl + Space",
-      "alt_space": "Alt + Space"
+      "f7": "F7"
     }
   },
   "overlay": {
@@ -166,6 +183,11 @@
     "missing_param_key": "Missing required parameter `key` or `apiKey`",
     "no_config_dir": "Could not determine config directory",
     "device_not_found": "Device not found: {device}",
-    "generic": "An error occurred: {error}"
+    "generic": "An error occurred: {error}",
+    "admin_window_paste": "Admin window: Press Ctrl+V to paste",
+    "recording_error": "Recording error: {error}",
+    "api_key_missing_provider": "API key not configured for {provider}",
+    "provider_error": "{provider} error: {error}",
+    "paste_error": "Paste error: {error}"
   }
 }

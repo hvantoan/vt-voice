@@ -4,7 +4,7 @@ import vi from "../src/locales/vi.json";
 import en from "../src/locales/en.json";
 
 describe("IPC Error Translation Bridge - Phase 2 (TDD)", () => {
-  const mockTranslateVi = (key: string) => {
+  const mockTranslateVi = (key: string, params?: Record<string, string | number>) => {
     const parts = key.split(".");
     let curr: unknown = vi;
     for (const p of parts) {
@@ -14,10 +14,16 @@ describe("IPC Error Translation Bridge - Phase 2 (TDD)", () => {
         return key;
       }
     }
-    return typeof curr === "string" ? curr : key;
+    let res = typeof curr === "string" ? curr : key;
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        res = res.replaceAll(`{${k}}`, String(v));
+      }
+    }
+    return res;
   };
 
-  const mockTranslateEn = (key: string) => {
+  const mockTranslateEn = (key: string, params?: Record<string, string | number>) => {
     const parts = key.split(".");
     let curr: unknown = en;
     for (const p of parts) {
@@ -27,7 +33,13 @@ describe("IPC Error Translation Bridge - Phase 2 (TDD)", () => {
         return key;
       }
     }
-    return typeof curr === "string" ? curr : key;
+    let res = typeof curr === "string" ? curr : key;
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        res = res.replaceAll(`{${k}}`, String(v));
+      }
+    }
+    return res;
   };
 
   test("translates 'API key cannot be empty' correctly", () => {
@@ -70,5 +82,35 @@ describe("IPC Error Translation Bridge - Phase 2 (TDD)", () => {
       expect(mockTranslateVi(key)).not.toBe(key);
       expect(mockTranslateEn(key)).not.toBe(key);
     }
+  });
+
+  test("translates daemon admin window paste message correctly", () => {
+    const raw = "Cửa sổ Admin: Nhấn Ctrl+V để dán";
+    expect(translateIpcError(raw, mockTranslateVi)).toBe(vi.errors.admin_window_paste);
+    expect(translateIpcError(raw, mockTranslateEn)).toBe(en.errors.admin_window_paste);
+  });
+
+  test("translates daemon recording error with dynamic detail", () => {
+    const raw = "Lỗi thu âm: WASAPI initialization failed";
+    expect(translateIpcError(raw, mockTranslateVi)).toBe("Lỗi thu âm: WASAPI initialization failed");
+    expect(translateIpcError(raw, mockTranslateEn)).toBe("Recording error: WASAPI initialization failed");
+  });
+
+  test("translates daemon unconfigured provider API key error", () => {
+    const raw = "Chưa cài đặt API key cho Groq";
+    expect(translateIpcError(raw, mockTranslateVi)).toBe("Chưa cài đặt API key cho Groq");
+    expect(translateIpcError(raw, mockTranslateEn)).toBe("API key not configured for Groq");
+  });
+
+  test("translates daemon provider error correctly", () => {
+    const raw = "Lỗi OpenRouter: 401 Unauthorized";
+    expect(translateIpcError(raw, mockTranslateVi)).toBe("Lỗi OpenRouter: 401 Unauthorized");
+    expect(translateIpcError(raw, mockTranslateEn)).toBe("OpenRouter error: 401 Unauthorized");
+  });
+
+  test("translates daemon paste error with dynamic detail", () => {
+    const raw = "Lỗi dán: Clipboard locked by another process";
+    expect(translateIpcError(raw, mockTranslateVi)).toBe("Lỗi dán: Clipboard locked by another process");
+    expect(translateIpcError(raw, mockTranslateEn)).toBe("Paste error: Clipboard locked by another process");
   });
 });

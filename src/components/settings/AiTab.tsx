@@ -60,8 +60,11 @@ export interface SttModelInfo {
 export interface ProviderOption {
   id: string;
   name: string;
+  nameKey?: string;
   badge: string;
+  badgeKey?: string;
   description: string;
+  descriptionKey?: string;
   icon: React.ComponentType<{ className?: string }>;
   badgeColor: string;
 }
@@ -70,24 +73,33 @@ export const PROVIDERS: ProviderOption[] = [
   {
     id: "groq",
     name: "Groq Cloud",
+    nameKey: "ai.providers.groq.name",
     badge: "Siêu nhanh",
+    badgeKey: "ai.providers.groq.badge",
     description: "Độ trễ thấp nhất (<250ms), tối ưu tốc độ thời gian thực",
+    descriptionKey: "ai.providers.groq.description",
     icon: Zap,
     badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
   },
   {
     id: "openrouter",
     name: "OpenRouter",
+    nameKey: "ai.providers.openrouter.name",
     badge: "Đa Model",
+    badgeKey: "ai.providers.openrouter.badge",
     description: "Cổng kết nối đa mô hình (Whisper, Gemini Flash, ...)",
+    descriptionKey: "ai.providers.openrouter.description",
     icon: Sparkles,
     badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30",
   },
   {
     id: "custom",
     name: "Self-hosted / Custom",
+    nameKey: "ai.providers.custom.name",
     badge: "Custom",
+    badgeKey: "ai.providers.custom.badge",
     description: "OpenAI-compatible local endpoint (Whisper.cpp, vLLM)",
+    descriptionKey: "ai.providers.custom.description",
     icon: Server,
     badgeColor: "bg-sky-500/20 text-sky-300 border-sky-500/30",
   },
@@ -301,6 +313,7 @@ export const AiTab: React.FC<AiTabProps> = ({
       setIsEditingKey(false);
       setShowKey(false);
       await checkKeyStatuses();
+      onKeyChange?.();
       setKeySavedMessage(t("ai.key_deleted"));
       loadModels(activeProvider, true);
     } catch (err: unknown) {
@@ -347,8 +360,11 @@ export const AiTab: React.FC<AiTabProps> = ({
   const currentProvider = PROVIDERS.find((p) => p.id === activeProvider) || {
     id: activeProvider,
     name: activeProvider,
+    nameKey: undefined,
     badge: "Custom",
-    description: "Nhà cung cấp tùy chỉnh",
+    badgeKey: "ai.providers.custom.badge",
+    description: "Custom provider",
+    descriptionKey: "ai.providers.custom.description",
     icon: Server,
     badgeColor: "bg-zinc-800 text-zinc-300 border-zinc-700",
   };
@@ -364,7 +380,7 @@ export const AiTab: React.FC<AiTabProps> = ({
         <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-zinc-200">
-              Nhà cung cấp AI
+              {t("ai.provider_title")}
             </label>
             <span className="text-[10px] text-zinc-500 font-mono">
               Độc lập API key và mô hình
@@ -378,12 +394,12 @@ export const AiTab: React.FC<AiTabProps> = ({
                 <div className="flex items-center gap-2">
                   <currentProvider.icon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                   <span className="font-semibold text-zinc-200">
-                    {currentProvider.name}
+                    {currentProvider.nameKey ? t(currentProvider.nameKey) : currentProvider.name}
                   </span>
                   <span
                     className={`text-[9px] px-1.5 py-0.5 rounded border font-medium ${currentProvider.badgeColor}`}
                   >
-                    {currentProvider.badge}
+                    {currentProvider.badgeKey ? t(currentProvider.badgeKey) : currentProvider.badge}
                   </span>
                   {providerKeyStatus[activeProvider] ? (
                     <span className="text-[9px] px-1.5 py-0.5 rounded font-medium shrink-0 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
@@ -396,7 +412,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                   )}
                 </div>
                 <span className="text-[11px] text-zinc-400 pl-5.5 leading-tight truncate w-full">
-                  {currentProvider.description}
+                  {currentProvider.descriptionKey ? t(currentProvider.descriptionKey) : currentProvider.description}
                 </span>
               </div>
             </SelectTrigger>
@@ -414,12 +430,12 @@ export const AiTab: React.FC<AiTabProps> = ({
                       <div className="flex items-center gap-2 min-w-0">
                         <Icon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                         <span className="font-semibold text-zinc-200 truncate">
-                          {p.name}
+                          {p.nameKey ? t(p.nameKey) : p.name}
                         </span>
                         <span
                           className={`text-[9px] px-1.5 py-0.5 rounded border font-medium shrink-0 ${p.badgeColor}`}
                         >
-                          {p.badge}
+                          {p.badgeKey ? t(p.badgeKey) : p.badge}
                         </span>
                         {providerKeyStatus[p.id] ? (
                           <span className="text-[9px] px-1.5 py-0.5 rounded font-medium shrink-0 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
@@ -433,7 +449,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                       </div>
                       {/* 2. Subtitle: textsize nhỏ */}
                       <span className="text-[11px] text-zinc-400 pl-5.5 leading-relaxed break-words whitespace-normal">
-                        {p.description}
+                        {p.descriptionKey ? t(p.descriptionKey) : p.description}
                       </span>
                     </div>
                   </SelectItem>

@@ -50,6 +50,17 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
 
       expect(vi.hotkey.presets.mouse_4).toBe("Chuột 4");
       expect(en.hotkey.presets.mouse_4).toBe("Mouse 4");
+      expect(vi.hotkey.presets.f7).toBe("F7");
+      expect(en.hotkey.presets.f7).toBe("F7");
+    });
+
+    test("Providers metadata exist in dictionaries for both languages", () => {
+      expect(vi.ai.providers.groq.name).toBe("Groq Cloud");
+      expect(en.ai.providers.groq.name).toBe("Groq Cloud");
+      expect(vi.ai.providers.groq.badge).toBe("Siêu nhanh");
+      expect(en.ai.providers.groq.badge).toBe("Ultra Fast");
+      expect(vi.ai.providers.custom.description).toContain("Endpoint OpenAI-compatible");
+      expect(en.ai.providers.custom.description).toContain("OpenAI-compatible local endpoint");
     });
   });
 
@@ -118,6 +129,42 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
       const content = fs.readFileSync(aiTabPath, "utf-8");
 
       expect(content).toContain("translateIpcError");
+    });
+
+    test("OverlayPill imports and uses translateIpcError for daemon error mapping", () => {
+      const overlayPath = path.join(componentsDir, "OverlayPill.tsx");
+      const content = fs.readFileSync(overlayPath, "utf-8");
+
+      expect(content).toContain("translateIpcError");
+    });
+
+    test("HotkeyRecorder presets use F7 and do not assign Windows reserved Alt+Space", () => {
+      const hotkeyRecorderPath = path.join(componentsDir, "settings/HotkeyRecorder.tsx");
+      const content = fs.readFileSync(hotkeyRecorderPath, "utf-8");
+
+      expect(content).toContain('name: "F7"');
+      expect(content).toContain("0x76");
+      expect(content).not.toContain("hotkey.presets.alt_space");
+    });
+
+    test("AiTab handleDeleteKey invokes onKeyChange to refresh sidebar key status", () => {
+      const aiTabPath = path.join(componentsDir, "settings/AiTab.tsx");
+      const content = fs.readFileSync(aiTabPath, "utf-8");
+
+      const handleDeleteKeyMatch = content.match(/const handleDeleteKey = async \(\) => \{([\s\S]*?)\n  \};/);
+      expect(handleDeleteKeyMatch).not.toBeNull();
+      expect(handleDeleteKeyMatch![1]).toContain("onKeyChange?.()");
+    });
+
+    test("AiTab PROVIDERS definitions include localization keys", () => {
+      const aiTabPath = path.join(componentsDir, "settings/AiTab.tsx");
+      const content = fs.readFileSync(aiTabPath, "utf-8");
+
+      expect(content).toContain("nameKey");
+      expect(content).toContain("badgeKey");
+      expect(content).toContain("descriptionKey");
+      expect(content).toContain("ai.providers.groq.badge");
+      expect(content).toContain("ai.providers.custom.description");
     });
   });
 });

@@ -49,9 +49,9 @@ export const PRESET_BINDINGS: PresetBinding[] = [
     binding: { code: 0x20, name: "Space", ctrl: true, alt: false, shift: false, win: false },
   },
   {
-    key: "hotkey.presets.alt_space",
-    defaultLabel: "Alt + Space",
-    binding: { code: 0x20, name: "Space", ctrl: false, alt: true, shift: false, win: false },
+    key: "hotkey.presets.f7",
+    defaultLabel: "F7",
+    binding: { code: 0x76, name: "F7", ctrl: false, alt: false, shift: false, win: false },
   },
 ];
 

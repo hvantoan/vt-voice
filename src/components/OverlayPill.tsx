@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { AlertCircle, Check, Loader2 } from "lucide-react";
 import { useI18n, LocaleOption } from "@/lib/i18n";
+import { translateIpcError } from "@/lib/ipcErrorMapper";
 
 export type OverlayStatus = "idle" | "listening" | "processing" | "pasted" | "error";
 
@@ -102,7 +103,7 @@ export const OverlayPill: React.FC = () => {
             <>
               <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
               <span className="text-xs font-medium text-rose-300 truncate max-w-[200px]">
-                {errorMessage || t("overlay.error")}
+                {errorMessage ? translateIpcError(errorMessage, t) : t("overlay.error")}
               </span>
             </>
           )}
