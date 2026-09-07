@@ -149,30 +149,42 @@ export const AiTab: React.FC<AiTabProps> = ({
   const [openModelCombobox, setOpenModelCombobox] = useState<boolean>(false);
   const [modelSearch, setModelSearch] = useState<string>("");
 
-  const isInitialEndpointMount = useRef(true);
-  const isInitialPromptMount = useRef(true);
+  const lastCommittedEndpointRef = useRef(customEndpoint);
+  const lastCommittedPromptRef = useRef(systemPrompt);
+  const onCustomEndpointCommitRef = useRef(onCustomEndpointCommit);
+  onCustomEndpointCommitRef.current = onCustomEndpointCommit;
+  const onSystemPromptCommitRef = useRef(onSystemPromptCommit);
+  onSystemPromptCommitRef.current = onSystemPromptCommit;
 
   useEffect(() => {
-    if (isInitialEndpointMount.current) {
-      isInitialEndpointMount.current = false;
+    lastCommittedEndpointRef.current = customEndpoint;
+  }, [defaultPrompt, activeProvider]);
+
+  useEffect(() => {
+    lastCommittedPromptRef.current = defaultPrompt;
+  }, [defaultPrompt]);
+
+  useEffect(() => {
+    if (customEndpoint === lastCommittedEndpointRef.current) {
       return;
     }
     const timer = setTimeout(() => {
-      onCustomEndpointCommit?.(customEndpoint);
+      lastCommittedEndpointRef.current = customEndpoint;
+      onCustomEndpointCommitRef.current?.(customEndpoint);
     }, 800);
     return () => clearTimeout(timer);
-  }, [customEndpoint, onCustomEndpointCommit]);
+  }, [customEndpoint]);
 
   useEffect(() => {
-    if (isInitialPromptMount.current) {
-      isInitialPromptMount.current = false;
+    if (systemPrompt === lastCommittedPromptRef.current) {
       return;
     }
     const timer = setTimeout(() => {
-      onSystemPromptCommit?.(systemPrompt);
+      lastCommittedPromptRef.current = systemPrompt;
+      onSystemPromptCommitRef.current?.(systemPrompt);
     }, 800);
     return () => clearTimeout(timer);
-  }, [systemPrompt, onSystemPromptCommit]);
+  }, [systemPrompt]);
 
   const checkKeyStatuses = async () => {
     const statuses: Record<string, boolean> = {};
@@ -370,7 +382,7 @@ export const AiTab: React.FC<AiTabProps> = ({
         <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-zinc-200">
-              Nhà cung cấp AI (Provider)
+              Nhà cung cấp AI
             </label>
             <span className="text-[10px] text-zinc-500 font-mono">
               Độc lập API key và mô hình
@@ -457,7 +469,12 @@ export const AiTab: React.FC<AiTabProps> = ({
                 type="text"
                 value={customEndpoint}
                 onChange={(e) => setCustomEndpoint(e.target.value)}
-                onBlur={() => onCustomEndpointCommit?.(customEndpoint)}
+                onBlur={() => {
+                  if (customEndpoint !== lastCommittedEndpointRef.current) {
+                    lastCommittedEndpointRef.current = customEndpoint;
+                    onCustomEndpointCommit?.(customEndpoint);
+                  }
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.currentTarget.blur();
@@ -926,7 +943,7 @@ export const AiTab: React.FC<AiTabProps> = ({
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h4 className="text-xs font-semibold text-zinc-200">
-                  Tắt AI sửa tiếng (Chế độ Pure STT siêu tốc)
+                  Tắt AI sửa tiếng
                 </h4>
                 {!enablePolish && (
                   <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
@@ -952,7 +969,7 @@ export const AiTab: React.FC<AiTabProps> = ({
         <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
           <div>
             <h4 className="text-xs font-semibold text-zinc-200 mb-1">
-              Từ vựng chuyên ngành (Custom Vocabulary)
+              Từ vựng chuyên ngành
             </h4>
             <p className="text-[11px] text-zinc-400">
               Các thuật ngữ kỹ thuật, tên thư viện, từ mượn tiếng Anh được đưa
@@ -1007,7 +1024,10 @@ export const AiTab: React.FC<AiTabProps> = ({
                 type="button"
                 onClick={() => {
                   setSystemPrompt(defaultPrompt);
-                  onSystemPromptCommit?.(defaultPrompt);
+                  if (defaultPrompt !== lastCommittedPromptRef.current) {
+                    lastCommittedPromptRef.current = defaultPrompt;
+                    onSystemPromptCommit?.(defaultPrompt);
+                  }
                 }}
                 className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
               >
@@ -1019,7 +1039,12 @@ export const AiTab: React.FC<AiTabProps> = ({
               rows={4}
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
-              onBlur={() => onSystemPromptCommit?.(systemPrompt)}
+              onBlur={() => {
+                if (systemPrompt !== lastCommittedPromptRef.current) {
+                  lastCommittedPromptRef.current = systemPrompt;
+                  onSystemPromptCommit?.(systemPrompt);
+                }
+              }}
               className="w-full bg-zinc-950/80 border border-zinc-800 rounded-lg p-2.5 text-xs font-mono text-zinc-300 leading-relaxed focus:outline-none focus:border-emerald-500/60"
             />
           </div>

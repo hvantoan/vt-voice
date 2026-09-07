@@ -56,6 +56,48 @@ export interface RawAppConfig {
   vad_timeout_ms?: number;
 }
 
+function hasConfigChanges(
+  current: AppConfig,
+  patch: Partial<AppConfig>,
+): boolean {
+  for (const key of Object.keys(patch) as (keyof AppConfig)[]) {
+    const val = patch[key];
+    if (val === undefined) continue;
+
+    const cur = current[key];
+    if (key === "hotkey_binding") {
+      const curB = cur as KeyBinding | undefined;
+      const valB = val as KeyBinding | undefined;
+      if (
+        !curB ||
+        !valB ||
+        curB.code !== valB.code ||
+        curB.name !== valB.name ||
+        !!curB.ctrl !== !!valB.ctrl ||
+        !!curB.alt !== !!valB.alt ||
+        !!curB.shift !== !!valB.shift ||
+        !!curB.win !== !!valB.win
+      ) {
+        return true;
+      }
+    } else if (key === "custom_vocabulary") {
+      const curV = (cur as string[]) || [];
+      const valV = (val as string[]) || [];
+      if (
+        curV.length !== valV.length ||
+        curV.some((item, idx) => item !== valV[idx])
+      ) {
+        return true;
+      }
+    } else {
+      if (cur !== val) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export const SettingsLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const [hotkeyMode, setHotkeyMode] = useState<"push_to_talk" | "toggle">(
@@ -102,52 +144,164 @@ export const SettingsLayout: React.FC = () => {
   const configRef = useRef<AppConfig | null>(null);
   const saveTimeoutRef = useRef<number | undefined>(undefined);
 
-  const saveConfigPatch = useCallback(async (patch: Partial<AppConfig>) => {
-    const current = configRef.current;
-    if (!current) return;
+  const saveConfigPatch = useCallback(
+    async (patch: Partial<AppConfig>) => {
+      const current = configRef.current;
+      if (!current) return;
 
-    const updated: AppConfig = {
-      ...current,
-      ...patch,
-    };
-    configRef.current = updated;
+      if (!hasConfigChanges(current, patch)) {
+        return;
+      }
 
-    // Synchronize local states
-    if (patch.hotkey_mode !== undefined) setHotkeyMode(patch.hotkey_mode);
-    if (patch.hotkey_binding !== undefined)
-      setHotkeyBinding(patch.hotkey_binding);
-    if (patch.audio_device_name !== undefined)
-      setSelectedDevice(patch.audio_device_name);
-    if (patch.autostart !== undefined) setAutostart(patch.autostart);
-    if (patch.start_minimized !== undefined)
-      setStartMinimized(patch.start_minimized);
-    if (patch.active_provider !== undefined)
-      setActiveProvider(patch.active_provider);
-    if (patch.active_provider !== undefined) checkAiKey(patch.active_provider);
-    if (patch.stt_model !== undefined) setSttModel(patch.stt_model);
-    if (patch.enable_polish !== undefined) setEnablePolish(patch.enable_polish);
-    if (patch.custom_endpoint !== undefined)
-      setCustomEndpoint(patch.custom_endpoint || "");
-    if (patch.system_prompt !== undefined) setSystemPrompt(patch.system_prompt);
-    if (patch.custom_vocabulary !== undefined)
-      setCustomVocab(patch.custom_vocabulary);
-    if (patch.vad_timeout_ms !== undefined) setVadTimeout(patch.vad_timeout_ms);
+      const updated: AppConfig = {
+        ...current,
+        ...patch,
+      };
+      configRef.current = updated;
 
-    setIsSaving(true);
-    try {
-      await invoke("save_app_config", { config: updated });
-      setSaveStatus("saved");
+      // Synchronize local states
+      if (patch.hotkey_mode !== undefined) setHotkeyMode(patch.hotkey_mode);
+      if (patch.hotkey_binding !== undefined)
+        setHotkeyBinding(patch.hotkey_binding);
+      if (patch.audio_device_name !== undefined)
+        setSelectedDevice(patch.audio_device_name);
+      if (patch.autostart !== undefined) setAutostart(patch.autostart);
+      if (patch.start_minimized !== undefined)
+        setStartMinimized(patch.start_minimized);
+      if (patch.active_provider !== undefined) {
+        setActiveProvider(patch.active_provider);
+        checkAiKey(patch.active_provider);
+      }
+      if (patch.stt_model !== undefined) setSttModel(patch.stt_model);
+      if (patch.enable_polish !== undefined)
+        setEnablePolish(patch.enable_polish);
+      if (patch.custom_endpoint !== undefined)
+        setCustomEndpoint(patch.custom_endpoint || "");
+      if (patch.system_prompt !== undefined)
+        setSystemPrompt(patch.system_prompt);
+      if (patch.custom_vocabulary !== undefined)
+        setCustomVocab(patch.custom_vocabulary);
+      if (patch.vad_timeout_ms !== undefined)
+        setVadTimeout(patch.vad_timeout_ms);
+
+      setIsSaving(true);
+      try {
+        await invoke("save_app_config", { config: updated });
+        setSaveStatus("saved");
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = window.setTimeout(() => {
+          setSaveStatus("idle");
+        }, 2000);
+      } catch (err) {
+        console.error("Lỗi tự động lưu cấu hình:", err);
+        setSaveStatus("error");
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [checkAiKey],
+  );
+
+  useEffect(() => {
+    return () => {
       clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = window.setTimeout(() => {
-        setSaveStatus("idle");
-      }, 2000);
-    } catch (err) {
-      console.error("Lỗi tự động lưu cấu hình:", err);
-      setSaveStatus("error");
-    } finally {
-      setIsSaving(false);
-    }
+    };
   }, []);
+
+  const handleHotkeyModeChange = useCallback(
+    (mode: "push_to_talk" | "toggle") => {
+      saveConfigPatch({ hotkey_mode: mode });
+    },
+    [saveConfigPatch],
+  );
+
+  const handleHotkeyBindingChange = useCallback(
+    (binding: KeyBinding) => {
+      saveConfigPatch({ hotkey_binding: binding });
+    },
+    [saveConfigPatch],
+  );
+
+  const handleAutostartChange = useCallback(
+    async (val: boolean) => {
+      try {
+        if (val) {
+          await enable();
+        } else {
+          await disable();
+        }
+      } catch (err) {
+        console.warn("Lỗi autostart plugin:", err);
+      }
+      saveConfigPatch({ autostart: val });
+    },
+    [saveConfigPatch],
+  );
+
+  const handleStartMinimizedChange = useCallback(
+    (val: boolean) => {
+      saveConfigPatch({ start_minimized: val });
+    },
+    [saveConfigPatch],
+  );
+
+  const handleSelectedDeviceChange = useCallback(
+    (device: string | null) => {
+      saveConfigPatch({ audio_device_name: device });
+    },
+    [saveConfigPatch],
+  );
+
+  const handleVadTimeoutCommit = useCallback(
+    (ms: number) => {
+      saveConfigPatch({ vad_timeout_ms: ms });
+    },
+    [saveConfigPatch],
+  );
+
+  const handleActiveProviderChange = useCallback(
+    (p: string) => {
+      saveConfigPatch({ active_provider: p });
+    },
+    [saveConfigPatch],
+  );
+
+  const handleSttModelChange = useCallback(
+    (m: string) => {
+      saveConfigPatch({ stt_model: m });
+    },
+    [saveConfigPatch],
+  );
+
+  const handleEnablePolishChange = useCallback(
+    (v: boolean) => {
+      saveConfigPatch({ enable_polish: v });
+    },
+    [saveConfigPatch],
+  );
+
+  const handleCustomEndpointCommit = useCallback(
+    (url: string) => {
+      saveConfigPatch({
+        custom_endpoint: url.trim() ? url.trim() : null,
+      });
+    },
+    [saveConfigPatch],
+  );
+
+  const handleSystemPromptCommit = useCallback(
+    (prompt: string) => {
+      saveConfigPatch({ system_prompt: prompt });
+    },
+    [saveConfigPatch],
+  );
+
+  const handleCustomVocabChange = useCallback(
+    (vocab: string[]) => {
+      saveConfigPatch({ custom_vocabulary: vocab });
+    },
+    [saveConfigPatch],
+  );
 
   // Load configuration on mount
   useEffect(() => {
@@ -284,7 +438,7 @@ export const SettingsLayout: React.FC = () => {
               className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
             >
               <Sliders className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Chung (General)</span>
+              <span>Chung</span>
             </TabsTrigger>
 
             <TabsTrigger
@@ -292,7 +446,7 @@ export const SettingsLayout: React.FC = () => {
               className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
             >
               <Mic className="w-4 h-4 text-rose-400 shrink-0" />
-              <span>Âm thanh (Audio)</span>
+              <span>Âm thanh</span>
             </TabsTrigger>
 
             <TabsTrigger
@@ -358,72 +512,45 @@ export const SettingsLayout: React.FC = () => {
           >
             <GeneralTab
               hotkeyMode={hotkeyMode}
-              setHotkeyMode={(mode) => saveConfigPatch({ hotkey_mode: mode })}
+              setHotkeyMode={handleHotkeyModeChange}
               hotkeyBinding={hotkeyBinding}
-              setHotkeyBinding={(binding) =>
-                saveConfigPatch({ hotkey_binding: binding })
-              }
+              setHotkeyBinding={handleHotkeyBindingChange}
               autostart={autostart}
-              setAutostart={async (val) => {
-                try {
-                  if (val) {
-                    await enable();
-                  } else {
-                    await disable();
-                  }
-                } catch (err) {
-                  console.warn("Lỗi autostart plugin:", err);
-                }
-                saveConfigPatch({ autostart: val });
-              }}
+              setAutostart={handleAutostartChange}
               startMinimized={startMinimized}
-              setStartMinimized={(val) =>
-                saveConfigPatch({ start_minimized: val })
-              }
+              setStartMinimized={handleStartMinimizedChange}
             />
           </TabsContent>
 
           <TabsContent value="audio" className="m-0 focus-visible:outline-none">
             <AudioTab
               selectedDevice={selectedDevice}
-              setSelectedDevice={(device) =>
-                saveConfigPatch({ audio_device_name: device })
-              }
+              setSelectedDevice={handleSelectedDeviceChange}
               vadTimeout={vadTimeout}
               setVadTimeout={setVadTimeout}
-              onVadTimeoutCommit={(ms) =>
-                saveConfigPatch({ vad_timeout_ms: ms })
-              }
+              onVadTimeoutCommit={handleVadTimeoutCommit}
             />
           </TabsContent>
 
           <TabsContent value="ai" className="m-0 focus-visible:outline-none">
             <AiTab
               activeProvider={activeProvider}
-              setActiveProvider={(p) => saveConfigPatch({ active_provider: p })}
+              setActiveProvider={handleActiveProviderChange}
               sttModel={sttModel}
-              setSttModel={(m) => saveConfigPatch({ stt_model: m })}
+              setSttModel={handleSttModelChange}
               enablePolish={enablePolish}
-              setEnablePolish={(v) => saveConfigPatch({ enable_polish: v })}
+              setEnablePolish={handleEnablePolishChange}
               customEndpoint={customEndpoint}
               setCustomEndpoint={setCustomEndpoint}
-              onCustomEndpointCommit={(url) =>
-                saveConfigPatch({
-                  custom_endpoint: url.trim() ? url.trim() : null,
-                })
-              }
+              onCustomEndpointCommit={handleCustomEndpointCommit}
               apiKey={apiKey}
               setApiKey={setApiKey}
               onKeyChange={() => checkAiKey(activeProvider)}
               systemPrompt={systemPrompt}
               setSystemPrompt={setSystemPrompt}
-              onSystemPromptCommit={(prompt) =>
-                saveConfigPatch({ system_prompt: prompt })
-              }
+              onSystemPromptCommit={handleSystemPromptCommit}
               customVocab={customVocab}
-              setCustomVocab={(vocab) =>
-                saveConfigPatch({ custom_vocabulary: vocab })
-              }
+              setCustomVocab={handleCustomVocabChange}
               defaultPrompt={defaultPrompt}
             />
           </TabsContent>
