@@ -434,6 +434,7 @@ export const TranslateOverlay: React.FC = () => {
       unlistenPayload.then((f) => f());
       unlistenAction.then((f) => f());
     };
+  }, [data.translatedText]);
 
   const handleCopy = async () => {
     if (!data.translatedText) return;
