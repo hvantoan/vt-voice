@@ -166,5 +166,28 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
       expect(content).toContain("ai.providers.groq.badge");
       expect(content).toContain("ai.providers.custom.description");
     });
+
+    test("AiTab restores expiration for key success messages in save and delete paths", () => {
+      const aiTabPath = path.join(componentsDir, "settings/AiTab.tsx");
+      const content = fs.readFileSync(aiTabPath, "utf-8");
+
+      expect(content).toContain("setTimeout(() => setKeySavedMessage(null), 4000);");
+      expect(content).toContain("setTimeout(() => setKeySavedMessage(null), 3000);");
+    });
+
+    test("AiTab resolves currentProvider.nameKey in API key heading", () => {
+      const aiTabPath = path.join(componentsDir, "settings/AiTab.tsx");
+      const content = fs.readFileSync(aiTabPath, "utf-8");
+
+      expect(content).toContain("{t(\"ai.api_key_title\")} ({currentProvider.nameKey ? t(currentProvider.nameKey) : currentProvider.name})");
+    });
+
+    test("Rust tray daemon preserves error state and localizes daemon messages", () => {
+      const trayPath = path.resolve(__dirname, "../src-tauri/src/daemon/tray.rs");
+      const content = fs.readFileSync(trayPath, "utf-8");
+
+      expect(content).toContain('current_state.starts_with("error: ")');
+      expect(content).toContain("localize_error_msg");
+    });
   });
 });

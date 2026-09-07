@@ -43,6 +43,42 @@ impl TrayStrings {
 pub struct TrayManager;
 
 impl TrayManager {
+    pub fn localize_error_msg(msg: &str, locale: &str) -> String {
+        if locale != "en" {
+            return msg.to_string();
+        }
+
+        let trimmed = msg.trim();
+        if trimmed == "Cửa sổ Admin: Nhấn Ctrl+V để dán" {
+            return "Admin window: Press Ctrl+V to paste".to_string();
+        }
+        if let Some(detail) = trimmed.strip_prefix("Lỗi thu âm: ") {
+            return format!("Recording error: {}", detail);
+        }
+        if trimmed == "Lỗi thu âm" {
+            return "Recording error".to_string();
+        }
+        if let Some(detail) = trimmed.strip_prefix("Lỗi dán: ") {
+            return format!("Paste error: {}", detail);
+        }
+        if trimmed == "Lỗi dán" {
+            return "Paste error".to_string();
+        }
+        if let Some(provider) = trimmed.strip_prefix("Chưa cài đặt API key cho ") {
+            return format!("API key not configured for {}", provider);
+        }
+        if let Some(detail) = trimmed.strip_prefix("Lỗi Groq: ") {
+            return format!("Groq error: {}", detail);
+        }
+        if let Some(detail) = trimmed.strip_prefix("Lỗi OpenRouter: ") {
+            return format!("OpenRouter error: {}", detail);
+        }
+        if let Some(detail) = trimmed.strip_prefix("Lỗi Custom: ") {
+            return format!("Custom error: {}", detail);
+        }
+
+        msg.to_string()
+    }
     fn create_menu(app: &AppHandle, strings: &TrayStrings) -> Result<Menu<tauri::Wry>, tauri::Error> {
         let settings_i = MenuItem::with_id(app, "settings", strings.settings, true, None::<&str>)?;
         let quit_i = MenuItem::with_id(app, "quit", strings.quit, true, None::<&str>)?;
@@ -105,10 +141,16 @@ impl TrayManager {
             let menu = Self::create_menu(app, &strings)?;
             let _ = tray.set_menu(Some(menu));
 
-            let tooltip = match current_state.as_str() {
-                "recording" => strings.tooltip_recording,
-                "processing" => strings.tooltip_processing,
-                _ => strings.tooltip_ready,
+            let tooltip = if current_state.starts_with("error: ") {
+                let msg = &current_state["error: ".len()..];
+                let localized_msg = Self::localize_error_msg(msg, locale);
+                format!("{}{}", strings.tooltip_error_prefix, localized_msg)
+            } else {
+                match current_state.as_str() {
+                    "recording" => strings.tooltip_recording.to_string(),
+                    "processing" => strings.tooltip_processing.to_string(),
+                    _ => strings.tooltip_ready.to_string(),
+                }
             };
             let _ = tray.set_tooltip(Some(tooltip));
         }
@@ -147,7 +189,8 @@ impl TrayManager {
         let locale = CURRENT_LOCALE.lock().clone();
         let strings = TrayStrings::for_locale(&locale);
         if let Some(tray) = app.tray_by_id(TRAY_ID) {
-            let _ = tray.set_tooltip(Some(format!("{}{}", strings.tooltip_error_prefix, msg)));
+            let localized_msg = Self::localize_error_msg(msg, &locale);
+            let _ = tray.set_tooltip(Some(format!("{}{}", strings.tooltip_error_prefix, localized_msg)));
         }
     }
 }
@@ -178,5 +221,19 @@ mod tests {
         let fallback = TrayStrings::for_locale("system");
         assert_eq!(fallback.settings, "Cài đặt");
         assert_eq!(fallback.quit, "Thoát");
+    }
+
+    #[test]
+    fn test_tray_error_localization() {
+        let raw_mic = "Lỗi thu âm: Device busy";
+        assert_eq!(TrayManager::localize_error_msg(raw_mic, "en"), "Recording error: Device busy");
+        assert_eq!(TrayManager::localize_error_msg(raw_mic, "vi"), raw_mic);
+
+        let raw_key = "Chưa cài đặt API key cho Groq";
+        assert_eq!(TrayManager::localize_error_msg(raw_key, "en"), "API key not configured for Groq");
+        assert_eq!(TrayManager::localize_error_msg(raw_key, "vi"), raw_key);
+
+        let raw_admin = "Cửa sổ Admin: Nhấn Ctrl+V để dán";
+        assert_eq!(TrayManager::localize_error_msg(raw_admin, "en"), "Admin window: Press Ctrl+V to paste");
     }
 }

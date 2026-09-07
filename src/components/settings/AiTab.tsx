@@ -282,6 +282,7 @@ export const AiTab: React.FC<AiTabProps> = ({
         key: trimmed,
       });
       setKeySavedMessage(t("ai.key_saved"));
+      setTimeout(() => setKeySavedMessage(null), 4000);
       setIsEditingKey(false);
       setShowKey(false);
       await checkKeyStatuses();
@@ -315,6 +316,7 @@ export const AiTab: React.FC<AiTabProps> = ({
       await checkKeyStatuses();
       onKeyChange?.();
       setKeySavedMessage(t("ai.key_deleted"));
+      setTimeout(() => setKeySavedMessage(null), 3000);
       loadModels(activeProvider, true);
     } catch (err: unknown) {
       setTestError(translateIpcError(err, t));
@@ -495,7 +497,7 @@ export const AiTab: React.FC<AiTabProps> = ({
               <div className="flex items-center gap-2">
                 <KeyRound className="w-3.5 h-3.5 text-amber-400" />
                 <label className="text-xs font-semibold text-zinc-200">
-                  {t("ai.api_key_title")} ({currentProvider.name})
+                  {t("ai.api_key_title")} ({currentProvider.nameKey ? t(currentProvider.nameKey) : currentProvider.name})
                 </label>
                 {isKeyConfigured ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)]">
