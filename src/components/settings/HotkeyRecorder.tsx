@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Key, Mouse } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 export interface KeyBinding {
   code: number;
@@ -15,30 +16,42 @@ interface HotkeyRecorderProps {
   onChange: (binding: KeyBinding) => void;
 }
 
-export const PRESET_BINDINGS: { label: string; binding: KeyBinding }[] = [
+export interface PresetBinding {
+  key: string;
+  defaultLabel: string;
+  binding: KeyBinding;
+}
+
+export const PRESET_BINDINGS: PresetBinding[] = [
   {
-    label: "Right Alt (Mặc định)",
+    key: "hotkey.presets.right_alt",
+    defaultLabel: "Right Alt",
     binding: { code: 0xa5, name: "Right Alt", ctrl: false, alt: false, shift: false, win: false },
   },
   {
-    label: "Chuột 4 (Back)",
+    key: "hotkey.presets.mouse_4",
+    defaultLabel: "Mouse 4",
     binding: { code: 0x05, name: "Mouse 4", ctrl: false, alt: false, shift: false, win: false },
   },
   {
-    label: "Chuột 5 (Forward)",
+    key: "hotkey.presets.mouse_5",
+    defaultLabel: "Mouse 5",
     binding: { code: 0x06, name: "Mouse 5", ctrl: false, alt: false, shift: false, win: false },
   },
   {
-    label: "Chuột giữa (Mouse 3)",
+    key: "hotkey.presets.middle_mouse",
+    defaultLabel: "Mouse 3",
     binding: { code: 0x04, name: "Mouse 3", ctrl: false, alt: false, shift: false, win: false },
   },
   {
-    label: "Ctrl + Space",
+    key: "hotkey.presets.ctrl_space",
+    defaultLabel: "Ctrl + Space",
     binding: { code: 0x20, name: "Space", ctrl: true, alt: false, shift: false, win: false },
   },
   {
-    label: "Phím F2",
-    binding: { code: 0x71, name: "F2", ctrl: false, alt: false, shift: false, win: false },
+    key: "hotkey.presets.alt_space",
+    defaultLabel: "Alt + Space",
+    binding: { code: 0x20, name: "Space", ctrl: false, alt: true, shift: false, win: false },
   },
 ];
 
@@ -98,7 +111,8 @@ const SPECIAL_KEYS: Record<string, { code: number; name: string }> = {
 };
 
 export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange }) => {
-  const [isRecording, setIsRecording] = useState(false);
+  const { t } = useI18n();
+  const [isRecording, setIsRecording] = useState<boolean>(false);
   const [activeModifiers, setActiveModifiers] = useState({
     ctrl: false,
     alt: false,
@@ -304,7 +318,7 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
               ? "bg-rose-500/20 border-rose-500 text-rose-300 animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.2)]"
               : "bg-zinc-800/80 border-zinc-700 text-zinc-200 hover:bg-zinc-700/80 hover:border-zinc-600 hover:text-white"
           }`}
-          title="Bấm để gán tổ hợp phím hoặc 1 phím bất kỳ (kể cả chuột)"
+          title={t("hotkey.tooltip")}
         >
           {isMouseKey ? (
             <Mouse className="w-3.5 h-3.5 text-emerald-400" />
@@ -315,8 +329,8 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
             {isRecording
               ? activeModifierString
                 ? `${activeModifierString} + ...`
-                : "Bấm 1 phím bất kỳ hoặc tổ hợp phím..."
-              : displayString || "Chưa gán phím"}
+                : t("hotkey.press_key")
+              : displayString || t("hotkey.unassigned")}
           </span>
         </button>
 
@@ -326,14 +340,14 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
             onClick={() => setIsRecording(false)}
             className="text-[11px] text-zinc-400 hover:text-zinc-200 underline cursor-pointer"
           >
-            Hủy (Esc)
+            {t("hotkey.cancel")}
           </button>
         )}
       </div>
 
       {/* Quick Presets for Mouse & Common Keys */}
       <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-        <span className="text-[10px] text-zinc-400 mr-1 font-medium">Gợi ý nhanh:</span>
+        <span className="text-[10px] text-zinc-400 mr-1 font-medium">{t("hotkey.presets_label")}</span>
         {PRESET_BINDINGS.map((preset) => {
           const isSelected =
             value.code === preset.binding.code &&
@@ -344,7 +358,7 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
 
           return (
             <button
-              key={preset.label}
+              key={preset.defaultLabel}
               type="button"
               onClick={() => {
                 onChange(preset.binding);
@@ -356,7 +370,7 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
                   : "bg-zinc-800/40 border-zinc-700/60 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 hover:bg-zinc-800"
               }`}
             >
-              {preset.label}
+              {t(preset.key) || preset.defaultLabel}
             </button>
           );
         })}

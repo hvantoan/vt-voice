@@ -8,7 +8,7 @@ pub mod storage;
 use std::sync::Arc;
 use crossbeam_channel::unbounded;
 use parking_lot::Mutex;
-use tauri::{AppHandle, Manager, State, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 
 use ai::{AiHttpClient, AiPipelineResult, SttModelInfo};
 use audio::{AudioDevice, AudioRecorder};
@@ -53,16 +53,30 @@ fn get_app_config(state: State<'_, AppState>) -> AppConfig {
 
 #[tauri::command]
 fn save_app_config(
+    app: AppHandle,
     state: State<'_, AppState>,
     config: AppConfig,
 ) -> Result<(), String> {
+    let locale_changed = {
+        let current = state.config.lock();
+        current.locale != config.locale
+    };
     save_config(&config).map_err(|e| e.to_string())?;
     state
         .hotkey_manager
         .lock()
         .update_config(config.hotkey_binding.clone(), config.hotkey_mode);
+    if locale_changed {
+        let _ = TrayManager::update_tray_locale(&app, &config.locale);
+        let _ = app.emit("locale-changed", &config.locale);
+    }
     *state.config.lock() = config;
     Ok(())
+}
+
+#[tauri::command]
+fn update_tray_locale_cmd(app: AppHandle, locale: String) -> Result<(), String> {
+    TrayManager::update_tray_locale(&app, &locale).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -272,8 +286,9 @@ pub fn run() {
             let app_handle = app.handle().clone();
 
             // 1. Build System Tray
+            let initial_locale = config.lock().locale.clone();
             let _ = TrayManager::build(&app_handle);
-
+            let _ = TrayManager::update_tray_locale(&app_handle, &initial_locale);
             // 2. Setup Overlay Window HWND properties
             OverlayController::setup_window(&app_handle);
 
@@ -490,6 +505,7 @@ pub fn run() {
             get_available_stt_models,
             transcribe_and_polish,
             get_api_key_cmd,
+            update_tray_locale_cmd,
         ])
         .run(tauri::generate_context!())
         .expect("error while running vt-voice daemon");

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { AlertCircle, Check, Loader2 } from "lucide-react";
+import { useI18n, LocaleOption } from "@/lib/i18n";
 
 export type OverlayStatus = "idle" | "listening" | "processing" | "pasted" | "error";
 
@@ -10,9 +12,20 @@ interface OverlayPayload {
 }
 
 export const OverlayPill: React.FC = () => {
+  const { t, setLocale } = useI18n();
   const [status, setStatus] = useState<OverlayStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [audioLevel, setAudioLevel] = useState<number>(0);
+
+  useEffect(() => {
+    invoke<{ locale?: string }>("get_app_config")
+      .then((cfg) => {
+        if (cfg?.locale) {
+          setLocale(cfg.locale as LocaleOption);
+        }
+      })
+      .catch(() => {});
+  }, [setLocale]);
 
   useEffect(() => {
     // Listen for state transitions from Rust daemon
@@ -60,7 +73,7 @@ export const OverlayPill: React.FC = () => {
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]"></span>
               </span>
               <span className="text-xs font-semibold text-zinc-100 tracking-wide">
-                Đang nghe...
+                {t("overlay.listening")}
               </span>
             </>
           )}
@@ -69,7 +82,7 @@ export const OverlayPill: React.FC = () => {
             <>
               <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
               <span className="text-xs font-semibold text-amber-300 tracking-wide">
-                Đang xử lý AI...
+                {t("overlay.processing")}
               </span>
             </>
           )}
@@ -80,7 +93,7 @@ export const OverlayPill: React.FC = () => {
                 <Check className="w-3 h-3 stroke-[2.5]" />
               </div>
               <span className="text-xs font-semibold text-emerald-300 tracking-wide">
-                Đã chèn văn bản!
+                {t("overlay.pasted")}
               </span>
             </>
           )}
@@ -89,7 +102,7 @@ export const OverlayPill: React.FC = () => {
             <>
               <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
               <span className="text-xs font-medium text-rose-300 truncate max-w-[200px]">
-                {errorMessage || "Đã xảy ra lỗi"}
+                {errorMessage || t("overlay.error")}
               </span>
             </>
           )}

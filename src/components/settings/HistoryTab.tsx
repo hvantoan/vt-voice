@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/lib/i18n";
 
 export interface HistoryItem {
   id: string;
@@ -21,6 +22,7 @@ interface HistoryTabProps {
 }
 
 export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory }) => {
+  const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -49,7 +51,7 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm kiếm nội dung đã nhập..."
+            placeholder={t("history.search_placeholder")}
             className="w-full bg-zinc-900/60 border-zinc-800 pl-9 pr-3 h-9 text-xs text-zinc-200 focus-visible:ring-emerald-500/50"
           />
         </div>
@@ -63,7 +65,7 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
             className="h-9 px-3 border-zinc-800 bg-zinc-900 hover:bg-rose-950/40 hover:border-rose-800/60 text-zinc-400 hover:text-rose-300 text-xs"
           >
             <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-            <span>Xóa lịch sử</span>
+            <span>{t("history.clear_btn")}</span>
           </Button>
         )}
       </div>
@@ -71,9 +73,9 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
       {filteredHistory.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center text-zinc-500">
           <Clock className="w-8 h-8 stroke-[1.5] mb-2 opacity-60" />
-          <div className="text-xs font-medium text-zinc-400">Chưa có lịch sử nhập liệu</div>
+          <div className="text-xs font-medium text-zinc-400">{t("history.empty_title")}</div>
           <div className="text-[11px] text-zinc-500 mt-0.5">
-            Các đoạn giọng nói được dán sẽ tự động lưu tại đây.
+            {t("history.empty_desc")}
           </div>
         </div>
       ) : (
@@ -105,12 +107,12 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
                     {copiedId === item.id ? (
                       <>
                         <Check className="w-3 h-3 text-emerald-400 mr-1" />
-                        <span className="text-emerald-400 font-medium">Đã chép</span>
+                        <span className="text-emerald-400 font-medium">{t("history.copied_tooltip")}</span>
                       </>
                     ) : (
                       <>
                         <Copy className="w-3 h-3 mr-1" />
-                        <span>Sao chép</span>
+                        <span>{t("history.copy_tooltip")}</span>
                       </>
                     )}
                   </Button>
@@ -122,7 +124,7 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
 
                 {item.rawText !== item.polishedText && (
                   <div className="text-[11px] text-zinc-500 italic bg-zinc-950/40 px-2 py-1 rounded border border-zinc-800/40">
-                    Gốc: {item.rawText}
+                    {item.rawText}
                   </div>
                 )}
               </CardContent>

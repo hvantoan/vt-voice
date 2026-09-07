@@ -23,6 +23,10 @@ fn default_polish_model() -> String {
 fn default_enable_polish() -> bool {
     true
 }
+fn default_locale() -> String {
+    "system".to_string()
+}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -44,6 +48,8 @@ pub struct AppConfig {
     pub system_prompt: String,
     pub custom_vocabulary: Vec<String>,
     pub vad_timeout_ms: u64,
+    #[serde(default = "default_locale")]
+    pub locale: String,
 }
 
 impl Default for AppConfig {
@@ -76,6 +82,7 @@ impl Default for AppConfig {
                 "bug".to_string(),
             ],
             vad_timeout_ms: 700,
+            locale: "system".to_string(),
         }
     }
 }
@@ -182,5 +189,33 @@ mod tests {
         // Ensure zero API keys in serialized configuration
         assert!(!serialized.contains("api_key"));
         assert!(!serialized.contains("groq_key"));
+    }
+
+    #[test]
+    fn test_app_config_locale_defaults_and_roundtrip() {
+        let cfg = AppConfig::default();
+        assert_eq!(cfg.locale, "system");
+
+        // Backward compatibility: JSON without locale deserializes to "system"
+        let json = r#"{
+            "hotkey_mode": "push_to_talk",
+            "hotkey_binding": {"code": 165, "name": "Right Alt", "ctrl": false, "alt": false, "shift": false, "win": false},
+            "audio_device_name": null,
+            "autostart": false,
+            "start_minimized": true,
+            "active_provider": "groq",
+            "stt_model": "whisper-large-v3-turbo",
+            "polish_model": "llama-3.3-70b-versatile",
+            "system_prompt": "test prompt",
+            "custom_vocabulary": ["API"],
+            "vad_timeout_ms": 700
+        }"#;
+        let deserialized: AppConfig = serde_json::from_str(json).expect("deserialize failed");
+        assert_eq!(deserialized.locale, "system");
+
+        // Explicit locale values
+        let json_vi = r#"{"locale": "vi", "hotkey_mode": "push_to_talk", "hotkey_binding": {"code": 165, "name": "Right Alt", "ctrl": false, "alt": false, "shift": false, "win": false}, "audio_device_name": null, "autostart": false, "start_minimized": true, "system_prompt": "p", "custom_vocabulary": [], "vad_timeout_ms": 700}"#;
+        let cfg_vi: AppConfig = serde_json::from_str(json_vi).expect("deserialize failed");
+        assert_eq!(cfg_vi.locale, "vi");
     }
 }
