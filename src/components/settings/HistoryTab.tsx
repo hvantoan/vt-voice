@@ -91,7 +91,8 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
                     <span className="text-[10px] text-zinc-500 font-mono">{item.timestamp}</span>
                     <Badge
                       variant="secondary"
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono bg-zinc-800 text-emerald-400 font-normal"
+                      title={`${t("history.stt_time", { ms: item.sttDurationMs })} | ${t("history.polish_time", { ms: item.llmDurationMs })}`}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono bg-zinc-800 text-emerald-400 font-normal cursor-help"
                     >
                       <Zap className="w-2.5 h-2.5" />
                       {item.totalDurationMs}ms

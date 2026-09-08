@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { enable, disable } from "@tauri-apps/plugin-autostart";
 import {
@@ -376,6 +377,51 @@ export const SettingsLayout: React.FC = () => {
       })
       .catch(() => {});
   }, []);
+  const loadHistory = useCallback(async () => {
+    try {
+      const items = await invoke<HistoryItem[]>("get_transcription_history");
+      if (Array.isArray(items)) {
+        setHistory(items);
+      }
+    } catch (err) {
+      console.error("Failed to load transcription history:", err);
+    }
+  }, []);
+
+  // Load transcription history on mount and listen for real-time history updates
+  useEffect(() => {
+    loadHistory();
+
+    const unlistenUpdatedPromise = listen<HistoryItem>(
+      "history-updated",
+      (event) => {
+        if (event.payload) {
+          setHistory((prev) => {
+            const filtered = prev.filter((item) => item.id !== event.payload.id);
+            return [event.payload, ...filtered].slice(0, 50);
+          });
+        }
+      },
+    );
+
+    const unlistenClearedPromise = listen("history-cleared", () => {
+      setHistory([]);
+    });
+
+    return () => {
+      unlistenUpdatedPromise.then((f) => f()).catch(() => {});
+      unlistenClearedPromise.then((f) => f()).catch(() => {});
+    };
+  }, [loadHistory]);
+
+  const handleClearHistory = useCallback(async () => {
+    try {
+      await invoke("clear_transcription_history");
+      setHistory([]);
+    } catch (err) {
+      console.error("Failed to clear transcription history:", err);
+    }
+  }, []);
 
   const handleClose = async () => {
     const window = getCurrentWindow();
@@ -446,7 +492,13 @@ export const SettingsLayout: React.FC = () => {
       {/* Main Body with shadcn Tabs */}
       <Tabs
         value={activeTab}
-        onValueChange={(val) => setActiveTab(val as TabId)}
+        onValueChange={(val) => {
+          const tab = val as TabId;
+          setActiveTab(tab);
+          if (tab === "history") {
+            loadHistory();
+          }
+        }}
         className="flex flex-1 overflow-hidden"
       >
         {/* Sidebar */}
@@ -582,7 +634,7 @@ export const SettingsLayout: React.FC = () => {
           >
             <HistoryTab
               history={history}
-              onClearHistory={() => setHistory([])}
+              onClearHistory={handleClearHistory}
             />
           </TabsContent>
         </main>
