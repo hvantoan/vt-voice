@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Copy, Check, Trash2, Search, Clock, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { confirm } from "@/components/ui/confirm";
 import { useI18n } from "@/lib/i18n";
 
 export interface HistoryItem {
@@ -26,6 +27,26 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const isConfirmingRef = useRef(false);
+
+  const handleClearClick = async () => {
+    if (isConfirmingRef.current) return;
+    isConfirmingRef.current = true;
+    try {
+      const ok = await confirm({
+        title: t("history.clear_confirm_title"),
+        description: t("history.clear_confirm_desc"),
+        confirmText: t("history.clear_btn"),
+        cancelText: t("common.cancel"),
+        variant: "destructive",
+      });
+      if (ok) {
+        onClearHistory();
+      }
+    } finally {
+      isConfirmingRef.current = false;
+    }
+  };
   const filteredHistory = history.filter(
     (item) =>
       item.polishedText.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -61,7 +82,7 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
             type="button"
             variant="outline"
             size="sm"
-            onClick={onClearHistory}
+            onClick={handleClearClick}
             className="h-9 px-3 border-zinc-800 bg-zinc-900 hover:bg-rose-950/40 hover:border-rose-800/60 text-zinc-400 hover:text-rose-300 text-xs"
           >
             <Trash2 className="w-3.5 h-3.5 mr-1.5" />
