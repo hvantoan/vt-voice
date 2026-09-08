@@ -24,15 +24,15 @@ pub fn get_groq_fallback_models() -> Vec<SttModelInfo> {
     vec![
         SttModelInfo {
             id: "whisper-large-v3-turbo".to_string(),
-            name: "Whisper Large v3 Turbo (Siêu nhanh, <250ms)".to_string(),
-            description: Some("Mô hình mặc định tối ưu hóa cho tốc độ và độ chính xác cao".to_string()),
+            name: "Whisper Large v3 Turbo".to_string(),
+            description: Some("Fast, high accuracy transcription optimized for real-time speech".to_string()),
             provider: "groq".to_string(),
             is_recommended: true,
         },
         SttModelInfo {
             id: "whisper-large-v3".to_string(),
-            name: "Whisper Large v3 (Chính xác cao)".to_string(),
-            description: Some("Mô hình Whisper đầy đủ cho môi trường nhiều tạp âm".to_string()),
+            name: "Whisper Large v3".to_string(),
+            description: Some("Full Whisper model for noisy audio environments".to_string()),
             provider: "groq".to_string(),
             is_recommended: false,
         },
@@ -44,8 +44,8 @@ pub fn get_openrouter_fallback_models() -> Vec<SttModelInfo> {
     vec![
         SttModelInfo {
             id: "openai/whisper-1".to_string(),
-            name: "OpenAI Whisper v2 (Chuẩn OpenRouter)".to_string(),
-            description: Some("Mô hình nhận diện tiếng nói chuẩn OpenAI trên hạ tầng OpenRouter".to_string()),
+            name: "OpenAI Whisper v2".to_string(),
+            description: Some("Standard OpenAI speech recognition on OpenRouter".to_string()),
             provider: "openrouter".to_string(),
             is_recommended: true,
         },
@@ -57,8 +57,8 @@ pub fn get_custom_fallback_models() -> Vec<SttModelInfo> {
     vec![
         SttModelInfo {
             id: "whisper-1".to_string(),
-            name: "Whisper (Tùy chỉnh endpoint)".to_string(),
-            description: Some("Endpoint OpenAI-compatible tự host hoặc proxy riêng".to_string()),
+            name: "Whisper (Custom Endpoint)".to_string(),
+            description: Some("OpenAI-compatible self-hosted endpoint or proxy".to_string()),
             provider: "custom".to_string(),
             is_recommended: true,
         },
@@ -141,8 +141,8 @@ pub async fn fetch_openrouter_stt_models(
             0,
             SttModelInfo {
                 id: "openai/whisper-1".to_string(),
-                name: "OpenAI Whisper v2 (Chuẩn OpenRouter)".to_string(),
-                description: Some("Mô hình nhận diện tiếng nói chuẩn OpenAI trên OpenRouter".to_string()),
+                name: "OpenAI Whisper v2".to_string(),
+                description: Some("Standard OpenAI speech recognition on OpenRouter".to_string()),
                 provider: "openrouter".to_string(),
                 is_recommended: true,
             },

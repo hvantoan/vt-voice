@@ -1,10 +1,20 @@
 import React from "react";
 import { HotkeyRecorder, KeyBinding } from "./HotkeyRecorder";
-import { Mic, Radio, Rocket, Monitor } from "lucide-react";
+import { Mic, Radio, Rocket, Monitor, Globe } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useI18n, LocaleOption } from "@/lib/i18n";
 
 interface GeneralTabProps {
+  locale: LocaleOption;
+  setLocale: (locale: LocaleOption) => void;
   hotkeyMode: "push_to_talk" | "toggle";
   setHotkeyMode: (mode: "push_to_talk" | "toggle") => void;
   hotkeyBinding: KeyBinding;
@@ -16,6 +26,8 @@ interface GeneralTabProps {
 }
 
 export const GeneralTab: React.FC<GeneralTabProps> = ({
+  locale,
+  setLocale,
   hotkeyMode,
   setHotkeyMode,
   hotkeyBinding,
@@ -25,15 +37,55 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
   startMinimized,
   setStartMinimized,
 }) => {
+  const { t } = useI18n();
+
   return (
     <div className="space-y-6">
+      {/* Language Selector Card */}
+      <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Globe className="w-4 h-4 text-emerald-400" />
+            <div>
+              <div className="text-xs font-semibold text-zinc-200">
+                {t("general.language_title")}
+              </div>
+              <div className="text-[11px] text-zinc-400">
+                {t("general.language_desc")}
+              </div>
+            </div>
+          </div>
+          <div className="w-44">
+            <Select
+              value={locale}
+              onValueChange={(val) => setLocale(val as LocaleOption)}
+            >
+              <SelectTrigger className="h-8 bg-zinc-900 border-zinc-700 text-xs text-zinc-200 focus:ring-emerald-500/50">
+                <SelectValue placeholder={t("general.languages.system")} />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 border-zinc-800 text-xs text-zinc-200">
+                <SelectItem value="system">
+                  {t("general.languages.system")}
+                </SelectItem>
+                <SelectItem value="vi">
+                  {t("general.languages.vi")}
+                </SelectItem>
+                <SelectItem value="en">
+                  {t("general.languages.en")}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Hotkey Mode */}
       <div>
         <h3 className="text-sm font-semibold text-zinc-100 mb-1">
-          Chế độ phím tắt (Hotkey Mode)
+          {t("general.hotkey_mode_title")}
         </h3>
         <p className="text-xs text-zinc-400 mb-3">
-          Chọn cách bạn kích hoạt ghi âm giọng nói khi làm việc trong bất kỳ ứng
-          dụng nào.
+          {t("general.hotkey_mode_desc")}
         </p>
 
         <div className="grid grid-cols-2 gap-3">
@@ -51,12 +103,11 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                   className={`w-4 h-4 ${hotkeyMode === "push_to_talk" ? "text-emerald-400" : "text-zinc-400"}`}
                 />
                 <span className="text-xs font-semibold text-zinc-200">
-                  Push-to-Talk (Giữ để nói)
+                  {t("general.modes.push_to_talk")}
                 </span>
               </div>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
-                Nhấn giữ phím tắt để ghi âm. Khi thả phím, hệ thống tự động xử
-                lý và dán kết quả tại con trỏ.
+                {t("general.modes.push_to_talk_desc")}
               </p>
             </CardContent>
           </Card>
@@ -75,34 +126,34 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                   className={`w-4 h-4 ${hotkeyMode === "toggle" ? "text-emerald-400" : "text-zinc-400"}`}
                 />
                 <span className="text-xs font-semibold text-zinc-200">
-                  Toggle-to-Talk (Bật / Tắt)
+                  {t("general.modes.toggle")}
                 </span>
               </div>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
-                Nhấn một lần để bắt đầu thu âm, nhấn lại lần nữa hoặc giữ yên
-                lặng để tự động hoàn tất và dán văn bản.
+                {t("general.modes.toggle_desc")}
               </p>
             </CardContent>
           </Card>
         </div>
       </div>
 
+      {/* Hotkey Binding */}
       <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
         <div>
           <div className="text-xs font-semibold text-zinc-200">
-            Phím tắt toàn hệ thống
+            {t("general.hotkey_binding_title")}
           </div>
           <div className="text-[11px] text-zinc-400">
-            Hỗ trợ tổ hợp phím (Ctrl, Alt, Shift + phím), nút hông chuột (Mouse
-            4/5) hoặc phím đơn Right Alt
+            {t("general.hotkey_binding_desc")}
           </div>
         </div>
         <HotkeyRecorder value={hotkeyBinding} onChange={setHotkeyBinding} />
       </div>
 
+      {/* Startup Settings */}
       <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-4">
         <h4 className="text-xs font-semibold text-zinc-200 mb-2">
-          Hành vi khởi động
+          {t("general.startup_title")}
         </h4>
 
         <div className="flex items-center justify-between">
@@ -110,10 +161,10 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
             <Rocket className="w-4 h-4 text-zinc-400" />
             <div>
               <div className="text-xs text-zinc-200 font-medium">
-                Khởi động cùng Windows
+                {t("general.autostart_label")}
               </div>
               <div className="text-[11px] text-zinc-500">
-                Tự động chạy daemon khi mở máy tính
+                {t("general.autostart_desc")}
               </div>
             </div>
           </div>
@@ -129,10 +180,10 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
             <Monitor className="w-4 h-4 text-zinc-400" />
             <div>
               <div className="text-xs text-zinc-200 font-medium">
-                Khởi động ẩn xuống khay hệ thống
+                {t("general.start_minimized_label")}
               </div>
               <div className="text-[11px] text-zinc-500">
-                Không mở cửa sổ cài đặt lúc khởi động
+                {t("general.start_minimized_desc")}
               </div>
             </div>
           </div>

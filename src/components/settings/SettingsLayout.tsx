@@ -21,6 +21,7 @@ import { KeyBinding } from "./HotkeyRecorder";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useI18n, LocaleOption } from "@/lib/i18n";
 type TabId = "general" | "audio" | "ai" | "history";
 
 export interface AppConfig {
@@ -37,6 +38,7 @@ export interface AppConfig {
   system_prompt: string;
   custom_vocabulary: string[];
   vad_timeout_ms: number;
+  locale?: LocaleOption;
 }
 
 export interface RawAppConfig {
@@ -54,6 +56,7 @@ export interface RawAppConfig {
   system_prompt?: string;
   custom_vocabulary?: string[];
   vad_timeout_ms?: number;
+  locale?: LocaleOption;
 }
 
 function hasConfigChanges(
@@ -99,6 +102,7 @@ function hasConfigChanges(
 }
 
 export const SettingsLayout: React.FC = () => {
+  const { t, settingLocale, setLocale } = useI18n();
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const [hotkeyMode, setHotkeyMode] = useState<"push_to_talk" | "toggle">(
     "push_to_talk",
@@ -183,7 +187,8 @@ export const SettingsLayout: React.FC = () => {
         setCustomVocab(patch.custom_vocabulary);
       if (patch.vad_timeout_ms !== undefined)
         setVadTimeout(patch.vad_timeout_ms);
-
+      if (patch.locale !== undefined)
+        setLocale(patch.locale);
       setIsSaving(true);
       try {
         await invoke("save_app_config", { config: updated });
@@ -193,7 +198,7 @@ export const SettingsLayout: React.FC = () => {
           setSaveStatus("idle");
         }, 2000);
       } catch (err) {
-        console.error("Lỗi tự động lưu cấu hình:", err);
+        console.error("Failed to auto-save config:", err);
         setSaveStatus("error");
       } finally {
         setIsSaving(false);
@@ -231,7 +236,7 @@ export const SettingsLayout: React.FC = () => {
           await disable();
         }
       } catch (err) {
-        console.warn("Lỗi autostart plugin:", err);
+        console.warn("Autostart plugin error:", err);
       }
       saveConfigPatch({ autostart: val });
     },
@@ -244,6 +249,14 @@ export const SettingsLayout: React.FC = () => {
     },
     [saveConfigPatch],
   );
+  const handleLocaleChange = useCallback(
+    (newLocale: LocaleOption) => {
+      setLocale(newLocale);
+      saveConfigPatch({ locale: newLocale });
+    },
+    [setLocale, saveConfigPatch],
+  );
+
 
   const handleSelectedDeviceChange = useCallback(
     (device: string | null) => {
@@ -331,7 +344,11 @@ export const SettingsLayout: React.FC = () => {
             system_prompt: cfg.system_prompt || "",
             custom_vocabulary: cfg.custom_vocabulary || [],
             vad_timeout_ms: cfg.vad_timeout_ms || 700,
+            locale: (cfg.locale as LocaleOption) || "system",
           };
+          if (cfg.locale) {
+            setLocale(cfg.locale as LocaleOption);
+          }
           configRef.current = fullConfig;
           setHotkeyMode(fullConfig.hotkey_mode);
           setHotkeyBinding(fullConfig.hotkey_binding);
@@ -397,7 +414,7 @@ export const SettingsLayout: React.FC = () => {
           />
           <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
           <span className="text-xs font-semibold text-zinc-300 tracking-tight">
-            vt-voice Cài đặt
+            vt-voice {t("settings.title")}
           </span>
           <span className="text-[10px] text-zinc-500 font-mono">v0.1.0</span>
         </div>
@@ -409,6 +426,7 @@ export const SettingsLayout: React.FC = () => {
             size="icon"
             onClick={handleMinimize}
             className="w-8 h-7 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 rounded"
+            title={t("common.minimize")}
           >
             <Minus className="w-3.5 h-3.5" />
           </Button>
@@ -418,6 +436,7 @@ export const SettingsLayout: React.FC = () => {
             size="icon"
             onClick={handleClose}
             className="w-8 h-7 text-zinc-400 hover:text-zinc-100 hover:bg-rose-900/80 rounded"
+            title={t("common.close")}
           >
             <X className="w-3.5 h-3.5" />
           </Button>
@@ -438,7 +457,7 @@ export const SettingsLayout: React.FC = () => {
               className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
             >
               <Sliders className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Chung</span>
+              <span>{t("settings.tabs.general")}</span>
             </TabsTrigger>
 
             <TabsTrigger
@@ -446,7 +465,7 @@ export const SettingsLayout: React.FC = () => {
               className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
             >
               <Mic className="w-4 h-4 text-rose-400 shrink-0" />
-              <span>Âm thanh</span>
+              <span>{t("settings.tabs.audio")}</span>
             </TabsTrigger>
 
             <TabsTrigger
@@ -454,7 +473,7 @@ export const SettingsLayout: React.FC = () => {
               className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
             >
               <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="flex-1 text-left">AI & Mô hình</span>
+              <span className="flex-1 text-left">{t("settings.tabs.ai")}</span>
               <span
                 className={cn(
                   "w-1.5 h-1.5 rounded-full shrink-0",
@@ -463,7 +482,7 @@ export const SettingsLayout: React.FC = () => {
                     : "bg-amber-500/80 shadow-[0_0_6px_rgba(245,158,11,0.6)]",
                 )}
                 title={
-                  hasAiKey ? "API Key đã thiết lập" : "Chưa thiết lập API Key"
+                  hasAiKey ? t("ai.has_key") : t("ai.no_key")
                 }
               />
             </TabsTrigger>
@@ -473,7 +492,7 @@ export const SettingsLayout: React.FC = () => {
               className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
             >
               <Clock className="w-4 h-4 text-sky-400 shrink-0" />
-              <span>Lịch sử nhập</span>
+              <span>{t("settings.tabs.history")}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -483,21 +502,21 @@ export const SettingsLayout: React.FC = () => {
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
                 <span className="text-zinc-300 text-[11px] font-medium">
-                  Đang lưu...
+                  {t("settings.saving")}
                 </span>
               </>
             ) : saveStatus === "saved" ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="text-emerald-400 text-[11px] font-medium">
-                  Đã tự động lưu
+                  {t("settings.saved")}
                 </span>
               </>
             ) : (
               <>
                 <Check className="w-3.5 h-3.5 text-zinc-500" />
                 <span className="text-zinc-500 text-[11px]">
-                  Tự động lưu thay đổi
+                  {t("settings.save_changes")}
                 </span>
               </>
             )}
@@ -511,6 +530,8 @@ export const SettingsLayout: React.FC = () => {
             className="m-0 focus-visible:outline-none"
           >
             <GeneralTab
+              locale={settingLocale}
+              setLocale={handleLocaleChange}
               hotkeyMode={hotkeyMode}
               setHotkeyMode={handleHotkeyModeChange}
               hotkeyBinding={hotkeyBinding}

@@ -47,6 +47,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useI18n } from "@/lib/i18n";
+import { translateIpcError } from "@/lib/ipcErrorMapper";
 
 export interface SttModelInfo {
   id: string;
@@ -58,8 +60,11 @@ export interface SttModelInfo {
 export interface ProviderOption {
   id: string;
   name: string;
+  nameKey?: string;
   badge: string;
+  badgeKey?: string;
   description: string;
+  descriptionKey?: string;
   icon: React.ComponentType<{ className?: string }>;
   badgeColor: string;
 }
@@ -68,24 +73,33 @@ export const PROVIDERS: ProviderOption[] = [
   {
     id: "groq",
     name: "Groq Cloud",
-    badge: "Siêu nhanh",
-    description: "Độ trễ thấp nhất (<250ms), tối ưu tốc độ thời gian thực",
+    nameKey: "ai.providers.groq.name",
+    badge: "Ultra Fast",
+    badgeKey: "ai.providers.groq.badge",
+    description: "Lowest latency (<250ms), optimized for real-time speed",
+    descriptionKey: "ai.providers.groq.description",
     icon: Zap,
     badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
   },
   {
     id: "openrouter",
     name: "OpenRouter",
-    badge: "Đa Model",
-    description: "Cổng kết nối đa mô hình (Whisper, Gemini Flash, ...)",
+    nameKey: "ai.providers.openrouter.name",
+    badge: "Multi-Model",
+    badgeKey: "ai.providers.openrouter.badge",
+    description: "Multi-model gateway (Whisper, Gemini Flash, ...)",
+    descriptionKey: "ai.providers.openrouter.description",
     icon: Sparkles,
     badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30",
   },
   {
     id: "custom",
-    name: "Tùy chỉnh (Self-hosted)",
+    name: "Self-hosted / Custom",
+    nameKey: "ai.providers.custom.name",
     badge: "Custom",
-    description: "Endpoint OpenAI-compatible tự host (Whisper.cpp, vLLM)",
+    badgeKey: "ai.providers.custom.badge",
+    description: "OpenAI-compatible local endpoint (Whisper.cpp, vLLM)",
+    descriptionKey: "ai.providers.custom.description",
     icon: Server,
     badgeColor: "bg-sky-500/20 text-sky-300 border-sky-500/30",
   },
@@ -132,6 +146,7 @@ export const AiTab: React.FC<AiTabProps> = ({
   setCustomVocab,
   defaultPrompt,
 }) => {
+  const { t } = useI18n();
   const [showKey, setShowKey] = useState<boolean>(false);
   const [testingConnection, setTestingConnection] = useState<boolean>(false);
   const [savingKey, setSavingKey] = useState<boolean>(false);
@@ -185,6 +200,7 @@ export const AiTab: React.FC<AiTabProps> = ({
     }, 800);
     return () => clearTimeout(timer);
   }, [systemPrompt]);
+
 
   const checkKeyStatuses = async () => {
     const statuses: Record<string, boolean> = {};
@@ -266,7 +282,7 @@ export const AiTab: React.FC<AiTabProps> = ({
         provider: activeProvider,
         key: trimmed,
       });
-      setKeySavedMessage("Đã mã hóa và lưu an toàn vào Windows DPAPI!");
+      setKeySavedMessage(t("ai.key_saved"));
       setTimeout(() => setKeySavedMessage(null), 4000);
       setIsEditingKey(false);
       setShowKey(false);
@@ -281,13 +297,7 @@ export const AiTab: React.FC<AiTabProps> = ({
         })
         .catch(() => {});
     } catch (err: unknown) {
-      setTestError(
-        typeof err === "string"
-          ? err
-          : err instanceof Error
-            ? err.message
-            : "Lỗi khi lưu API Key",
-      );
+      setTestError(translateIpcError(err, t));
     } finally {
       setSavingKey(false);
     }
@@ -306,17 +316,11 @@ export const AiTab: React.FC<AiTabProps> = ({
       setShowKey(false);
       await checkKeyStatuses();
       onKeyChange?.();
-      setKeySavedMessage("Đã xóa API Key khỏi Windows DPAPI");
+      setKeySavedMessage(t("ai.key_deleted"));
       setTimeout(() => setKeySavedMessage(null), 3000);
       loadModels(activeProvider, true);
     } catch (err: unknown) {
-      setTestError(
-        typeof err === "string"
-          ? err
-          : err instanceof Error
-            ? err.message
-            : "Lỗi khi xóa API Key",
-      );
+      setTestError(translateIpcError(err, t));
     } finally {
       setDeletingKey(false);
     }
@@ -338,13 +342,7 @@ export const AiTab: React.FC<AiTabProps> = ({
       });
       setLatencyResult(latency);
     } catch (err: unknown) {
-      setTestError(
-        typeof err === "string"
-          ? err
-          : err instanceof Error
-            ? err.message
-            : "Kết nối thất bại. Kiểm tra lại key/endpoint.",
-      );
+      setTestError(translateIpcError(err, t));
     } finally {
       setTestingConnection(false);
     }
@@ -365,8 +363,11 @@ export const AiTab: React.FC<AiTabProps> = ({
   const currentProvider = PROVIDERS.find((p) => p.id === activeProvider) || {
     id: activeProvider,
     name: activeProvider,
+    nameKey: undefined,
     badge: "Custom",
-    description: "Nhà cung cấp tùy chỉnh",
+    badgeKey: "ai.providers.custom.badge",
+    description: "Custom provider",
+    descriptionKey: "ai.providers.custom.description",
     icon: Server,
     badgeColor: "bg-zinc-800 text-zinc-300 border-zinc-700",
   };
@@ -382,10 +383,10 @@ export const AiTab: React.FC<AiTabProps> = ({
         <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-zinc-200">
-              Nhà cung cấp AI
+              {t("ai.provider_title")}
             </label>
             <span className="text-[10px] text-zinc-500 font-mono">
-              Độc lập API key và mô hình
+              {t("ai.provider_independent_hint")}
             </span>
           </div>
 
@@ -396,25 +397,25 @@ export const AiTab: React.FC<AiTabProps> = ({
                 <div className="flex items-center gap-2">
                   <currentProvider.icon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                   <span className="font-semibold text-zinc-200">
-                    {currentProvider.name}
+                    {currentProvider.nameKey ? t(currentProvider.nameKey) : currentProvider.name}
                   </span>
                   <span
                     className={`text-[9px] px-1.5 py-0.5 rounded border font-medium ${currentProvider.badgeColor}`}
                   >
-                    {currentProvider.badge}
+                    {currentProvider.badgeKey ? t(currentProvider.badgeKey) : currentProvider.badge}
                   </span>
                   {providerKeyStatus[activeProvider] ? (
                     <span className="text-[9px] px-1.5 py-0.5 rounded font-medium shrink-0 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                      ✓ Đã có Key
+                      ✓ {t("ai.has_key")}
                     </span>
                   ) : (
                     <span className="text-[9px] px-1.5 py-0.5 rounded font-medium shrink-0 bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      Chưa có Key
+                      {t("ai.no_key")}
                     </span>
                   )}
                 </div>
                 <span className="text-[11px] text-zinc-400 pl-5.5 leading-tight truncate w-full">
-                  {currentProvider.description}
+                  {currentProvider.descriptionKey ? t(currentProvider.descriptionKey) : currentProvider.description}
                 </span>
               </div>
             </SelectTrigger>
@@ -432,26 +433,26 @@ export const AiTab: React.FC<AiTabProps> = ({
                       <div className="flex items-center gap-2 min-w-0">
                         <Icon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                         <span className="font-semibold text-zinc-200 truncate">
-                          {p.name}
+                          {p.nameKey ? t(p.nameKey) : p.name}
                         </span>
                         <span
                           className={`text-[9px] px-1.5 py-0.5 rounded border font-medium shrink-0 ${p.badgeColor}`}
                         >
-                          {p.badge}
+                          {p.badgeKey ? t(p.badgeKey) : p.badge}
                         </span>
                         {providerKeyStatus[p.id] ? (
                           <span className="text-[9px] px-1.5 py-0.5 rounded font-medium shrink-0 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                            ✓ Đã có Key
+                            ✓ {t("ai.has_key")}
                           </span>
                         ) : (
                           <span className="text-[9px] px-1.5 py-0.5 rounded font-medium shrink-0 bg-zinc-800 text-zinc-400 border border-zinc-700/60">
-                            Chưa có Key
+                            {t("ai.no_key")}
                           </span>
                         )}
                       </div>
                       {/* 2. Subtitle: textsize nhỏ */}
                       <span className="text-[11px] text-zinc-400 pl-5.5 leading-relaxed break-words whitespace-normal">
-                        {p.description}
+                        {p.descriptionKey ? t(p.descriptionKey) : p.description}
                       </span>
                     </div>
                   </SelectItem>
@@ -463,7 +464,7 @@ export const AiTab: React.FC<AiTabProps> = ({
           {activeProvider === "custom" && (
             <div className="pt-2 border-t border-zinc-800/60 space-y-1.5">
               <label className="text-[11px] font-medium text-zinc-300">
-                Custom STT Audio Endpoint URL
+                {t("ai.custom_endpoint_label")}
               </label>
               <input
                 type="text"
@@ -480,12 +481,11 @@ export const AiTab: React.FC<AiTabProps> = ({
                     e.currentTarget.blur();
                   }
                 }}
-                placeholder="http://localhost:8000/v1/audio/transcriptions"
+                placeholder={t("ai.custom_endpoint_placeholder")}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs font-mono text-zinc-200 focus:outline-none focus:border-emerald-500/60"
               />
               <p className="text-[10px] text-zinc-500">
-                Tương thích chuẩn OpenAI POST /audio/transcriptions với
-                multipart/form-data.
+                {t("ai.endpoint_format_hint")}
               </p>
             </div>
           )}
@@ -498,7 +498,7 @@ export const AiTab: React.FC<AiTabProps> = ({
               <div className="flex items-center gap-2">
                 <KeyRound className="w-3.5 h-3.5 text-amber-400" />
                 <label className="text-xs font-semibold text-zinc-200">
-                  API Key ({currentProvider.name})
+                  {t("ai.api_key_title")} ({currentProvider.nameKey ? t(currentProvider.nameKey) : currentProvider.name})
                 </label>
                 {isKeyConfigured ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)]">
@@ -514,12 +514,11 @@ export const AiTab: React.FC<AiTabProps> = ({
                 <TooltipTrigger asChild>
                   <div className="flex items-center gap-1 text-[10px] text-zinc-500 font-mono cursor-help">
                     <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                    <span>Windows Credential Vault (DPAPI)</span>
+                    <span>{t("ai.vault_badge")}</span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent className="bg-zinc-950/95 border-zinc-800 text-xs text-zinc-300">
-                  Khóa được mã hóa bằng phần cứng qua Windows DPAPI an toàn
-                  tuyệt đối.
+                  {t("ai.vault_tooltip")}
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -534,10 +533,10 @@ export const AiTab: React.FC<AiTabProps> = ({
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder={
                     activeProvider === "groq"
-                      ? "Nhập Groq API Key (gsk_...)"
+                      ? t("ai.api_key_placeholder_groq")
                       : activeProvider === "openrouter"
-                        ? "Nhập OpenRouter API Key (sk-or-v1-...)"
-                        : "Nhập Custom API Key (Bearer key...)"
+                        ? t("ai.api_key_placeholder_openrouter")
+                        : t("ai.api_key_placeholder_custom")
                   }
                   className={cn(
                     "w-full rounded-lg pl-3 pr-10 py-2 text-xs font-mono transition-colors focus:outline-none",
@@ -551,10 +550,8 @@ export const AiTab: React.FC<AiTabProps> = ({
                   onClick={() => setShowKey(!showKey)}
                   title={
                     showKey
-                      ? "Ẩn Key"
-                      : isKeyConfigured && !isEditingKey
-                        ? "Hiện Key đã lưu"
-                        : "Hiện Key"
+                      ? t("ai.hide_api_key")
+                      : t("ai.show_api_key")
                   }
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
                 >
@@ -573,17 +570,17 @@ export const AiTab: React.FC<AiTabProps> = ({
                     onClick={handleTestConnection}
                     disabled={testingConnection}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-medium text-zinc-200 transition-colors disabled:opacity-50"
-                    title="Kiểm tra kết nối với API Key đã lưu"
+                    title={t("ai.test_connection_tooltip")}
                   >
                     {testingConnection ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Đang thử...</span>
+                        <span>{t("ai.testing_connection")}</span>
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Kiểm tra</span>
+                        <span>{t("ai.test_connection")}</span>
                       </>
                     )}
                   </button>
@@ -598,10 +595,10 @@ export const AiTab: React.FC<AiTabProps> = ({
                       setLatencyResult(null);
                     }}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-medium text-zinc-300 transition-colors"
-                    title="Nhập API Key mới để thay thế"
+                    title={t("ai.change_key_tooltip")}
                   >
                     <Pencil className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>Đổi key</span>
+                    <span>{t("ai.change_key")}</span>
                   </button>
 
                   <button
@@ -609,7 +606,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                     onClick={handleDeleteKey}
                     disabled={deletingKey}
                     className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-zinc-900 hover:bg-rose-950/50 border border-zinc-800 hover:border-rose-800/60 text-xs font-medium text-zinc-400 hover:text-rose-300 transition-colors disabled:opacity-50"
-                    title="Xóa API Key khỏi Windows Vault"
+                    title={t("ai.delete_key_tooltip")}
                   >
                     {deletingKey ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -633,7 +630,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                     ) : (
                       <>
                         <KeyRound className="w-3.5 h-3.5" />
-                        <span>Lưu Key</span>
+                        <span>{t("common.save")}</span>
                       </>
                     )}
                   </button>
@@ -647,12 +644,12 @@ export const AiTab: React.FC<AiTabProps> = ({
                     {testingConnection ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Đang thử...</span>
+                        <span>{t("ai.testing_connection")}</span>
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Kiểm tra</span>
+                        <span>{t("ai.test_connection")}</span>
                       </>
                     )}
                   </button>
@@ -669,9 +666,9 @@ export const AiTab: React.FC<AiTabProps> = ({
                         });
                       }}
                       className="px-2.5 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
-                      title="Hủy nhập key mới"
+                      title={t("common.cancel")}
                     >
-                      Hủy
+                      {t("common.cancel")}
                     </button>
                   )}
                 </>
@@ -682,15 +679,18 @@ export const AiTab: React.FC<AiTabProps> = ({
               <p className="text-[11px] text-zinc-500 mt-1.5 flex items-center gap-1.5">
                 <Check className="w-3 h-3 text-emerald-400" />
                 <span>
-                  Khóa được lưu bảo mật trong Windows Vault. Nhấn{" "}
-                  <strong>Kiểm tra</strong> để thử độ trễ hoặc{" "}
-                  <strong>Đổi key</strong> để cập nhật.
+                  {t("ai.key_configured_help_prefix")}{" "}
+                  <strong>{t("ai.test_connection")}</strong>{" "}
+                  {t("ai.key_configured_help_mid")}{" "}
+                  <strong>{t("ai.change_key")}</strong>{" "}
+                  {t("ai.key_configured_help_suffix")}
                 </span>
               </p>
             ) : (
               <p className="text-[11px] text-zinc-500 mt-1.5">
-                Nhập API Key và nhấn <strong>Lưu Key</strong>. Khóa sẽ được mã
-                hóa an toàn qua Windows DPAPI.
+                {t("ai.key_unconfigured_help_prefix")}{" "}
+                <strong>{t("common.save")}</strong>
+                {t("ai.key_unconfigured_help_suffix")}
               </p>
             )}
             {/* Feedback Badges */}
@@ -704,7 +704,7 @@ export const AiTab: React.FC<AiTabProps> = ({
             {latencyResult !== null && (
               <div className="flex items-center gap-1.5 mt-2 text-xs text-emerald-400">
                 <Check className="w-3.5 h-3.5" />
-                <span>Kết nối thành công! Độ trễ phản hồi:</span>
+                <span>{t("ai.connection_success_latency")}</span>
                 <span className="font-mono font-semibold px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30">
                   {latencyResult} ms
                 </span>
@@ -724,7 +724,7 @@ export const AiTab: React.FC<AiTabProps> = ({
         <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-zinc-200">
-              Mô hình Nhận diện Giọng nói (STT Model)
+              {t("ai.stt_model_title")}
             </label>
             <button
               type="button"
@@ -735,7 +735,7 @@ export const AiTab: React.FC<AiTabProps> = ({
               <RefreshCw
                 className={`w-3 h-3 ${loadingModels ? "animate-spin" : ""}`}
               />
-              <span>Tải lại danh sách</span>
+              <span>{t("ai.reload_models")}</span>
             </button>
           </div>
 
@@ -759,7 +759,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                           </span>
                           {selectedModel.is_recommended && (
                             <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-sans font-medium shrink-0">
-                              ★ Khuyên dùng
+                              ★ {t("ai.recommended")}
                             </span>
                           )}
                         </div>
@@ -777,14 +777,14 @@ export const AiTab: React.FC<AiTabProps> = ({
                           {sttModel}
                         </span>
                         <span className="text-[10px] text-zinc-500 font-mono">
-                          Mô hình tùy chỉnh
+                          {t("common.custom")}
                         </span>
                       </div>
                     );
                   }
                   return (
                     <span className="text-zinc-500 font-sans">
-                      Chọn hoặc tìm mô hình STT...
+                      {t("ai.search_models")}
                     </span>
                   );
                 })()}
@@ -804,14 +804,14 @@ export const AiTab: React.FC<AiTabProps> = ({
                 }}
               >
                 <CommandInput
-                  placeholder="Tìm kiếm hoặc gõ ID mô hình..."
+                  placeholder={t("ai.search_models")}
                   className="text-xs text-zinc-200 placeholder:text-zinc-500 h-9"
                   value={modelSearch}
                   onValueChange={setModelSearch}
                 />
                 <CommandList className="max-h-[280px] overflow-y-auto">
                   <CommandEmpty className="p-3 text-center text-xs text-zinc-400">
-                    <p className="mb-2">Không tìm thấy mô hình có sẵn.</p>
+                    <p className="mb-2">{t("ai.no_models_found")}</p>
                     {modelSearch.trim() && (
                       <button
                         type="button"
@@ -822,7 +822,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                         }}
                         className="px-2.5 py-1 text-xs bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 rounded-md transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                       >
-                        <span>Sử dụng mô hình:</span>
+                        <span>{t("ai.use_model")}</span>
                         <span className="font-mono font-semibold text-zinc-100">
                           {modelSearch.trim()}
                         </span>
@@ -831,7 +831,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                   </CommandEmpty>
 
                   <CommandGroup
-                    heading="Mô hình có sẵn"
+                    heading={t("ai.available_models")}
                     className="text-zinc-400 text-[10px]"
                   >
                     {models.map((m) => (
@@ -854,7 +854,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                             </span>
                             {m.is_recommended && (
                               <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-sans font-medium shrink-0">
-                                ★ Khuyên dùng
+                                ★ {t("ai.recommended")}
                               </span>
                             )}
                           </div>
@@ -880,7 +880,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                         m.id.toLowerCase() === modelSearch.trim().toLowerCase(),
                     ) && (
                       <CommandGroup
-                        heading="Tùy chỉnh"
+                        heading={t("common.custom")}
                         className="text-zinc-400 text-[10px]"
                       >
                         <CommandItem
@@ -893,7 +893,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                           className="flex items-center gap-2 p-2 cursor-pointer rounded-lg text-xs hover:bg-zinc-900/80 data-[selected=true]:bg-zinc-900 text-emerald-400"
                         >
                           <Plus className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          <span>Sử dụng ID:</span>
+                          <span>{t("ai.use_custom_id")}</span>
                           <span className="font-mono font-semibold text-zinc-100 underline decoration-emerald-500/50">
                             {modelSearch.trim()}
                           </span>
@@ -904,7 +904,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                   {/* Active custom model */}
                   {sttModel && !models.some((m) => m.id === sttModel) && (
                     <CommandGroup
-                      heading="Mô hình tùy chỉnh đang dùng"
+                      heading={t("ai.custom_model_active")}
                       className="text-zinc-400 text-[10px]"
                     >
                       <CommandItem
@@ -919,7 +919,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                             {sttModel}
                           </span>
                           <span className="text-[10px] text-zinc-500 font-mono">
-                            Mô hình tùy chỉnh
+                            {t("ai.custom_model")}
                           </span>
                         </div>
                         <Check className="h-4 w-4 shrink-0 text-emerald-400 ml-2 opacity-100" />
@@ -932,8 +932,7 @@ export const AiTab: React.FC<AiTabProps> = ({
           </Popover>
 
           <p className="text-[10px] text-zinc-500">
-            Mô hình Whisper chuyển đổi âm thanh giọng nói thành văn bản thô theo
-            chuẩn OpenAI.
+            {t("ai.stt_model_hint")}
           </p>
         </div>
 
@@ -943,7 +942,7 @@ export const AiTab: React.FC<AiTabProps> = ({
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h4 className="text-xs font-semibold text-zinc-200">
-                  Tắt AI sửa tiếng
+                  {t("ai.polish_title")}
                 </h4>
                 {!enablePolish && (
                   <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
@@ -952,8 +951,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                 )}
               </div>
               <p className="text-[11px] text-zinc-400 max-w-[440px] leading-relaxed">
-                Bỏ qua bước LLM để dán văn bản ngay lập tức (&lt;300ms). Whisper
-                vẫn nhận diện đúng từ kỹ thuật Việt-Anh nhờ từ vựng nạp sẵn.
+                {t("ai.polish_desc")}
               </p>
             </div>
 
@@ -969,11 +967,10 @@ export const AiTab: React.FC<AiTabProps> = ({
         <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
           <div>
             <h4 className="text-xs font-semibold text-zinc-200 mb-1">
-              Từ vựng chuyên ngành
+              {t("ai.custom_vocab_title")}
             </h4>
             <p className="text-[11px] text-zinc-400">
-              Các thuật ngữ kỹ thuật, tên thư viện, từ mượn tiếng Anh được đưa
-              vào prompt mồi để Whisper nhận dạng chính xác.
+              {t("ai.custom_vocab_desc")}
             </p>
           </div>
 
@@ -982,7 +979,7 @@ export const AiTab: React.FC<AiTabProps> = ({
               type="text"
               value={newTag}
               onChange={(e) => setNewTag(e.target.value)}
-              placeholder="Thêm từ mới (vd: Next.js, Redis, Tailwind)..."
+              placeholder={t("ai.custom_vocab_placeholder")}
               className="flex-1 bg-zinc-950/80 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500/60"
             />
             <button
@@ -990,7 +987,7 @@ export const AiTab: React.FC<AiTabProps> = ({
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Thêm</span>
+              <span>{t("ai.custom_vocab_add")}</span>
             </button>
           </form>
 
@@ -1018,7 +1015,7 @@ export const AiTab: React.FC<AiTabProps> = ({
           <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-2">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-semibold text-zinc-200">
-                System Prompt (Chỉnh sửa ngữ pháp bằng LLM)
+                {t("ai.system_prompt_title")}
               </h4>
               <button
                 type="button"
@@ -1032,7 +1029,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                 className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
               >
                 <RotateCcw className="w-3 h-3" />
-                <span>Mặc định</span>
+                <span>{t("common.default")}</span>
               </button>
             </div>
             <textarea
@@ -1051,8 +1048,7 @@ export const AiTab: React.FC<AiTabProps> = ({
         ) : (
           <div className="p-3 rounded-xl bg-zinc-900/30 border border-dashed border-zinc-800/80 text-center">
             <p className="text-[11px] text-zinc-500">
-              Chế độ Pure STT đang bật: Bỏ qua bước sửa ngữ pháp bằng LLM để đạt
-              độ trễ tối thiểu &lt;300ms.
+              {t("ai.pure_stt_active_desc")}
             </p>
           </div>
         )}
