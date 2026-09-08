@@ -1,5 +1,5 @@
 use std::fs::{self, File};
-use std::io::{BufReader, BufWriter};
+use std::io::{BufReader, BufWriter, Write};
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
@@ -58,18 +58,27 @@ pub fn load_history() -> Vec<HistoryItem> {
 
 pub fn save_history(items: &[HistoryItem]) -> Result<(), HistoryError> {
     let path = get_history_path()?;
-    let file = File::create(&path)?;
-    let writer = BufWriter::new(file);
-    serde_json::to_writer_pretty(writer, items)?;
+    let tmp_path = path.with_extension("json.tmp");
+    {
+        let file = File::create(&tmp_path)?;
+        let mut writer = BufWriter::new(file);
+        serde_json::to_writer_pretty(&mut writer, items)?;
+        writer.flush()?;
+    }
+    fs::rename(&tmp_path, &path)?;
     Ok(())
 }
 
-pub fn append_history_item(item: HistoryItem) -> Result<Vec<HistoryItem>, HistoryError> {
-    let mut items = load_history();
+pub fn push_history_item(items: &mut Vec<HistoryItem>, item: HistoryItem) {
     items.insert(0, item);
     if items.len() > MAX_HISTORY_ITEMS {
         items.truncate(MAX_HISTORY_ITEMS);
     }
+}
+
+pub fn append_history_item(item: HistoryItem) -> Result<Vec<HistoryItem>, HistoryError> {
+    let mut items = load_history();
+    push_history_item(&mut items, item);
     save_history(&items)?;
     Ok(items)
 }
@@ -109,9 +118,10 @@ mod tests {
     }
 
     #[test]
-    fn test_max_history_items_truncation() {
-        let mut items: Vec<HistoryItem> = (0..60)
-            .map(|i| HistoryItem {
+    fn test_push_history_item_truncation_and_order() {
+        let mut items = Vec::new();
+        for i in 0..60 {
+            let item = HistoryItem {
                 id: format!("hist_{}", i),
                 timestamp: "2026-09-08 12:00:00".to_string(),
                 raw_text: format!("raw {}", i),
@@ -119,45 +129,12 @@ mod tests {
                 stt_duration_ms: 100,
                 llm_duration_ms: 200,
                 total_duration_ms: 300,
-            })
-            .collect();
-
-        assert_eq!(items.len(), 60);
-        if items.len() > MAX_HISTORY_ITEMS {
-            items.truncate(MAX_HISTORY_ITEMS);
+            };
+            push_history_item(&mut items, item);
         }
+
         assert_eq!(items.len(), MAX_HISTORY_ITEMS);
-        assert_eq!(items[0].id, "hist_0");
-        assert_eq!(items[49].id, "hist_49");
-    }
-
-    #[test]
-    fn test_history_prepending_order() {
-        let mut items = Vec::new();
-        let item1 = HistoryItem {
-            id: "hist_1".to_string(),
-            timestamp: "2026-09-08 12:00:00".to_string(),
-            raw_text: "first".to_string(),
-            polished_text: "First".to_string(),
-            stt_duration_ms: 100,
-            llm_duration_ms: 150,
-            total_duration_ms: 250,
-        };
-        let item2 = HistoryItem {
-            id: "hist_2".to_string(),
-            timestamp: "2026-09-08 12:01:00".to_string(),
-            raw_text: "second".to_string(),
-            polished_text: "Second".to_string(),
-            stt_duration_ms: 120,
-            llm_duration_ms: 180,
-            total_duration_ms: 300,
-        };
-
-        items.insert(0, item1);
-        items.insert(0, item2);
-
-        // Newest item should be at index 0
-        assert_eq!(items[0].id, "hist_2");
-        assert_eq!(items[1].id, "hist_1");
+        assert_eq!(items[0].id, "hist_59");
+        assert_eq!(items[49].id, "hist_10");
     }
 }

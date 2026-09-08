@@ -15,7 +15,7 @@ use audio::{AudioDevice, AudioRecorder};
 use daemon::{OverlayController, TrayManager};
 use hotkey::{HotkeyEvent, HotkeyManager};
 use injection::ClipboardManager;
-use storage::{load_config, save_config, AppConfig, HistoryItem};
+use storage::{load_config, save_config, AppConfig, HistoryItem, push_history_item};
 
 pub struct AppState {
     pub audio_recorder: Arc<Mutex<AudioRecorder>>,
@@ -34,11 +34,12 @@ fn get_transcription_history(state: State<'_, AppState>) -> Result<Vec<HistoryIt
 
 #[tauri::command]
 fn clear_transcription_history(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
-    {
-        let mut h = state.history.lock();
-        h.clear();
-    }
-    storage::clear_history().map_err(|e| e.to_string())?;
+    let mut h = state.history.lock();
+    storage::clear_history().map_err(|e| {
+        eprintln!("[vt-voice] Failed to clear transcription history: {}", e);
+        e.to_string()
+    })?;
+    h.clear();
     let _ = app.emit("history-cleared", ());
     Ok(())
 }
@@ -233,8 +234,14 @@ async fn transcribe_and_polish(
     )
     .await
     .map_err(|e| e.to_string())?;
+    if raw_text.trim().is_empty() {
+        return Ok(AiPipelineResult {
+            raw_text: String::new(),
+            polished_text: String::new(),
+            duration_ms: total_start.elapsed().as_millis() as u64,
+        });
+    }
     let stt_duration_ms = stt_start.elapsed().as_millis() as u64;
-
     let (polished_text, llm_duration_ms) = if !enable_polish {
         (raw_text.clone(), 0)
     } else {
@@ -265,15 +272,16 @@ async fn transcribe_and_polish(
         llm_duration_ms,
         total_duration_ms,
     };
-    {
+    let history_snapshot = {
         let mut h = state.history.lock();
-        h.insert(0, history_item.clone());
-        if h.len() > storage::MAX_HISTORY_ITEMS {
-            h.truncate(storage::MAX_HISTORY_ITEMS);
-        }
-        let _ = storage::save_history(&h);
+        push_history_item(&mut h, history_item.clone());
+        h.clone()
+    };
+    if let Err(e) = storage::save_history(&history_snapshot) {
+        eprintln!("[vt-voice] Failed to persist transcription history: {}", e);
+    } else {
+        let _ = app.emit("history-updated", &history_item);
     }
-    let _ = app.emit("history-updated", &history_item);
 
     Ok(AiPipelineResult {
         raw_text,
@@ -522,15 +530,16 @@ pub fn run() {
                                     llm_duration_ms,
                                     total_duration_ms,
                                 };
-                                {
+                                let history_snapshot = {
                                     let mut h = history_async.lock();
-                                    h.insert(0, history_item.clone());
-                                    if h.len() > storage::MAX_HISTORY_ITEMS {
-                                        h.truncate(storage::MAX_HISTORY_ITEMS);
-                                    }
-                                    let _ = storage::save_history(&h);
+                                    push_history_item(&mut h, history_item.clone());
+                                    h.clone()
+                                };
+                                if let Err(e) = storage::save_history(&history_snapshot) {
+                                    eprintln!("[vt-voice] Failed to persist transcription history: {}", e);
+                                } else {
+                                    let _ = app_async.emit("history-updated", &history_item);
                                 }
-                                let _ = app_async.emit("history-updated", &history_item);
 
                                 TrayManager::set_idle(&app_async);
                             });
