@@ -22,6 +22,7 @@
         "cmdk": "^1.1.1",
         "lucide-react": "^1.40.0",
         "react": "^19.2.8",
+        "react-confirm": "^0.5.0",
         "react-dom": "^19.2.8",
         "tailwind-merge": "^3.6.0",
         "tailwindcss-animate": "^1.0.7",
@@ -474,6 +475,8 @@
     "queue-microtask": ["queue-microtask@1.2.3", "", {}, "sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A=="],
 
     "react": ["react@19.2.8", "", {}, "sha512-PWaYA1L/q9u2u7xYQi+Y3L3Yfnie7XyLeaJICV1MGD6LprsBxcAqGjYyr0eY3p+QdsA+x/Irkt4Qif8D63+Sbw=="],
+
+    "react-confirm": ["react-confirm@0.5.0", "", { "peerDependencies": { "react": ">=18.x", "react-dom": ">=18.x" } }, "sha512-pCGpMrgA1/ERlLnGeUiUnURk2hq4k1mep7QDOLibUNITTkJzcKj6tvGRZk3FnQ06GiGtUffMJmBioqewNVO2Ag=="],
 
     "react-dom": ["react-dom@19.2.8", "", { "dependencies": { "scheduler": "^0.27.0" }, "peerDependencies": { "react": "^19.2.8" } }, "sha512-rVprimfGBG3DR+Tq0IQG2DT5PxKth1WIGDmj5yPmlzr4YBe7uyE+Du4oVqTDXZSHGGGXRtTJEGSSePyQCMBglQ=="],
 
