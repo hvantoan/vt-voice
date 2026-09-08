@@ -15,7 +15,7 @@ use audio::{AudioDevice, AudioRecorder};
 use daemon::{OverlayController, TrayManager};
 use hotkey::{HotkeyEvent, HotkeyManager};
 use injection::ClipboardManager;
-use storage::{load_config, save_config, AppConfig};
+use storage::{load_config, save_config, AppConfig, HistoryItem, push_history_item};
 
 pub struct AppState {
     pub audio_recorder: Arc<Mutex<AudioRecorder>>,
@@ -24,6 +24,24 @@ pub struct AppState {
     pub overlay_controller: Arc<OverlayController>,
     pub http_client: Arc<AiHttpClient>,
     pub config: Arc<Mutex<AppConfig>>,
+    pub history: Arc<Mutex<Vec<HistoryItem>>>,
+}
+
+#[tauri::command]
+fn get_transcription_history(state: State<'_, AppState>) -> Result<Vec<HistoryItem>, String> {
+    Ok(state.history.lock().clone())
+}
+
+#[tauri::command]
+fn clear_transcription_history(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    let mut h = state.history.lock();
+    storage::clear_history().map_err(|e| {
+        eprintln!("[vt-voice] Failed to clear transcription history: {}", e);
+        e.to_string()
+    })?;
+    h.clear();
+    let _ = app.emit("history-cleared", ());
+    Ok(())
 }
 
 #[tauri::command]
@@ -174,6 +192,7 @@ async fn get_available_stt_models(
 
 #[tauri::command]
 async fn transcribe_and_polish(
+    app: AppHandle,
     state: State<'_, AppState>,
     wav_bytes: Vec<u8>,
 ) -> Result<AiPipelineResult, String> {
@@ -202,7 +221,8 @@ async fn transcribe_and_polish(
         return Err(format!("Chưa cài đặt API key cho {}", provider_display));
     }
 
-    let start = std::time::Instant::now();
+    let total_start = std::time::Instant::now();
+    let stt_start = std::time::Instant::now();
     let raw_text = ai::transcribe_with_provider(
         &provider,
         &state.http_client,
@@ -214,46 +234,73 @@ async fn transcribe_and_polish(
     )
     .await
     .map_err(|e| e.to_string())?;
-
-    if !enable_polish {
-        let duration_ms = start.elapsed().as_millis() as u64;
+    if raw_text.trim().is_empty() {
         return Ok(AiPipelineResult {
-            raw_text: raw_text.clone(),
-            polished_text: raw_text,
-            duration_ms,
+            raw_text: String::new(),
+            polished_text: String::new(),
+            duration_ms: total_start.elapsed().as_millis() as u64,
         });
     }
-
-    let groq_key = storage::get_provider_key("groq")
-        .map_err(|e| e.to_string())?
-        .unwrap_or_default();
-
-    let polished_text = if !groq_key.trim().is_empty() {
-        match ai::polish_grammar(&state.http_client, &groq_key, &raw_text, Some(&sys_prompt)).await {
-            Ok(p) => p,
-            Err(_) => ai::LocalPolisher::polish(&raw_text),
-        }
+    let stt_duration_ms = stt_start.elapsed().as_millis() as u64;
+    let (polished_text, llm_duration_ms) = if !enable_polish {
+        (raw_text.clone(), 0)
     } else {
-        ai::LocalPolisher::polish(&raw_text)
+        let groq_key = storage::get_provider_key("groq")
+            .map_err(|e| e.to_string())?
+            .unwrap_or_default();
+
+        let llm_start = std::time::Instant::now();
+        let polished = if !groq_key.trim().is_empty() {
+            match ai::polish_grammar(&state.http_client, &groq_key, &raw_text, Some(&sys_prompt)).await {
+                Ok(p) => p,
+                Err(_) => ai::LocalPolisher::polish(&raw_text),
+            }
+        } else {
+            ai::LocalPolisher::polish(&raw_text)
+        };
+        (polished, llm_start.elapsed().as_millis() as u64)
     };
 
-    let duration_ms = start.elapsed().as_millis() as u64;
+    let total_duration_ms = total_start.elapsed().as_millis() as u64;
+
+    let history_item = HistoryItem {
+        id: format!("hist_{}", chrono::Utc::now().timestamp_micros()),
+        timestamp: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+        raw_text: raw_text.clone(),
+        polished_text: polished_text.clone(),
+        stt_duration_ms,
+        llm_duration_ms,
+        total_duration_ms,
+    };
+    let history_snapshot = {
+        let mut h = state.history.lock();
+        push_history_item(&mut h, history_item.clone());
+        h.clone()
+    };
+    if let Err(e) = storage::save_history(&history_snapshot) {
+        eprintln!("[vt-voice] Failed to persist transcription history: {}", e);
+    } else {
+        let _ = app.emit("history-updated", &history_item);
+    }
+
     Ok(AiPipelineResult {
         raw_text,
         polished_text,
-        duration_ms,
+        duration_ms: total_duration_ms,
     })
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let initial_config = load_config();
+    let initial_history = storage::load_history();
     let audio_recorder = Arc::new(Mutex::new(AudioRecorder::new()));
     let hotkey_manager = Arc::new(Mutex::new(HotkeyManager::new()));
     let clipboard_manager = Arc::new(ClipboardManager::new());
     let overlay_controller = Arc::new(OverlayController::new());
     let http_client = Arc::new(AiHttpClient::new());
     let config = Arc::new(Mutex::new(initial_config.clone()));
+    let history = Arc::new(Mutex::new(initial_history));
 
     let (hotkey_tx, hotkey_rx) = unbounded::<HotkeyEvent>();
 
@@ -274,8 +321,8 @@ pub fn run() {
         overlay_controller: Arc::clone(&overlay_controller),
         http_client: Arc::clone(&http_client),
         config: Arc::clone(&config),
+        history: Arc::clone(&history),
     };
-
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
@@ -307,6 +354,7 @@ pub fn run() {
             let clipboard_loop = Arc::clone(&clipboard_manager);
             let http_loop = Arc::clone(&http_client);
             let config_loop = Arc::clone(&config);
+            let history_loop = Arc::clone(&history);
 
             std::thread::spawn(move || {
                 while let Ok(event) = hotkey_rx.recv() {
@@ -347,8 +395,10 @@ pub fn run() {
                             let clipboard_async = Arc::clone(&clipboard_loop);
                             let http_async = Arc::clone(&http_loop);
                             let config_async = Arc::clone(&config_loop);
+                            let history_async = Arc::clone(&history_loop);
 
                             tauri::async_runtime::spawn(async move {
+                                let total_start = std::time::Instant::now();
                                 let (provider, model, enable_polish, custom_endpoint, vocab, sys_prompt) = {
                                     let cfg = config_async.lock();
                                     (
@@ -378,6 +428,7 @@ pub fn run() {
                                 }
 
                                 // 1. Transcribe with active provider
+                                let stt_start = std::time::Instant::now();
                                 let transcribe_res = ai::transcribe_with_provider(
                                     &provider,
                                     &http_async,
@@ -406,6 +457,8 @@ pub fn run() {
                                     }
                                 };
 
+                                let stt_duration_ms = stt_start.elapsed().as_millis() as u64;
+
                                 if raw_text.trim().is_empty() {
                                     overlay_async.hide(&app_async);
                                     TrayManager::set_idle(&app_async);
@@ -413,12 +466,13 @@ pub fn run() {
                                 }
 
                                 // 2. Pure STT vs Full LLM Polish
-                                let text_to_inject = if !enable_polish {
+                                let (text_to_inject, llm_duration_ms) = if !enable_polish {
                                     // Direct verbatim insertion in Pure STT mode without regex or heuristic processing
-                                    raw_text
+                                    (raw_text.clone(), 0)
                                 } else {
+                                    let llm_start = std::time::Instant::now();
                                     let groq_key = storage::get_provider_key("groq").unwrap_or(None).unwrap_or_default();
-                                    if !groq_key.trim().is_empty() {
+                                    let polished = if !groq_key.trim().is_empty() {
                                         match ai::polish_grammar(
                                             &http_async,
                                             &groq_key,
@@ -432,7 +486,8 @@ pub fn run() {
                                         }
                                     } else {
                                         ai::LocalPolisher::polish(&raw_text)
-                                    }
+                                    };
+                                    (polished, llm_start.elapsed().as_millis() as u64)
                                 };
 
                                 if text_to_inject.trim().is_empty() {
@@ -463,6 +518,27 @@ pub fn run() {
                                             &format!("Lỗi dán: {}", err),
                                         );
                                     }
+                                }
+
+                                let total_duration_ms = total_start.elapsed().as_millis() as u64;
+                                let history_item = HistoryItem {
+                                    id: format!("hist_{}", chrono::Utc::now().timestamp_micros()),
+                                    timestamp: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+                                    raw_text,
+                                    polished_text: text_to_inject,
+                                    stt_duration_ms,
+                                    llm_duration_ms,
+                                    total_duration_ms,
+                                };
+                                let history_snapshot = {
+                                    let mut h = history_async.lock();
+                                    push_history_item(&mut h, history_item.clone());
+                                    h.clone()
+                                };
+                                if let Err(e) = storage::save_history(&history_snapshot) {
+                                    eprintln!("[vt-voice] Failed to persist transcription history: {}", e);
+                                } else {
+                                    let _ = app_async.emit("history-updated", &history_item);
                                 }
 
                                 TrayManager::set_idle(&app_async);
@@ -507,6 +583,8 @@ pub fn run() {
             transcribe_and_polish,
             get_api_key_cmd,
             update_tray_locale_cmd,
+            get_transcription_history,
+            clear_transcription_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running vt-voice daemon");
