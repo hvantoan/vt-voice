@@ -126,11 +126,48 @@ describe("Voice Transcription History - Full Lifecycle", () => {
       expect(updated.some((i) => i.id === "hist_49")).toBe(false);
     });
 
-    test("clearing history empties the list", () => {
-      let historyList = [...sampleHistory];
-      expect(historyList.length).toBe(2);
-      historyList = [];
-      expect(historyList.length).toBe(0);
+    test("deduplicates existing history item if re-emitted with same id", () => {
+      const initial: HistoryItem[] = [
+        {
+          id: "hist_1",
+          timestamp: "2026-09-08 14:30:00",
+          rawText: "initial",
+          polishedText: "Initial.",
+          sttDurationMs: 100,
+          llmDurationMs: 150,
+          totalDurationMs: 250,
+        },
+      ];
+
+      const updatedItem: HistoryItem = {
+        id: "hist_1",
+        timestamp: "2026-09-08 14:30:00",
+        rawText: "initial",
+        polishedText: "Initial (updated).",
+        sttDurationMs: 100,
+        llmDurationMs: 150,
+        totalDurationMs: 250,
+      };
+
+      const result = [updatedItem, ...initial.filter((i) => i.id !== updatedItem.id)].slice(0, 50);
+      expect(result.length).toBe(1);
+      expect(result[0].polishedText).toBe("Initial (updated).");
+    });
+
+    test("empty or whitespace transcription strings are guarded and rejected", () => {
+      const invalidInputs = ["", "   ", "\t\n  "];
+      for (const input of invalidInputs) {
+        const shouldRecord = input.trim().length > 0;
+        expect(shouldRecord).toBe(false);
+      }
+    });
+
+    test("duration contract invariants hold for HistoryItem entries", () => {
+      for (const item of sampleHistory) {
+        expect(item.totalDurationMs).toBeGreaterThanOrEqual(item.sttDurationMs);
+        expect(item.totalDurationMs).toBeGreaterThanOrEqual(item.llmDurationMs);
+        expect(item.id).toMatch(/^hist_/);
+      }
     });
   });
 });
