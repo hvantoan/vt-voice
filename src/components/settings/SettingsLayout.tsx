@@ -40,6 +40,10 @@ export interface AppConfig {
   custom_vocabulary: string[];
   vad_timeout_ms: number;
   locale?: LocaleOption;
+  translate_endpoint: string | null;
+  translate_model: string | null;
+  translate_binding: KeyBinding;
+  translate_mode: "push_to_talk" | "toggle";
 }
 
 export interface RawAppConfig {
@@ -58,6 +62,10 @@ export interface RawAppConfig {
   custom_vocabulary?: string[];
   vad_timeout_ms?: number;
   locale?: LocaleOption;
+  translate_endpoint?: string | null;
+  translate_model?: string | null;
+  translate_binding?: KeyBinding;
+  translate_mode?: "push_to_talk" | "toggle";
 }
 
 function hasConfigChanges(
@@ -125,6 +133,8 @@ export const SettingsLayout: React.FC = () => {
   const [sttModel, setSttModel] = useState<string>("whisper-large-v3-turbo");
   const [enablePolish, setEnablePolish] = useState<boolean>(true);
   const [customEndpoint, setCustomEndpoint] = useState<string>("");
+  const [translateEndpoint, setTranslateEndpoint] = useState<string>("");
+  const [translateModel, setTranslateModel] = useState<string>("");
 
   const [hasAiKey, setHasAiKey] = useState<boolean>(false);
 
@@ -182,6 +192,10 @@ export const SettingsLayout: React.FC = () => {
         setEnablePolish(patch.enable_polish);
       if (patch.custom_endpoint !== undefined)
         setCustomEndpoint(patch.custom_endpoint || "");
+      if (patch.translate_endpoint !== undefined)
+        setTranslateEndpoint(patch.translate_endpoint || "");
+      if (patch.translate_model !== undefined)
+        setTranslateModel(patch.translate_model || "");
       if (patch.system_prompt !== undefined)
         setSystemPrompt(patch.system_prompt);
       if (patch.custom_vocabulary !== undefined)
@@ -303,6 +317,24 @@ export const SettingsLayout: React.FC = () => {
     [saveConfigPatch],
   );
 
+  const handleTranslateEndpointCommit = useCallback(
+    (url: string) => {
+      saveConfigPatch({
+        translate_endpoint: url.trim() ? url.trim() : null,
+      });
+    },
+    [saveConfigPatch],
+  );
+
+  const handleTranslateModelCommit = useCallback(
+    (model: string) => {
+      saveConfigPatch({
+        translate_model: model.trim() ? model.trim() : null,
+      });
+    },
+    [saveConfigPatch],
+  );
+
   const handleSystemPromptCommit = useCallback(
     (prompt: string) => {
       saveConfigPatch({ system_prompt: prompt });
@@ -346,6 +378,17 @@ export const SettingsLayout: React.FC = () => {
             custom_vocabulary: cfg.custom_vocabulary || [],
             vad_timeout_ms: cfg.vad_timeout_ms || 700,
             locale: (cfg.locale as LocaleOption) || "system",
+            translate_endpoint: cfg.translate_endpoint || null,
+            translate_model: cfg.translate_model || null,
+            translate_binding: cfg.translate_binding || {
+              code: 0x54,
+              name: "Alt+T",
+              ctrl: false,
+              alt: true,
+              shift: false,
+              win: false,
+            },
+            translate_mode: cfg.translate_mode || "push_to_talk",
           };
           if (cfg.locale) {
             setLocale(cfg.locale as LocaleOption);
@@ -361,6 +404,8 @@ export const SettingsLayout: React.FC = () => {
           setSttModel(fullConfig.stt_model);
           setEnablePolish(fullConfig.enable_polish);
           setCustomEndpoint(fullConfig.custom_endpoint || "");
+          setTranslateEndpoint(fullConfig.translate_endpoint || "");
+          setTranslateModel(fullConfig.translate_model || "");
           setSystemPrompt(fullConfig.system_prompt);
           setDefaultPrompt(fullConfig.system_prompt);
           setCustomVocab(fullConfig.custom_vocabulary);
@@ -666,6 +711,12 @@ export const SettingsLayout: React.FC = () => {
               customVocab={customVocab}
               setCustomVocab={handleCustomVocabChange}
               defaultPrompt={defaultPrompt}
+              translateEndpoint={translateEndpoint}
+              setTranslateEndpoint={setTranslateEndpoint}
+              onTranslateEndpointCommit={handleTranslateEndpointCommit}
+              translateModel={translateModel}
+              setTranslateModel={setTranslateModel}
+              onTranslateModelCommit={handleTranslateModelCommit}
             />
           </TabsContent>
 

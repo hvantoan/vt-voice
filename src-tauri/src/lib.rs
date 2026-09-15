@@ -12,9 +12,12 @@ use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 
 use ai::{AiHttpClient, AiPipelineResult, SttModelInfo};
 use audio::{AudioDevice, AudioRecorder};
-use daemon::{OverlayController, TrayManager};
-use hotkey::{HotkeyEvent, HotkeyManager};
-use injection::ClipboardManager;
+use daemon::{OverlayController, TranslateOverlayController, TrayManager};
+use hotkey::{
+    set_translate_last_result, set_translate_visible, translate_last_result, translate_visible,
+    HotkeyEvent, HotkeyManager,
+};
+use injection::{capture_selected_text, ClipboardManager, SelectionResult};
 use storage::{load_config, save_config, AppConfig, HistoryItem, push_history_item};
 
 pub struct AppState {
@@ -22,6 +25,7 @@ pub struct AppState {
     pub hotkey_manager: Arc<Mutex<HotkeyManager>>,
     pub clipboard_manager: Arc<ClipboardManager>,
     pub overlay_controller: Arc<OverlayController>,
+    pub translate_overlay: Arc<TranslateOverlayController>,
     pub http_client: Arc<AiHttpClient>,
     pub config: Arc<Mutex<AppConfig>>,
     pub history: Arc<Mutex<Vec<HistoryItem>>>,
@@ -97,7 +101,7 @@ fn save_app_config(
     state
         .hotkey_manager
         .lock()
-        .update_config(config.hotkey_binding.clone(), config.hotkey_mode);
+        .update_config(config.hotkey_binding.clone(), config.hotkey_mode, Some(config.translate_binding.clone()));
     if locale_changed {
         let effective_locale = daemon::tray::TrayStrings::resolve_locale(&config.locale);
         let _ = TrayManager::update_tray_locale(&app, &effective_locale);
@@ -159,6 +163,26 @@ fn delete_provider_api_key(provider: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn hide_translate_overlay(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    state.translate_overlay.hide(&app);
+    set_translate_visible(false);
+    Ok(())
+}
+
+#[tauri::command]
+fn copy_translation(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    if let Some(text) = translate_last_result() {
+        state
+            .clipboard_manager
+            .set_text_transient(&text)
+            .map_err(|e| e.to_string())?;
+    }
+    state.translate_overlay.hide(&app);
+    set_translate_visible(false);
+    Ok(())
+}
+
+#[tauri::command]
 async fn test_ai_connection(
     state: State<'_, AppState>,
     api_key: String,
@@ -205,49 +229,206 @@ async fn get_available_stt_models(
 }
 
 #[tauri::command]
+fn get_providers() -> Result<Vec<storage::ProviderConfig>, String> {
+    Ok(storage::load_models_catalog().providers)
+}
+
+#[tauri::command]
+fn save_provider(provider: storage::ProviderConfig) -> Result<(), String> {
+    storage::upsert_provider(provider).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_provider_cmd(id: String, state: State<'_, AppState>) -> Result<(), String> {
+    let cfg = state.config.lock();
+    for (feature, profile) in &cfg.feature_profiles {
+        if profile.provider_id.eq_ignore_ascii_case(&id) {
+            return Err(format!(
+                "Không thể xóa nhà cung cấp vì đang được sử dụng bởi tính năng '{}'. Vui lòng chuyển tính năng sang nhà cung cấp khác trước khi xóa.",
+                feature
+            ));
+        }
+    }
+    drop(cfg);
+
+    storage::delete_provider(&id).map_err(|e| e.to_string())?;
+    let _ = storage::delete_provider_key(&id);
+    Ok(())
+}
+
+#[tauri::command]
+async fn fetch_provider_models(
+    state: State<'_, AppState>,
+    provider_id: String,
+) -> Result<Vec<ai::DiscoveredModel>, String> {
+    let provider = storage::get_provider(&provider_id)
+        .ok_or_else(|| format!("Không tìm thấy nhà cung cấp '{}'", provider_id))?;
+    let key = storage::get_provider_key(&provider_id).map_err(|e| e.to_string())?;
+    ai::fetch_openai_models(&state.http_client, &provider.base_url, key.as_deref())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn add_models_to_provider(
+    provider_id: String,
+    models: Vec<storage::ModelEntry>,
+) -> Result<(), String> {
+    storage::add_models_to_allowlist(&provider_id, models).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn remove_model_from_provider(
+    provider_id: String,
+    model_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let cfg = state.config.lock();
+    for (feature, profile) in &cfg.feature_profiles {
+        if profile.provider_id.eq_ignore_ascii_case(&provider_id)
+            && profile.model_id.as_deref() == Some(&model_id)
+        {
+            return Err(format!(
+                "Không thể xóa model '{}' vì đang được sử dụng bởi tính năng '{}'.",
+                model_id, feature
+            ));
+        }
+    }
+    drop(cfg);
+
+    storage::remove_model_from_allowlist(&provider_id, &model_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn test_provider_endpoint_cmd(
+    state: State<'_, AppState>,
+    base_url: String,
+    api_key: Option<String>,
+) -> Result<u64, String> {
+    ai::test_endpoint_latency(&state.http_client, &base_url, api_key.as_deref())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_feature_profiles(
+    state: State<'_, AppState>,
+) -> Result<std::collections::HashMap<String, storage::FeatureProfile>, String> {
+    Ok(state.config.lock().feature_profiles.clone())
+}
+
+#[tauri::command]
+fn set_feature_profile(
+    state: State<'_, AppState>,
+    feature: String,
+    profile: storage::FeatureProfile,
+) -> Result<(), String> {
+    if profile.provider_id == "google_free" {
+        if feature != "translate" {
+            return Err("Google Translate miễn phí chỉ hỗ trợ cho tính năng Dịch thuật.".to_string());
+        }
+    } else {
+        let catalog = storage::load_models_catalog();
+        let provider = catalog
+            .providers
+            .iter()
+            .find(|p| p.id.eq_ignore_ascii_case(&profile.provider_id))
+            .ok_or_else(|| format!("Nhà cung cấp '{}' không tồn tại.", profile.provider_id))?;
+
+        let model_id = profile
+            .model_id
+            .as_ref()
+            .ok_or_else(|| "Model ID không được để trống cho nhà cung cấp này.".to_string())?;
+
+        if !provider.models.iter().any(|m| m.id == *model_id) {
+            return Err(format!(
+                "Model '{}' chưa có trong danh sách cho phép (allowlist) của '{}'. Vui lòng thêm model vào allowlist trước khi chọn.",
+                model_id, provider.name
+            ));
+        }
+    }
+
+    let mut cfg = state.config.lock();
+    cfg.feature_profiles.insert(feature.clone(), profile.clone());
+    if feature == "stt" {
+        cfg.active_provider = profile.provider_id.clone();
+        if let Some(ref mid) = profile.model_id {
+            cfg.stt_model = mid.clone();
+        }
+    } else if feature == "polish" {
+        if let Some(ref mid) = profile.model_id {
+            cfg.polish_model = mid.clone();
+        }
+    } else if feature == "translate" {
+        if profile.provider_id != "google_free" {
+            if let Some(prov) = storage::get_provider(&profile.provider_id) {
+                cfg.translate_endpoint = Some(prov.base_url);
+            }
+            cfg.translate_model = profile.model_id.clone();
+        } else {
+            cfg.translate_endpoint = None;
+            cfg.translate_model = None;
+        }
+    }
+    storage::save_config(&cfg).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 async fn transcribe_and_polish(
     app: AppHandle,
     state: State<'_, AppState>,
     wav_bytes: Vec<u8>,
 ) -> Result<AiPipelineResult, String> {
-    let (provider, model, enable_polish, custom_endpoint, vocab, sys_prompt) = {
+    let (stt_profile, polish_profile, enable_polish, vocab, sys_prompt) = {
         let cfg = state.config.lock();
+        let stt = cfg.feature_profiles.get("stt").cloned().unwrap_or_else(|| storage::FeatureProfile {
+            provider_id: cfg.active_provider.clone(),
+            model_id: Some(cfg.stt_model.clone()),
+        });
+        let polish = cfg.feature_profiles.get("polish").cloned().unwrap_or_else(|| storage::FeatureProfile {
+            provider_id: cfg.active_provider.clone(),
+            model_id: Some(cfg.polish_model.clone()),
+        });
         (
-            cfg.active_provider.clone(),
-            cfg.stt_model.clone(),
+            stt,
+            polish,
             cfg.enable_polish,
-            cfg.custom_endpoint.clone(),
             cfg.custom_vocabulary.clone(),
             cfg.system_prompt.clone(),
         )
     };
 
-    let key = storage::get_provider_key(&provider)
+    let stt_provider = storage::get_provider(&stt_profile.provider_id)
+        .ok_or_else(|| format!("Nhà cung cấp STT '{}' không tồn tại", stt_profile.provider_id))?;
+
+    let stt_key = storage::get_provider_key(&stt_profile.provider_id)
         .map_err(|e| e.to_string())?
         .unwrap_or_default();
 
-    if key.trim().is_empty() {
-        let provider_display = match provider.as_str() {
-            "openrouter" => "OpenRouter",
-            "custom" => "Custom Endpoint",
-            _ => "Groq",
-        };
-        return Err(format!("Chưa cài đặt API key cho {}", provider_display));
+    if stt_key.trim().is_empty() {
+        return Err(format!("Chưa cài đặt API key cho {}", stt_provider.name));
     }
+
+    let stt_model = stt_profile
+        .model_id
+        .as_deref()
+        .unwrap_or("whisper-large-v3-turbo");
 
     let total_start = std::time::Instant::now();
     let stt_start = std::time::Instant::now();
-    let raw_text = ai::transcribe_with_provider(
-        &provider,
+
+    let raw_text = ai::transcribe_with_endpoint(
         &state.http_client,
-        &key,
-        &model,
+        &stt_provider.base_url,
+        &stt_key,
+        stt_model,
         wav_bytes,
         &vocab,
-        custom_endpoint.as_deref(),
     )
     .await
     .map_err(|e| e.to_string())?;
+
     if raw_text.trim().is_empty() {
         return Ok(AiPipelineResult {
             raw_text: String::new(),
@@ -256,18 +437,37 @@ async fn transcribe_and_polish(
         });
     }
     let stt_duration_ms = stt_start.elapsed().as_millis() as u64;
+
     let (polished_text, llm_duration_ms) = if !enable_polish {
         (raw_text.clone(), 0)
     } else {
-        let groq_key = storage::get_provider_key("groq")
+        let llm_start = std::time::Instant::now();
+        let polish_key = storage::get_provider_key(&polish_profile.provider_id)
             .map_err(|e| e.to_string())?
             .unwrap_or_default();
 
-        let llm_start = std::time::Instant::now();
-        let polished = if !groq_key.trim().is_empty() {
-            match ai::polish_grammar(&state.http_client, &groq_key, &raw_text, Some(&sys_prompt)).await {
-                Ok(p) => p,
-                Err(_) => ai::LocalPolisher::polish(&raw_text),
+        let polished = if !polish_key.trim().is_empty() {
+            if polish_profile.provider_id.eq_ignore_ascii_case("groq") {
+                match ai::polish_grammar(&state.http_client, &polish_key, &raw_text, Some(&sys_prompt)).await {
+                    Ok(p) => p,
+                    Err(_) => ai::LocalPolisher::polish(&raw_text),
+                }
+            } else if let Some(polish_provider) = storage::get_provider(&polish_profile.provider_id) {
+                let model = polish_profile.model_id.as_deref().unwrap_or("llama-3.3-70b-versatile");
+                match ai::translate_chat(
+                    &state.http_client,
+                    Some(&polish_provider.base_url),
+                    &polish_key,
+                    model,
+                    &raw_text,
+                )
+                .await
+                {
+                    Ok(p) => p,
+                    Err(_) => ai::LocalPolisher::polish(&raw_text),
+                }
+            } else {
+                ai::LocalPolisher::polish(&raw_text)
             }
         } else {
             ai::LocalPolisher::polish(&raw_text)
@@ -312,6 +512,7 @@ pub fn run() {
     let hotkey_manager = Arc::new(Mutex::new(HotkeyManager::new()));
     let clipboard_manager = Arc::new(ClipboardManager::new());
     let overlay_controller = Arc::new(OverlayController::new());
+    let translate_overlay = Arc::new(TranslateOverlayController::new());
     let http_client = Arc::new(AiHttpClient::new());
     let config = Arc::new(Mutex::new(initial_config.clone()));
     let history = Arc::new(Mutex::new(initial_history));
@@ -324,6 +525,7 @@ pub fn run() {
         let _ = hm.start(
             initial_config.hotkey_binding,
             initial_config.hotkey_mode,
+            Some(initial_config.translate_binding.clone()),
             hotkey_tx,
         );
     }
@@ -333,6 +535,7 @@ pub fn run() {
         hotkey_manager: Arc::clone(&hotkey_manager),
         clipboard_manager: Arc::clone(&clipboard_manager),
         overlay_controller: Arc::clone(&overlay_controller),
+        translate_overlay: Arc::clone(&translate_overlay),
         http_client: Arc::clone(&http_client),
         config: Arc::clone(&config),
         history: Arc::clone(&history),
@@ -353,6 +556,7 @@ pub fn run() {
             let _ = TrayManager::update_tray_locale(&app_handle, &initial_locale);
             // 2. Setup Overlay Window HWND properties
             OverlayController::setup_window(&app_handle);
+            TranslateOverlayController::setup_window(&app_handle);
 
             // Setup Main Settings Window theme & suppress white borders on Win11
             if let Some(main_win) = app_handle.get_webview_window("main") {
@@ -365,6 +569,7 @@ pub fn run() {
             let app_loop = app_handle.clone();
             let recorder_loop = Arc::clone(&audio_recorder);
             let overlay_loop = Arc::clone(&overlay_controller);
+            let translate_overlay_loop = Arc::clone(&translate_overlay);
             let clipboard_loop = Arc::clone(&clipboard_manager);
             let http_loop = Arc::clone(&http_client);
             let config_loop = Arc::clone(&config);
@@ -373,6 +578,159 @@ pub fn run() {
             std::thread::spawn(move || {
                 while let Ok(event) = hotkey_rx.recv() {
                     match event {
+                        HotkeyEvent::TranslateTrigger => {
+                            // The capture + translate is async; run the whole arm on the tauri runtime.
+                            // Clone the loop handles so the async block doesn't move out the originals
+                            // still used by the Pressed/Released arms.
+                            let tl = Arc::clone(&translate_overlay_loop);
+                            let ap = app_loop.clone();
+                            let cb = Arc::clone(&clipboard_loop);
+                            let hp = Arc::clone(&http_loop);
+                            let cf = Arc::clone(&config_loop);
+                            tauri::async_runtime::spawn(async move {
+                                // Toggle: already showing → hide.
+                                if translate_visible() {
+                                    tl.hide(&ap);
+                                    set_translate_visible(false);
+                                    return;
+                                }
+
+                                // Capture the current selection (guarded Ctrl+C).
+                                let selection = match capture_selected_text(Arc::clone(&cb)).await {
+                                    Ok(result) => result,
+                                    Err(err) => {
+                                        tl.emit_payload(
+                                            &ap,
+                                            &daemon::TranslatePayload {
+                                                source_text: String::new(),
+                                                source_lang: "auto".into(),
+                                                target_lang: "vi".into(),
+                                                is_loading: false,
+                                                error: Some(format!("Không đọc được vùng chọn: {}", err)),
+                                            },
+                                        );
+                                        tl.show_at_cursor(&ap);
+                                        set_translate_visible(true);
+                                        // Auto-hide after the error is shown.
+                                        tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
+                                        tl.hide(&ap);
+                                        set_translate_visible(false);
+                                        return;
+                                    }
+                                };
+
+                                let text = match selection {
+                                    SelectionResult::Captured { text } => text,
+                                    SelectionResult::TargetElevated => {
+                                        tl.emit_payload(
+                                            &ap,
+                                            &daemon::TranslatePayload {
+                                                source_text: String::new(),
+                                                source_lang: "auto".into(),
+                                                target_lang: "vi".into(),
+                                                is_loading: false,
+                                                error: Some("Không thể sao chép: cửa sổ đang chạy với quyền quản trị viên".into()),
+                                            },
+                                        );
+                                        tl.show_at_cursor(&ap);
+                                        set_translate_visible(true);
+                                        tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
+                                        tl.hide(&ap);
+                                        set_translate_visible(false);
+                                        return;
+                                    }
+                                    SelectionResult::EmptySelection => return, // nothing selected → do nothing
+                                };
+
+                                // Show "loading…" popover at the cursor, then translate in the background.
+                                tl.emit_payload(
+                                    &ap,
+                                    &daemon::TranslatePayload {
+                                        source_text: text.clone(),
+                                        source_lang: "auto".into(),
+                                        target_lang: "vi".into(),
+                                        is_loading: true,
+                                        error: None,
+                                    },
+                                );
+                                tl.show_at_cursor(&ap);
+                                set_translate_visible(true);
+
+                                // Điều phối theo feature_profiles["translate"]
+                                let translate_profile = {
+                                    let cfg = cf.lock();
+                                    cfg.feature_profiles
+                                        .get("translate")
+                                        .cloned()
+                                        .unwrap_or_else(|| storage::FeatureProfile {
+                                            provider_id: "google_free".to_string(),
+                                            model_id: None,
+                                        })
+                                };
+
+                                let translation = if translate_profile.provider_id == "google_free" {
+                                    ai::translate::translate_google(&hp, &text).await
+                                } else if let Some(provider) = storage::get_provider(&translate_profile.provider_id) {
+                                    if let Some(api_key) = storage::get_provider_key(&translate_profile.provider_id).unwrap_or(None) {
+                                        let model = translate_profile.model_id.as_deref().unwrap_or("llama-3.3-70b-versatile");
+                                        ai::translate::translate_chat(
+                                            &hp,
+                                            Some(&provider.base_url),
+                                            &api_key,
+                                            model,
+                                            &text,
+                                        )
+                                        .await
+                                    } else {
+                                        Err(ai::AiError::MissingApiKey)
+                                    }
+                                } else {
+                                    ai::translate::translate_google(&hp, &text).await
+                                };
+
+                                match translation {
+                                    Ok(vi) => {
+                                        set_translate_last_result(&vi);
+                                        tl.emit_result(
+                                            &ap,
+                                            &daemon::TranslateResult {
+                                                translated_text: vi.clone(),
+                                                is_loading: false,
+                                            },
+                                        );
+                                        // Clipboard is written only on explicit Copy (button/Enter) —
+                                        // auto-copying here would clobber the clipboard selection capture restored.
+                                    }
+                                    Err(err) => {
+                                        tl.emit_payload(
+                                            &ap,
+                                            &daemon::TranslatePayload {
+                                                source_text: text,
+                                                source_lang: "auto".into(),
+                                                target_lang: "vi".into(),
+                                                is_loading: false,
+                                                error: Some(err.to_string()),
+                                            },
+                                        );
+                                        // Auto-hide after error.
+                                        tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
+                                        tl.hide(&ap);
+                                        set_translate_visible(false);
+                                    }
+                                }
+                            });
+                        }
+                        HotkeyEvent::TranslateHide => {
+                            translate_overlay_loop.hide(&app_loop);
+                            set_translate_visible(false);
+                        }
+                        HotkeyEvent::TranslateCopy => {
+                            if let Some(text) = translate_last_result() {
+                                let _ = clipboard_loop.set_text_transient(&text);
+                            }
+                            translate_overlay_loop.hide(&app_loop);
+                            set_translate_visible(false);
+                        }
                         HotkeyEvent::Pressed => {
                             // Visual Feedback: Show Overlay + Update Tray
                             overlay_loop.set_listening(&app_loop);
@@ -600,6 +958,17 @@ pub fn run() {
             get_transcription_history,
             export_transcription_history_json,
             clear_transcription_history,
+            hide_translate_overlay,
+            copy_translation,
+            get_providers,
+            save_provider,
+            delete_provider_cmd,
+            fetch_provider_models,
+            add_models_to_provider,
+            remove_model_from_provider,
+            test_provider_endpoint_cmd,
+            get_feature_profiles,
+            set_feature_profile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running vt-voice daemon");

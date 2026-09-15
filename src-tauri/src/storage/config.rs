@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -5,9 +6,42 @@ use serde::{Deserialize, Serialize};
 
 use crate::hotkey::types::{HotkeyMode, KeyBinding};
 
-const APP_DIR_NAME: &str = "com.itvan.vt-voice";
+pub const APP_DIR_NAME: &str = ".vt-voice";
+pub const LEGACY_APP_DIR_NAME: &str = "com.itvan.vt-voice";
 const CONFIG_FILE_NAME: &str = "settings.json";
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct FeatureProfile {
+    pub provider_id: String,
+    #[serde(default)]
+    pub model_id: Option<String>,
+}
+
+fn default_feature_profiles() -> HashMap<String, FeatureProfile> {
+    let mut map = HashMap::new();
+    map.insert(
+        "stt".to_string(),
+        FeatureProfile {
+            provider_id: "groq".to_string(),
+            model_id: Some("whisper-large-v3-turbo".to_string()),
+        },
+    );
+    map.insert(
+        "polish".to_string(),
+        FeatureProfile {
+            provider_id: "groq".to_string(),
+            model_id: Some("llama-3.3-70b-versatile".to_string()),
+        },
+    );
+    map.insert(
+        "translate".to_string(),
+        FeatureProfile {
+            provider_id: "google_free".to_string(),
+            model_id: None,
+        },
+    );
+    map
+}
 fn default_active_provider() -> String {
     "groq".to_string()
 }
@@ -27,6 +61,22 @@ fn default_locale() -> String {
     "system".to_string()
 }
 
+fn default_translate_binding() -> KeyBinding {
+    // Alt+T (VK_T = 0x54)
+    KeyBinding {
+        code: 0x54,
+        name: "Alt+T".to_string(),
+        ctrl: false,
+        alt: true,
+        shift: false,
+        win: false,
+    }
+}
+
+fn default_translate_mode() -> HotkeyMode {
+    HotkeyMode::PushToTalk
+}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -35,6 +85,14 @@ pub struct AppConfig {
     pub audio_device_name: Option<String>,
     pub autostart: bool,
     pub start_minimized: bool,
+    #[serde(default = "default_translate_binding")]
+    pub translate_binding: KeyBinding,
+    #[serde(default = "default_translate_mode")]
+    pub translate_mode: HotkeyMode,
+    #[serde(default)]
+    pub translate_endpoint: Option<String>,
+    #[serde(default)]
+    pub translate_model: Option<String>,
     #[serde(alias = "ai_provider", default = "default_active_provider")]
     pub active_provider: String,
     #[serde(default = "default_stt_model")]
@@ -50,6 +108,8 @@ pub struct AppConfig {
     pub vad_timeout_ms: u64,
     #[serde(default = "default_locale")]
     pub locale: String,
+    #[serde(default = "default_feature_profiles")]
+    pub feature_profiles: HashMap<String, FeatureProfile>,
 }
 
 impl Default for AppConfig {
@@ -57,6 +117,10 @@ impl Default for AppConfig {
         Self {
             hotkey_mode: HotkeyMode::PushToTalk,
             hotkey_binding: KeyBinding::default(), // Right Alt
+            translate_binding: default_translate_binding(),
+            translate_mode: HotkeyMode::PushToTalk,
+            translate_endpoint: None,
+            translate_model: None,
             audio_device_name: None,
             autostart: false,
             start_minimized: true,
@@ -83,6 +147,7 @@ impl Default for AppConfig {
             ],
             vad_timeout_ms: 700,
             locale: "system".to_string(),
+            feature_profiles: default_feature_profiles(),
         }
     }
 }
@@ -97,12 +162,39 @@ pub enum ConfigError {
     Json(#[from] serde_json::Error),
 }
 
-fn get_config_path() -> Result<PathBuf, ConfigError> {
-    let mut path = dirs::config_dir().ok_or(ConfigError::NoConfigDir)?;
-    path.push(APP_DIR_NAME);
-    if !path.exists() {
-        fs::create_dir_all(&path)?;
+pub fn get_app_dir() -> Result<PathBuf, ConfigError> {
+    ensure_app_dir_migrated()
+}
+
+pub fn ensure_app_dir_migrated() -> Result<PathBuf, ConfigError> {
+    let base = dirs::config_dir().ok_or(ConfigError::NoConfigDir)?;
+    let new_dir = base.join(APP_DIR_NAME);
+    let legacy_dir = base.join(LEGACY_APP_DIR_NAME);
+
+    if !new_dir.exists() {
+        fs::create_dir_all(&new_dir)?;
     }
+
+    // Nếu thư mục cũ tồn tại, copy an toàn các file chưa có ở thư mục mới
+    if legacy_dir.exists() {
+        let old_settings = legacy_dir.join(CONFIG_FILE_NAME);
+        let new_settings = new_dir.join(CONFIG_FILE_NAME);
+        if old_settings.exists() && !new_settings.exists() {
+            let _ = fs::copy(&old_settings, &new_settings);
+        }
+
+        let old_history = legacy_dir.join("history.json");
+        let new_history = new_dir.join("history.json");
+        if old_history.exists() && !new_history.exists() {
+            let _ = fs::copy(&old_history, &new_history);
+        }
+    }
+
+    Ok(new_dir)
+}
+
+fn get_config_path() -> Result<PathBuf, ConfigError> {
+    let mut path = get_app_dir()?;
     path.push(CONFIG_FILE_NAME);
     Ok(path)
 }
@@ -129,7 +221,47 @@ pub fn load_config() -> AppConfig {
         return AppConfig::default();
     }
 
-    serde_json::from_str(&contents).unwrap_or_default()
+    let mut cfg: AppConfig = serde_json::from_str(&contents).unwrap_or_default();
+
+    // Tự động chuyển đổi cấu hình cũ sang feature_profiles nếu chưa có
+    if cfg.feature_profiles.is_empty() {
+        cfg.feature_profiles = default_feature_profiles();
+        cfg.feature_profiles.insert(
+            "stt".to_string(),
+            FeatureProfile {
+                provider_id: cfg.active_provider.clone(),
+                model_id: Some(cfg.stt_model.clone()),
+            },
+        );
+        cfg.feature_profiles.insert(
+            "polish".to_string(),
+            FeatureProfile {
+                provider_id: cfg.active_provider.clone(),
+                model_id: Some(cfg.polish_model.clone()),
+            },
+        );
+        let trans_provider = if let Some(ep) = &cfg.translate_endpoint {
+            if ep.trim().is_empty() {
+                "google_free".to_string()
+            } else {
+                "translate".to_string()
+            }
+        } else if cfg.translate_model.is_some() {
+            "custom".to_string()
+        } else {
+            "google_free".to_string()
+        };
+        cfg.feature_profiles.insert(
+            "translate".to_string(),
+            FeatureProfile {
+                provider_id: trans_provider,
+                model_id: cfg.translate_model.clone(),
+            },
+        );
+        let _ = save_config(&cfg);
+    }
+
+    cfg
 }
 
 /// Save configuration to disk

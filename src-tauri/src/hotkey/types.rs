@@ -126,6 +126,140 @@ impl KeyBinding {
 pub enum HotkeyEvent {
     Pressed,
     Released,
+    TranslateTrigger,
+    TranslateHide,
+    TranslateCopy,
+}
+
+/// High-level action a hotkey registration drives. STT actions keep their existing
+/// hold/toggle timing; `Translate` is one-shot and release-triggered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HotkeyAction {
+    SttPushToTalk,
+    SttToggle,
+    Translate,
+}
+
+/// Per-action registration set shared by the single hook thread. This is the single source
+/// of truth for which bindings the `WH_KEYBOARD_LL` proc dispatches against.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct HotkeyRegistry {
+    pub stt_binding: Option<KeyBinding>,
+    pub stt_mode: HotkeyMode,
+    pub translate_binding: Option<KeyBinding>,
+}
+
+/// Outcome of evaluating one keyboard event against the translate binding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TranslateDecision {
+    /// Main-key event must be swallowed (never reaches the foreground app's menu accelerator).
+    pub swallow: bool,
+    /// The combo has fully released; emit a `TranslateTrigger`.
+    pub fire: bool,
+}
+
+/// Virtual-key codes for the translate popover's dismiss keys.
+pub const VK_ESCAPE: u32 = 0x1B;
+pub const VK_RETURN: u32 = 0x0D;
+
+/// What the popover-key gate should do with a key event while the translate popover is visible.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TranslateOverlayKeyAction {
+    /// Let the event reach the foreground app.
+    None,
+    /// Swallow it and hide the popover (Esc).
+    Hide,
+    /// Swallow it and copy the last result (Enter).
+    Copy,
+}
+
+/// Pure decision for Esc (hide) / Enter (copy) while the translate popover is visible.
+///
+/// The popover is `WS_EX_NOACTIVATE`, so it never receives keystrokes natively — the global hook
+/// must intercept them and the decision is pure so it can be unit-tested. The main key is consumed
+/// on the first key-*down* and `consumed` is retained, so auto-repeat key-downs and the key-up are
+/// swallowed too (otherwise holding Enter types newlines into the editor, holding Esc sends Esc to
+/// it once `hide()` flips `visible` on the down). `consumed` is cleared on the final key-up.
+///
+/// Returns `(action, new_consumed)`. When `new_consumed != 0` (or a pre-existing consumed state is
+/// active) the caller must swallow the event even if `action` is `None`.
+pub fn translate_overlay_key_decide(
+    consumed: u32,
+    vk: u32,
+    is_down: bool,
+    is_up: bool,
+    has_result: bool,
+) -> (TranslateOverlayKeyAction, u32) {
+    if consumed != 0 {
+        // A key is already consumed (held). Clear on its final key-up; swallow everything
+        // (the held key's auto-repeat downs, and any interleaved key) until it releases.
+        if vk == consumed && is_up {
+            return (TranslateOverlayKeyAction::None, 0);
+        }
+        return (TranslateOverlayKeyAction::None, consumed);
+    }
+
+    if !is_down {
+        return (TranslateOverlayKeyAction::None, 0);
+    }
+    if vk == VK_ESCAPE {
+        return (TranslateOverlayKeyAction::Hide, VK_ESCAPE);
+    }
+    // Enter is always consumed while visible (so no newline leaks into the editor behind the
+    // popover during the loading/error state); the Copy *action* is conditional on a result.
+    if vk == VK_RETURN {
+        let action = if has_result {
+            TranslateOverlayKeyAction::Copy
+        } else {
+            TranslateOverlayKeyAction::None
+        };
+        return (action, VK_RETURN);
+    }
+    (TranslateOverlayKeyAction::None, 0)
+}
+
+/// Pure decision helper for the one-shot translate hotkey.
+///
+/// `translate` fires once on **combo release** (main key and all required modifiers up), never on
+/// key-down — firing on key-down would run capture while `Alt` is still physically held, converting
+/// the injected `Ctrl+C` into `Ctrl+Alt+C`. The main key is swallowed on down *and* up so the
+/// `Alt+<letter>` menu accelerator never reaches the app; modifier events are never swallowed
+/// (otherwise the app would think `Alt` is stuck down). Both release orders are handled via the
+/// async-key-derived `main_pressed`/`mods_up` flags.
+///
+/// Pure so the two release orders can be unit-tested without a real keyboard.
+pub fn translate_swallow_decide(
+    armed: bool,
+    binding: &KeyBinding,
+    vk: u32,
+    is_down: bool,
+    is_up: bool,
+    ctrl: bool,
+    alt: bool,
+    shift: bool,
+    win: bool,
+    main_pressed: bool,
+    mods_up: bool,
+) -> (bool, TranslateDecision) {
+    let arm_press = is_down && binding.matches_press(vk, ctrl, alt, shift, win);
+    // Swallow the main-key down (the accelerator trigger) and its matching up (keep up/down
+    // balanced in the target app). Never swallow a modifier event.
+    let swallow = vk == binding.code && (arm_press || (armed && is_up));
+    // Fire on a main/modifier release while armed, only when the main key is clear and every
+    // required modifier is up.
+    let is_release_candidate = is_up && binding.matches_release(vk);
+    let fire = armed && is_release_candidate && !main_pressed && mods_up;
+
+    let new_armed = if fire {
+        false
+    } else if arm_press {
+        true
+    } else {
+        armed
+    };
+
+    (new_armed, TranslateDecision { swallow, fire })
 }
 
 /// Determines whether active hotkey tracking flags (IS_HELD / IS_TOGGLED_ON)
@@ -144,6 +278,8 @@ pub fn should_reset_hotkey_state(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::translate_overlay_key_decide;
+    use super::TranslateOverlayKeyAction;
 
     #[test]
     fn test_default_keybinding() {
@@ -294,5 +430,172 @@ mod tests {
             HotkeyMode::PushToTalk,
             HotkeyMode::PushToTalk
         ));
+    }
+
+    fn alt_t() -> KeyBinding {
+        KeyBinding {
+            code: 0x54, // T
+            name: "Alt+T".to_string(),
+            ctrl: false,
+            alt: true,
+            shift: false,
+            win: false,
+        }
+    }
+
+    #[test]
+    fn test_hotkey_registry_serde_roundtrip() {
+        let reg = HotkeyRegistry {
+            stt_binding: Some(KeyBinding::default()),
+            stt_mode: HotkeyMode::PushToTalk,
+            translate_binding: Some(alt_t()),
+        };
+        let json = serde_json::to_string(&reg).expect("serialize");
+        let back: HotkeyRegistry = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, reg);
+    }
+
+    #[test]
+    fn test_translate_action_serde() {
+        assert_eq!(
+            serde_json::to_string(&HotkeyAction::Translate).unwrap(),
+            "\"translate\""
+        );
+        let round: HotkeyAction = serde_json::from_str("\"stt_push_to_talk\"").unwrap();
+        assert_eq!(round, HotkeyAction::SttPushToTalk);
+    }
+
+    #[test]
+    fn test_translate_swallow_main_key_and_fire() {
+        let b = alt_t();
+        // main key down, Alt held → arm + swallow
+        let (armed, d) =
+            translate_swallow_decide(false, &b, 0x54, true, false, false, true, false, false, true, false);
+        assert!(armed);
+        assert!(d.swallow);
+        assert!(!d.fire);
+        // release T (Alt now up, main clear) → fire, swallowed up
+        let (armed2, d2) =
+            translate_swallow_decide(armed, &b, 0x54, false, true, false, false, false, false, false, true);
+        assert!(!armed2);
+        assert!(d2.swallow);
+        assert!(d2.fire);
+        // modifier (Alt) events never swallowed
+        let (_a, d3) =
+            translate_swallow_decide(false, &b, 0x12, true, false, false, true, false, false, false, false);
+        assert!(!d3.swallow);
+        assert!(!d3.fire);
+        let (_a, d4) =
+            translate_swallow_decide(false, &b, 0x12, false, true, false, false, false, false, false, false);
+        assert!(!d4.swallow);
+        assert!(!d4.fire);
+    }
+
+    #[test]
+    fn test_translate_release_orders() {
+        let b = alt_t();
+        // T down under Alt → armed
+        let (armed, _) =
+            translate_swallow_decide(false, &b, 0x54, true, false, false, true, false, false, true, false);
+        // Alt-up before T: T still held → must NOT fire
+        let (a2, d_alt_up) =
+            translate_swallow_decide(armed, &b, 0x12, false, true, false, false, false, false, true, false);
+        assert!(!d_alt_up.fire, "must not fire while T still held");
+        // now T releases, alt clear → fires
+        let (_a3, d_t_up) =
+            translate_swallow_decide(a2, &b, 0x54, false, true, false, false, false, false, false, true);
+        assert!(d_t_up.fire);
+    }
+
+    #[test]
+    fn test_translate_fire_clears_armed() {
+        let b = alt_t();
+        let (armed, _) =
+            translate_swallow_decide(false, &b, 0x54, true, false, false, true, false, false, true, false);
+        let (armed2, d) =
+            translate_swallow_decide(armed, &b, 0x54, false, true, false, false, false, false, false, true);
+        assert!(!armed2, "armed must clear on fire");
+        assert!(d.fire);
+    }
+
+    #[test]
+    fn test_translate_unrelated_key_does_nothing() {
+        let b = alt_t();
+        let (armed, d) =
+            translate_swallow_decide(false, &b, 0x41, true, false, false, false, false, false, false, false);
+        assert!(!armed);
+        assert!(!d.swallow);
+        assert!(!d.fire);
+    }
+
+    #[test]
+    fn test_translate_press_requires_modifiers() {
+        let b = alt_t();
+        // T down WITHOUT Alt → not a combo press, not armed, not swallowed
+        let (armed, d) =
+            translate_swallow_decide(false, &b, 0x54, true, false, false, false, false, false, false, false);
+        assert!(!armed);
+        assert!(!d.swallow);
+        assert!(!d.fire);
+    }
+
+    #[test]
+    fn esc_down_hides_and_consumes_up() {
+        let (a, consumed) = translate_overlay_key_decide(0, VK_ESCAPE, true, false, false);
+        assert_eq!(a, TranslateOverlayKeyAction::Hide);
+        assert_eq!(consumed, VK_ESCAPE);
+        // Repeat down while held: swallowed, still consumed.
+        let (a2, c2) = translate_overlay_key_decide(consumed, VK_ESCAPE, true, false, false);
+        assert_eq!(a2, TranslateOverlayKeyAction::None);
+        assert_eq!(c2, VK_ESCAPE);
+        // Key-up clears consumed.
+        let (a3, c3) = translate_overlay_key_decide(c2, VK_ESCAPE, false, true, false);
+        assert_eq!(a3, TranslateOverlayKeyAction::None);
+        assert_eq!(c3, 0);
+    }
+
+    #[test]
+    fn enter_with_result_copies() {
+        let (a, consumed) = translate_overlay_key_decide(0, VK_RETURN, true, false, true);
+        assert_eq!(a, TranslateOverlayKeyAction::Copy);
+        assert_eq!(consumed, VK_RETURN);
+        // Enter up clears consumed so the editor is not left in a swallowed state.
+        let (_, c2) = translate_overlay_key_decide(consumed, VK_RETURN, false, true, true);
+        assert_eq!(c2, 0);
+    }
+
+    #[test]
+    fn enter_without_result_consumed_but_no_copy() {
+        // Enter during loading/error (no result): still consumed so no newline leaks, but the
+        // Copy action only fires when a result exists.
+        let (a, consumed) = translate_overlay_key_decide(0, VK_RETURN, true, false, false);
+        assert_eq!(a, TranslateOverlayKeyAction::None);
+        assert_eq!(consumed, VK_RETURN);
+        // Repeat down swallowed, still consumed.
+        let (a2, c2) = translate_overlay_key_decide(consumed, VK_RETURN, true, false, false);
+        assert_eq!(a2, TranslateOverlayKeyAction::None);
+        assert_eq!(c2, VK_RETURN);
+        // Up clears consumed.
+        let (_, c3) = translate_overlay_key_decide(c2, VK_RETURN, false, true, false);
+        assert_eq!(c3, 0);
+    }
+
+    #[test]
+    fn unrelated_key_none() {
+        let (a, c) = translate_overlay_key_decide(0, 0x41, true, false, false); // A
+        assert_eq!(a, TranslateOverlayKeyAction::None);
+        assert_eq!(c, 0);
+    }
+
+    #[test]
+    fn consumed_swallows_interleaved_keys_until_up() {
+        let consumed = VK_RETURN;
+        // While Enter is held (consumed), an A key-down is also swallowed/kept consumed.
+        let (a, c) = translate_overlay_key_decide(consumed, 0x41, true, false, true);
+        assert_eq!(a, TranslateOverlayKeyAction::None);
+        assert_eq!(c, VK_RETURN);
+        // The held Enter's up clears it.
+        let (_, c2) = translate_overlay_key_decide(c, VK_RETURN, false, true, true);
+        assert_eq!(c2, 0);
     }
 }

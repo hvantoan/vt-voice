@@ -152,7 +152,77 @@
     "stt_model_hint": "Mô hình Whisper chuyển đổi âm thanh giọng nói thành văn bản thô theo chuẩn OpenAI.",
     "pure_stt_active_desc": "Chế độ Pure STT đang bật: Bỏ qua bước sửa ngữ pháp bằng LLM để đạt độ trễ tối thiểu <300ms.",
     "vault_badge": "Windows Credential Vault (DPAPI)",
-    "custom_model": "Mô hình tùy chỉnh"
+    "custom_model": "Mô hình tùy chỉnh",
+    "translate_title": "Mô hình Dịch",
+    "translate_desc": "Dịch văn bản đã chọn sang tiếng Việt. Google Dịch miễn phí là mặc định; khi có key này, nó trở thành phương án dự phòng khi Google lỗi.",
+    "translate_fallback_desc": "Nếu Google Dịch lỗi, ứng dụng tự dùng mô hình LLM tương thích OpenAI dưới đây để dịch dự phòng.",
+    "translate_api_key_title": "API Key dịch (dự phòng)",
+    "translate_api_key_hint": "Lưu vào Windows Vault (DPAPI). Dùng làm dự phòng khi Google Dịch thất bại.",
+    "translate_endpoint_title": "Endpoint dịch (dự phòng)",
+    "translate_endpoint_desc": "URL tương thích OpenAI (vLLM, Ollama, ...). Bỏ trống để dùng mặc định https://api.groq.com/openai/v1",
+    "translate_endpoint_placeholder": "https://api.groq.com/openai/v1",
+    "translate_model_title": "Mô hình dịch (dự phòng)",
+    "translate_model_desc": "ID mô hình LLM dùng để dịch khi fallback. Ví dụ: llama-3.3-70b-versatile",
+    "providers_manager": {
+      "title": "Danh sách Nhà cung cấp AI (Providers)",
+      "desc": "Quản lý các nhà cung cấp tương thích chuẩn OpenAI, tải danh sách model và kiểm tra độ trễ",
+      "add_provider": "Thêm Provider",
+      "edit_provider": "Chỉnh sửa",
+      "delete_provider": "Xóa",
+      "manage_models": "Quản lý Models ({count})",
+      "no_models_allowlisted": "Chưa có model nào trong allowlist",
+      "delete_confirm_title": "Xác nhận xóa nhà cung cấp",
+      "delete_confirm_desc": "Bạn có chắc chắn muốn xóa nhà cung cấp '{name}'? Toàn bộ API key trong Vault cũng sẽ bị xóa.",
+      "dialog": {
+        "add_title": "Thêm Nhà cung cấp AI",
+        "edit_title": "Chỉnh sửa Nhà cung cấp AI",
+        "name_label": "Tên hiển thị",
+        "name_placeholder": "Ví dụ: Together AI, DeepSeek, vLLM Local...",
+        "base_url_label": "Địa chỉ Base URL (OpenAI-compatible)",
+        "api_key_label": "Khóa API",
+        "api_key_placeholder": "Nhập API Key (Bearer token)...",
+        "api_key_edit_hint": "Để trống nếu giữ nguyên khóa cũ",
+        "test_btn": "Kiểm tra kết nối"
+      },
+      "allowlist_modal": {
+        "title": "Quản lý Models - {provider}",
+        "allowlisted_title": "Các model được phép sử dụng (Allowlist)",
+        "fetch_from_api": "Tải danh sách từ API",
+        "search_placeholder": "Tìm kiếm theo tên hoặc ID model...",
+        "filter_all": "Tất cả",
+        "filter_stt": "STT",
+        "filter_chat": "Chat / Dịch",
+        "add_selected": "Thêm {count} model đã chọn",
+        "remove_model_tooltip": "Xóa khỏi allowlist",
+        "recommended_badge": "Khuyên dùng"
+      }
+    },
+    "features": {
+      "section_title": "CẤU HÌNH TÍNH NĂNG (FEATURE PROFILES)",
+      "section_desc": "Thiết lập nhà cung cấp và mô hình độc lập cho từng tính năng theo quy trình 4 bước",
+      "step1": "1. Chọn Nhà cung cấp",
+      "step2": "2. Chọn Model (Trong allowlist)",
+      "step3": "3. Kiểm tra kết nối",
+      "step4": "4. Lưu cấu hình",
+      "stt": {
+        "title": "Nhận diện giọng nói (STT)",
+        "desc": "Mô hình Whisper chuyển đổi âm thanh giọng nói thành văn bản thô",
+        "save_btn": "4. Lưu cấu hình STT"
+      },
+      "translate": {
+        "title": "Dịch thuật (Translate Overlay)",
+        "desc": "Dịch nhanh văn bản được bôi đen trên màn hình sang tiếng Việt",
+        "save_btn": "4. Lưu cấu hình Dịch"
+      },
+      "polish": {
+        "title": "Sửa lỗi & Chuẩn hóa (Polish)",
+        "desc": "Sửa lỗi ngữ pháp, ngắt câu và giữ nguyên thuật ngữ kỹ thuật",
+        "save_btn": "4. Lưu cấu hình Polish"
+      },
+      "google_free": "Google Translate (Miễn phí - Không cần Key)",
+      "empty_models_warning": "Nhà cung cấp này chưa có model nào trong allowlist. Vui lòng bấm vào 'Quản lý Models' ở trên để thêm.",
+      "save_success": "Đã lưu cấu hình thành công!"
+    }
   },
   "history": {
     "title": "Lịch sử nhận diện",

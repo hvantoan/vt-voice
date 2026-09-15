@@ -152,7 +152,77 @@
     "stt_model_hint": "Whisper model converts speech audio into raw text following OpenAI standards.",
     "pure_stt_active_desc": "Pure STT mode active: Bypasses LLM grammar polish for minimal latency (<300ms).",
     "vault_badge": "Windows Credential Vault (DPAPI)",
-    "custom_model": "Custom model"
+    "custom_model": "Custom model",
+    "translate_title": "Translate Model",
+    "translate_desc": "Translate selected text to Vietnamese. Free Google Translate is the default; when this key is set, it becomes the fallback when Google fails.",
+    "translate_fallback_desc": "If Google Translate errors, the app falls back to the OpenAI-compatible LLM below.",
+    "translate_api_key_title": "Translate API Key (fallback)",
+    "translate_api_key_hint": "Stored in Windows Vault (DPAPI). Used as fallback when Google Translate fails.",
+    "translate_endpoint_title": "Translate Endpoint (fallback)",
+    "translate_endpoint_desc": "OpenAI-compatible URL (vLLM, Ollama, ...). Leave empty to use default https://api.groq.com/openai/v1",
+    "translate_endpoint_placeholder": "https://api.groq.com/openai/v1",
+    "translate_model_title": "Translate Model (fallback)",
+    "translate_model_desc": "LLM model ID used for translate fallback. E.g. llama-3.3-70b-versatile",
+    "providers_manager": {
+      "title": "AI Providers Manager",
+      "desc": "Manage OpenAI-compatible AI providers, fetch models and test connection latency",
+      "add_provider": "Add Provider",
+      "edit_provider": "Edit",
+      "delete_provider": "Delete",
+      "manage_models": "Manage Models ({count})",
+      "no_models_allowlisted": "No models in allowlist yet",
+      "delete_confirm_title": "Confirm Delete Provider",
+      "delete_confirm_desc": "Are you sure you want to delete provider '{name}'? Its API key in Vault will also be deleted.",
+      "dialog": {
+        "add_title": "Add AI Provider",
+        "edit_title": "Edit AI Provider",
+        "name_label": "Display Name",
+        "name_placeholder": "E.g. Together AI, DeepSeek, vLLM Local...",
+        "base_url_label": "Base URL (OpenAI-compatible)",
+        "api_key_label": "API Key",
+        "api_key_placeholder": "Enter API Key (Bearer token)...",
+        "api_key_edit_hint": "Leave empty to keep existing key",
+        "test_btn": "Test Connection"
+      },
+      "allowlist_modal": {
+        "title": "Manage Models - {provider}",
+        "allowlisted_title": "Allowlisted Models",
+        "fetch_from_api": "Fetch from API",
+        "search_placeholder": "Search by model name or ID...",
+        "filter_all": "All",
+        "filter_stt": "STT",
+        "filter_chat": "Chat / Translation",
+        "add_selected": "Add {count} selected model(s)",
+        "remove_model_tooltip": "Remove from allowlist",
+        "recommended_badge": "Recommended"
+      }
+    },
+    "features": {
+      "section_title": "FEATURE PROFILES CONFIGURATION",
+      "section_desc": "Configure provider and model independently for each feature via a guarded 4-step flow",
+      "step1": "1. Select Provider",
+      "step2": "2. Select Model (Allowlist)",
+      "step3": "3. Test Connection",
+      "step4": "4. Save Configuration",
+      "stt": {
+        "title": "Speech-to-Text (STT)",
+        "desc": "Whisper speech recognition converting voice audio to raw text",
+        "save_btn": "4. Save STT Profile"
+      },
+      "translate": {
+        "title": "Text Translation (Translate Overlay)",
+        "desc": "Quickly translate selected on-screen text to Vietnamese",
+        "save_btn": "4. Save Translation Profile"
+      },
+      "polish": {
+        "title": "Grammar & Code-switching Polish",
+        "desc": "Correct grammar and punctuation while preserving technical terms",
+        "save_btn": "4. Save Polish Profile"
+      },
+      "google_free": "Google Translate (Free - No Key Required)",
+      "empty_models_warning": "This provider has no models in its allowlist yet. Click 'Manage Models' above to add.",
+      "save_success": "Configuration saved successfully!"
+    }
   },
   "history": {
     "title": "Transcription History",

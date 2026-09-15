@@ -1,8 +1,17 @@
 pub mod config;
 pub mod history;
 pub mod keyring;
+pub mod models_store;
 
-pub use config::{load_config, save_config, AppConfig, ConfigError};
+pub use config::{
+    ensure_app_dir_migrated, get_app_dir, load_config, save_config, AppConfig, ConfigError,
+    FeatureProfile, APP_DIR_NAME, LEGACY_APP_DIR_NAME,
+};
+pub use models_store::{
+    add_models_to_allowlist, delete_provider, get_models_catalog_path, get_provider,
+    load_models_catalog, remove_model_from_allowlist, save_models_catalog, upsert_provider,
+    CatalogError, ModelEntry, ModelsCatalog, ProviderConfig,
+};
 pub use history::{
     append_history_item, clear_history, load_history, push_history_item, save_history,
     HistoryError, HistoryItem, MAX_HISTORY_ITEMS,

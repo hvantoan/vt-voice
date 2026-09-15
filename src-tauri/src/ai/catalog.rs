@@ -3,10 +3,19 @@ use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 
 use super::client::{AiError, AiHttpClient};
-use super::openrouter::{OPENROUTER_REFERER, OPENROUTER_TITLE};
+use super::openrouter::{sanitize_error_message, OPENROUTER_REFERER, OPENROUTER_TITLE};
 
 const OPENROUTER_MODELS_URL: &str = "https://openrouter.ai/api/v1/models";
 const CACHE_TTL: Duration = Duration::from_secs(3600); // 1 hour TTL
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DiscoveredModel {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub capabilities: Vec<String>,
+    pub is_recommended: bool,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SttModelInfo {
@@ -85,6 +94,104 @@ struct OpenRouterModelsResponse {
     data: Vec<OpenRouterModelItem>,
 }
 
+/// Generic OpenAI models response item
+#[derive(Deserialize)]
+struct OpenAiModelItem {
+    id: String,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    architecture: Option<OpenRouterArchitecture>,
+}
+
+#[derive(Deserialize)]
+struct OpenAiModelsResponse {
+    data: Vec<OpenAiModelItem>,
+}
+
+/// Fetch models directly from any OpenAI-compatible /v1/models endpoint
+pub async fn fetch_openai_models(
+    http: &AiHttpClient,
+    base_url: &str,
+    api_key: Option<&str>,
+) -> Result<Vec<DiscoveredModel>, AiError> {
+    let clean_base = base_url.trim().trim_end_matches('/');
+    let url = format!("{}/models", clean_base);
+    let is_openrouter = clean_base.contains("openrouter.ai");
+
+    let mut req = http
+        .client
+        .get(&url)
+        .timeout(Duration::from_secs(10));
+
+    if is_openrouter {
+        req = req
+            .header("HTTP-Referer", OPENROUTER_REFERER)
+            .header("X-Title", OPENROUTER_TITLE);
+    }
+
+    if let Some(key) = api_key.filter(|k| !k.trim().is_empty()) {
+        req = req.bearer_auth(key.trim());
+    }
+
+    let res = req.send().await.map_err(|e| {
+        if e.is_timeout() {
+            AiError::Timeout(10)
+        } else {
+            AiError::Network(e)
+        }
+    })?;
+
+    let status = res.status().as_u16();
+    if !res.status().is_success() {
+        let body = res.text().await.unwrap_or_default();
+        let sanitized = sanitize_error_message(&body, api_key.unwrap_or_default());
+        return Err(AiError::Api { status, message: sanitized });
+    }
+
+    let parsed: OpenAiModelsResponse = res.json().await.map_err(|e| {
+        AiError::ParseError(format!("Không thể parse danh sách models: {}", e))
+    })?;
+
+    let mut models: Vec<DiscoveredModel> = Vec::new();
+
+    for item in parsed.data {
+        let lower_id = item.id.to_lowercase();
+        let mut caps = Vec::new();
+
+        let is_stt = lower_id.contains("whisper")
+            || item.architecture.as_ref()
+                .and_then(|a| a.output_modalities.as_ref())
+                .map(|m| m.iter().any(|s| s == "transcription" || s == "audio"))
+                .unwrap_or(false);
+
+        if is_stt {
+            caps.push("stt".to_string());
+        } else {
+            caps.push("chat".to_string());
+        }
+
+        let is_recommended = lower_id.contains("whisper-large-v3-turbo")
+            || lower_id == "openai/whisper-1"
+            || lower_id == "llama-3.3-70b-versatile"
+            || lower_id.contains("gpt-4o-mini");
+
+        let display_name = item.name.unwrap_or_else(|| item.id.clone());
+
+        models.push(DiscoveredModel {
+            id: item.id,
+            name: display_name,
+            description: item.description,
+            capabilities: caps,
+            is_recommended,
+        });
+    }
+
+    models.sort_by(|a, b| b.is_recommended.cmp(&a.is_recommended));
+    Ok(models)
+}
 /// Fetch available transcription models from OpenRouter Models API
 pub async fn fetch_openrouter_stt_models(
     http: &AiHttpClient,
