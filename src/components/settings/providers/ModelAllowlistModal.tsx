@@ -346,7 +346,9 @@ export const ModelAllowlistModal: React.FC<ModelAllowlistModalProps> = ({
                                   </span>
                                 )}
                                 {isAlreadyInAllowlist && (
-                                  <span className="text-[10px] text-zinc-500 italic">(Đã có)</span>
+                                  <span className="text-[10px] text-zinc-500 italic">
+                                    {t("ai.providers_manager.allowlist_modal.already_added")}
+                                  </span>
                                 )}
                               </div>
                               {m.description && (
@@ -356,7 +358,7 @@ export const ModelAllowlistModal: React.FC<ModelAllowlistModalProps> = ({
                           </div>
 
                           <span className="shrink-0 text-[11px] font-medium px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700/50">
-                            {m.capabilities.includes("stt") ? "STT" : "Chat / Dịch"}
+                            {m.capabilities.includes("stt") ? "STT" : t("ai.providers_manager.allowlist_modal.chat_translate")}
                           </span>
                         </div>
                       );
@@ -371,8 +373,8 @@ export const ModelAllowlistModal: React.FC<ModelAllowlistModalProps> = ({
         <DialogFooter className="p-4 border-t border-zinc-850 bg-zinc-950 flex items-center justify-between sm:justify-between">
           <span className="text-xs text-zinc-500">
             {selectedIds.size > 0
-              ? `Đã tick chọn ${selectedIds.size} model`
-              : "Tick chọn các model mong muốn rồi bấm Thêm"}
+              ? t("ai.providers_manager.allowlist_modal.selected_count", { count: selectedIds.size })
+              : t("ai.providers_manager.allowlist_modal.select_hint")}
           </span>
 
           <div className="flex items-center gap-2">

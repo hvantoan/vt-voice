@@ -230,7 +230,7 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
               </button>
             </div>
             <p className="text-[11px] text-zinc-500">
-              Lưu an toàn trong Windows Vault (DPAPI). Không lưu plaintext trên ổ đĩa.
+              {t("ai.vault_badge")} - {t("ai.providers_manager.dialog.vault_hint")}
             </p>
           </div>
 
@@ -251,11 +251,11 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
               <div className="flex-1">
                 {testResult.success ? (
                   <span>
-                    Kết nối thành công! Độ trễ phản hồi:{" "}
+                    {t("ai.connection_success_latency")}{" "}
                     <strong className="font-mono text-emerald-200">{testResult.latency} ms</strong>
                   </span>
                 ) : (
-                  <span>{testResult.error || "Kết nối thất bại"}</span>
+                  <span>{testResult.error || t("ai.connection_failed", { error: "" })}</span>
                 )}
               </div>
             </div>

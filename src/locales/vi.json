@@ -173,6 +173,10 @@
       "no_models_allowlisted": "Chưa có model nào trong allowlist",
       "delete_confirm_title": "Xác nhận xóa nhà cung cấp",
       "delete_confirm_desc": "Bạn có chắc chắn muốn xóa nhà cung cấp '{name}'? Toàn bộ API key trong Vault cũng sẽ bị xóa.",
+      "builtin_badge": "Mặc định",
+      "custom_badge": "Tùy chỉnh",
+      "cannot_delete_title": "Không thể xóa nhà cung cấp",
+      "test_ping_btn": "Kiểm tra",
       "dialog": {
         "add_title": "Thêm Nhà cung cấp AI",
         "edit_title": "Chỉnh sửa Nhà cung cấp AI",
@@ -182,7 +186,8 @@
         "api_key_label": "Khóa API",
         "api_key_placeholder": "Nhập API Key (Bearer token)...",
         "api_key_edit_hint": "Để trống nếu giữ nguyên khóa cũ",
-        "test_btn": "Kiểm tra kết nối"
+        "test_btn": "Kiểm tra kết nối",
+        "vault_hint": "Lưu an toàn trong Windows Vault (DPAPI). Không lưu plaintext trên ổ đĩa."
       },
       "allowlist_modal": {
         "title": "Quản lý Models - {provider}",
@@ -194,7 +199,11 @@
         "filter_chat": "Chat / Dịch",
         "add_selected": "Thêm {count} model đã chọn",
         "remove_model_tooltip": "Xóa khỏi allowlist",
-        "recommended_badge": "Khuyên dùng"
+        "recommended_badge": "Khuyên dùng",
+        "already_added": "(Đã có)",
+        "chat_translate": "Chat / Dịch",
+        "select_hint": "Tick chọn các model mong muốn rồi bấm Thêm",
+        "selected_count": "Đã chọn {count} model"
       }
     },
     "features": {
@@ -204,6 +213,10 @@
       "step2": "2. Chọn Model (Trong allowlist)",
       "step3": "3. Kiểm tra kết nối",
       "step4": "4. Lưu cấu hình",
+      "select_provider_placeholder": "Chọn nhà cung cấp...",
+      "select_model_placeholder": "Chọn model trong allowlist...",
+      "google_default_locked": "Mặc định (Google Neural RPC) - Đã khóa",
+      "provider_not_found": "Không tìm thấy nhà cung cấp",
       "stt": {
         "title": "Nhận diện giọng nói (STT)",
         "desc": "Mô hình Whisper chuyển đổi âm thanh giọng nói thành văn bản thô",

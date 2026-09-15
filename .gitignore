@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 .agentkit
 .gitnexus
+
+# Temporary build & test probe output
+src-tauri/*.txt
+*.txt

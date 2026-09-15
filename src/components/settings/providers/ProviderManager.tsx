@@ -171,11 +171,11 @@ export const ProviderManager: React.FC<ProviderManagerProps> = ({
                   <span className="font-semibold text-sm text-zinc-100">{p.name}</span>
                   {p.is_builtin ? (
                     <span className="px-1.5 py-0.2 rounded text-[10px] uppercase font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                      Built-in
+                      {t("ai.providers_manager.builtin_badge")}
                     </span>
                   ) : (
                     <span className="px-1.5 py-0.2 rounded text-[10px] uppercase font-semibold bg-sky-500/15 text-sky-400 border border-sky-500/30">
-                      Custom
+                      {t("ai.providers_manager.custom_badge")}
                     </span>
                   )}
                 </div>
@@ -202,7 +202,7 @@ export const ProviderManager: React.FC<ProviderManagerProps> = ({
                     ) : latInfo?.latency !== undefined ? (
                       <span className="font-mono text-emerald-300">{latInfo.latency} ms</span>
                     ) : (
-                      "Test"
+                      t("ai.providers_manager.test_ping_btn")
                     )}
                   </Button>
 
@@ -318,7 +318,7 @@ export const ProviderManager: React.FC<ProviderManagerProps> = ({
               </div>
               <div className="flex-1">
                 <h4 className="text-sm font-semibold text-zinc-100">
-                  Không thể xóa nhà cung cấp
+                  {t("ai.providers_manager.cannot_delete_title")}
                 </h4>
                 <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
                   {cascadeAlert.errorMessage}

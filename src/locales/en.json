@@ -173,6 +173,10 @@
       "no_models_allowlisted": "No models in allowlist yet",
       "delete_confirm_title": "Confirm Delete Provider",
       "delete_confirm_desc": "Are you sure you want to delete provider '{name}'? Its API key in Vault will also be deleted.",
+      "builtin_badge": "Built-in",
+      "custom_badge": "Custom",
+      "cannot_delete_title": "Cannot Delete Provider",
+      "test_ping_btn": "Test",
       "dialog": {
         "add_title": "Add AI Provider",
         "edit_title": "Edit AI Provider",
@@ -182,7 +186,8 @@
         "api_key_label": "API Key",
         "api_key_placeholder": "Enter API Key (Bearer token)...",
         "api_key_edit_hint": "Leave empty to keep existing key",
-        "test_btn": "Test Connection"
+        "test_btn": "Test Connection",
+        "vault_hint": "Securely stored in Windows Vault (DPAPI). Never saved as plaintext on disk."
       },
       "allowlist_modal": {
         "title": "Manage Models - {provider}",
@@ -194,7 +199,11 @@
         "filter_chat": "Chat / Translation",
         "add_selected": "Add {count} selected model(s)",
         "remove_model_tooltip": "Remove from allowlist",
-        "recommended_badge": "Recommended"
+        "recommended_badge": "Recommended",
+        "already_added": "(Already added)",
+        "chat_translate": "Chat / Translation",
+        "select_hint": "Select desired models and click Add",
+        "selected_count": "{count} model(s) selected"
       }
     },
     "features": {
@@ -204,6 +213,10 @@
       "step2": "2. Select Model (Allowlist)",
       "step3": "3. Test Connection",
       "step4": "4. Save Configuration",
+      "select_provider_placeholder": "Select provider...",
+      "select_model_placeholder": "Select model from allowlist...",
+      "google_default_locked": "Default (Google Neural RPC) - Locked",
+      "provider_not_found": "Provider not found",
       "stt": {
         "title": "Speech-to-Text (STT)",
         "desc": "Whisper speech recognition converting voice audio to raw text",

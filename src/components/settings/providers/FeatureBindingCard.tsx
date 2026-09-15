@@ -126,7 +126,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
         });
         setTestResult({ success: true, latency });
       } else {
-        setTestResult({ success: false, error: "Không tìm thấy nhà cung cấp" });
+        setTestResult({ success: false, error: t("ai.features.provider_not_found") });
       }
     } catch (err) {
       const msg = typeof err === "string" ? err : String(err);
@@ -200,7 +200,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
           </label>
           <Select value={selectedProviderId} onValueChange={handleProviderChange}>
             <SelectTrigger className="w-full bg-zinc-900 border-zinc-800 text-zinc-200 text-xs h-9">
-              <SelectValue placeholder="Chọn nhà cung cấp..." />
+              <SelectValue placeholder={t("ai.features.select_provider_placeholder")} />
             </SelectTrigger>
             <SelectContent className="bg-zinc-950 border-zinc-800 text-zinc-200">
               {isGoogleFreeSupported && (
@@ -239,7 +239,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
           {isGoogleFree ? (
             <div className="h-9 px-3 rounded-md bg-zinc-850/50 border border-zinc-800 text-zinc-400 text-xs flex items-center gap-2 font-mono">
               <Globe className="w-3.5 h-3.5 text-sky-400" />
-              <span>Mặc định (Google Neural RPC) - Đã khóa</span>
+              <span>{t("ai.features.google_default_locked")}</span>
             </div>
           ) : (
             <Select
@@ -254,8 +254,8 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
                 <SelectValue
                   placeholder={
                     allowlistedModels.length === 0
-                      ? "Chưa có model trong allowlist"
-                      : "Chọn model trong allowlist..."
+                      ? t("ai.providers_manager.no_models_allowlisted")
+                      : t("ai.features.select_model_placeholder")
                   }
                 />
               </SelectTrigger>
@@ -322,7 +322,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
                 <>
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                   <span>
-                    Hoạt động tốt! <strong className="font-mono">{testResult.latency} ms</strong>
+                    {t("ai.connection_success")} <strong className="font-mono">{testResult.latency} ms</strong>
                   </span>
                 </>
               ) : (
