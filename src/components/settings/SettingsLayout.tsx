@@ -392,13 +392,23 @@ export const SettingsLayout: React.FC = () => {
     return merged.slice(0, 50);
   };
 
-   const loadHistory = useCallback(async () => {
-     try {
-       const items = await invoke<HistoryItem[]>("get_transcription_history");
-      if (Array.isArray(items)) {
+  // Bumped on every history-updated / history-cleared event so a snapshot
+  // taken before a concurrent mutation isn't resurrected over newer state.
+  const historyGenRef = useRef(0);
+
+  const loadHistory = useCallback(async () => {
+    // Capture the generation before the await: any history event that fires
+    // mid-flight bumps the ref, so on resolve we can drop a stale snapshot
+    // instead of resurrecting pre-clear/pre-update state.
+    const gen = historyGenRef.current;
+    try {
+      const items = await invoke<HistoryItem[]>("get_transcription_history");
+      // Bail if a history event fired while the invoke was in flight; the
+      // listeners already reconciled the newer state.
+      if (Array.isArray(items) && gen === historyGenRef.current) {
         setHistory((prev) => mergeHistory(prev, items));
       }
-     } catch (err) {
+    } catch (err) {
        console.error("Failed to load transcription history:", err);
      }
    }, []);
@@ -410,6 +420,7 @@ export const SettingsLayout: React.FC = () => {
       "history-updated",
       (event) => {
         if (event.payload) {
+          historyGenRef.current += 1;
           setHistory((prev) => {
             const filtered = prev.filter((item) => item.id !== event.payload.id);
             return [event.payload, ...filtered].slice(0, 50);
@@ -419,6 +430,7 @@ export const SettingsLayout: React.FC = () => {
     );
 
     const unlistenClearedPromise = listen("history-cleared", () => {
+      historyGenRef.current += 1;
       setHistory([]);
     });
 
@@ -431,6 +443,7 @@ export const SettingsLayout: React.FC = () => {
       })
       .catch((err) => {
         console.error("Failed to register history listeners:", err);
+        if (!cancelled) loadHistory();
       });
 
     return () => {
@@ -444,6 +457,7 @@ export const SettingsLayout: React.FC = () => {
   const handleClearHistory = useCallback(async () => {
     try {
       await invoke("clear_transcription_history");
+      historyGenRef.current += 1;
       setHistory([]);
     } catch (err) {
       console.error("Failed to clear transcription history:", err);
