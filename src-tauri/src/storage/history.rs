@@ -3,7 +3,6 @@ use std::io::{BufReader, BufWriter, Write};
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
-const APP_DIR_NAME: &str = "com.itvan.vt-voice";
 const HISTORY_FILE_NAME: &str = "history.json";
 pub const MAX_HISTORY_ITEMS: usize = 50;
 
@@ -30,11 +29,7 @@ pub enum HistoryError {
 }
 
 fn get_history_path() -> Result<PathBuf, HistoryError> {
-    let mut path = dirs::config_dir().ok_or(HistoryError::NoConfigDir)?;
-    path.push(APP_DIR_NAME);
-    if !path.exists() {
-        fs::create_dir_all(&path)?;
-    }
+    let mut path = super::config::get_app_dir().map_err(|_| HistoryError::NoConfigDir)?;
     path.push(HISTORY_FILE_NAME);
     Ok(path)
 }

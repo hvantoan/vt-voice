@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { OverlayPill } from "./components/OverlayPill";
+import { TranslateOverlay } from "./components/TranslateOverlay";
 import { SettingsLayout } from "./components/settings/SettingsLayout";
 
 export const App: React.FC = () => {
@@ -18,6 +19,10 @@ export const App: React.FC = () => {
 
   if (windowLabel === "overlay") {
     return <OverlayPill />;
+  }
+
+  if (windowLabel === "translate-overlay") {
+    return <TranslateOverlay />;
   }
 
   return <SettingsLayout />;

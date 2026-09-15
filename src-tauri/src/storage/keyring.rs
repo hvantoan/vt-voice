@@ -13,6 +13,7 @@ pub enum KeyringError {
 /// Maps provider identifier to Windows Credential Vault account name
 pub fn get_account_name(provider: &str) -> String {
     match provider.trim().to_lowercase().as_str() {
+        "translate" => "vt_voice_translate".to_string(),
         "groq" => "groq_api_key".to_string(),
         "openrouter" => "openrouter_api_key".to_string(),
         "custom" => "custom_api_key".to_string(),

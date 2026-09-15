@@ -15,8 +15,17 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
       expect(vi.settings.tabs.audio).toBe("Âm thanh");
       expect(en.settings.tabs.audio).toBe("Audio");
 
-      expect(vi.settings.tabs.ai).toBe("Mô hình AI");
-      expect(en.settings.tabs.ai).toBe("AI Models");
+      expect(vi.settings.tabs.models).toBe("Models");
+      expect(en.settings.tabs.models).toBe("Models");
+
+      expect(vi.settings.tabs.providers).toBe("Providers");
+      expect(en.settings.tabs.providers).toBe("Providers");
+
+      expect(vi.settings.groups.voice).toBe("Giọng nói");
+      expect(en.settings.groups.voice).toBe("Voice");
+
+      expect(vi.settings.groups.settings).toBe("Cài đặt");
+      expect(en.settings.groups.settings).toBe("Settings");
 
       expect(vi.settings.tabs.history).toBe("Lịch sử");
       expect(en.settings.tabs.history).toBe("History");
@@ -84,9 +93,14 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
       "settings/SettingsLayout.tsx",
       "settings/GeneralTab.tsx",
       "settings/AudioTab.tsx",
-      "settings/AiTab.tsx",
+      "settings/ModelsTab.tsx",
+      "settings/ProvidersTab.tsx",
       "settings/HistoryTab.tsx",
       "settings/HotkeyRecorder.tsx",
+      "settings/providers/ProviderDialog.tsx",
+      "settings/providers/ProviderManager.tsx",
+      "settings/providers/FeatureBindingCard.tsx",
+      "settings/providers/ModelAllowlistModal.tsx",
       "OverlayPill.tsx",
     ];
 
@@ -124,13 +138,6 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
       expect(missingHookUsage).toEqual([]);
     });
 
-    test("AiTab imports and uses translateIpcError", () => {
-      const aiTabPath = path.join(componentsDir, "settings/AiTab.tsx");
-      const content = fs.readFileSync(aiTabPath, "utf-8");
-
-      expect(content).toContain("translateIpcError");
-    });
-
     test("OverlayPill imports and uses translateIpcError for daemon error mapping", () => {
       const overlayPath = path.join(componentsDir, "OverlayPill.tsx");
       const content = fs.readFileSync(overlayPath, "utf-8");
@@ -147,41 +154,6 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
       expect(content).not.toContain("hotkey.presets.alt_space");
     });
 
-    test("AiTab handleDeleteKey invokes onKeyChange to refresh sidebar key status", () => {
-      const aiTabPath = path.join(componentsDir, "settings/AiTab.tsx");
-      const content = fs.readFileSync(aiTabPath, "utf-8");
-
-      const handleDeleteKeyMatch = content.match(/const handleDeleteKey = async \(\) => \{([\s\S]*?)\n  \};/);
-      expect(handleDeleteKeyMatch).not.toBeNull();
-      expect(handleDeleteKeyMatch![1]).toContain("onKeyChange?.()");
-    });
-
-    test("AiTab PROVIDERS definitions include localization keys", () => {
-      const aiTabPath = path.join(componentsDir, "settings/AiTab.tsx");
-      const content = fs.readFileSync(aiTabPath, "utf-8");
-
-      expect(content).toContain("nameKey");
-      expect(content).toContain("badgeKey");
-      expect(content).toContain("descriptionKey");
-      expect(content).toContain("ai.providers.groq.badge");
-      expect(content).toContain("ai.providers.custom.description");
-    });
-
-    test("AiTab restores expiration for key success messages in save and delete paths", () => {
-      const aiTabPath = path.join(componentsDir, "settings/AiTab.tsx");
-      const content = fs.readFileSync(aiTabPath, "utf-8");
-
-      expect(content).toContain("setTimeout(() => setKeySavedMessage(null), 4000);");
-      expect(content).toContain("setTimeout(() => setKeySavedMessage(null), 3000);");
-    });
-
-    test("AiTab resolves currentProvider.nameKey in API key heading", () => {
-      const aiTabPath = path.join(componentsDir, "settings/AiTab.tsx");
-      const content = fs.readFileSync(aiTabPath, "utf-8");
-
-      expect(content).toContain("{t(\"ai.api_key_title\")} ({currentProvider.nameKey ? t(currentProvider.nameKey) : currentProvider.name})");
-    });
-
     test("Rust tray daemon preserves error state and localizes daemon messages", () => {
       const trayPath = path.resolve(__dirname, "../src-tauri/src/daemon/tray.rs");
       const content = fs.readFileSync(trayPath, "utf-8");
@@ -190,21 +162,6 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
       expect(content).toContain("localize_error_msg");
     });
 
-    test("AiTab localizes API key placeholders, action tooltips, help text, and reload button", () => {
-      const aiTabPath = path.join(componentsDir, "settings/AiTab.tsx");
-      const content = fs.readFileSync(aiTabPath, "utf-8");
-
-      expect(content).toContain('t("ai.api_key_placeholder_groq")');
-      expect(content).toContain('t("ai.api_key_placeholder_openrouter")');
-      expect(content).toContain('t("ai.api_key_placeholder_custom")');
-      expect(content).toContain('title={t("ai.test_connection_tooltip")}');
-      expect(content).toContain('title={t("ai.change_key_tooltip")}');
-      expect(content).toContain('title={t("ai.delete_key_tooltip")}');
-      expect(content).toContain('t("ai.key_configured_help_prefix")');
-      expect(content).toContain('t("ai.key_unconfigured_help_prefix")');
-      expect(content).toContain('t("ai.connection_success_latency")');
-      expect(content).toContain('t("ai.reload_models")');
-    });
 
     test("Rust tray daemon serializes tray state and locale updates", () => {
       const trayPath = path.resolve(__dirname, "../src-tauri/src/daemon/tray.rs");
@@ -212,15 +169,6 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
 
       expect(content).toContain("TRAY_UPDATE_LOCK");
       expect(content).toContain("TRAY_UPDATE_LOCK.lock()");
-    });
-
-    test("AiTab localizes vault badge, custom model label, and custom endpoint placeholder", () => {
-      const aiTabPath = path.join(componentsDir, "settings/AiTab.tsx");
-      const content = fs.readFileSync(aiTabPath, "utf-8");
-
-      expect(content).toContain('t("ai.vault_badge")');
-      expect(content).toContain('t("ai.custom_endpoint_placeholder")');
-      expect(content).toContain('t("ai.custom_model")');
     });
 
     test("AudioTab localizes audio format hint", () => {
