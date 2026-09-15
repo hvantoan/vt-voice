@@ -166,7 +166,8 @@
     "copied_tooltip": "Copied!",
     "stt_time": "STT: {ms}ms",
     "polish_time": "AI: {ms}ms",
-    "total_time": "Total: {ms}ms"
+    "total_time": "Total: {ms}ms",
+    "export_btn": "Export JSON"
   },
   "hotkey": {
     "press_key": "Press any key or combination...",
