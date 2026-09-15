@@ -12,6 +12,7 @@
     "clear": "Xóa tất cả",
     "close": "Đóng",
     "minimize": "Thu nhỏ",
+    "maximize": "Phóng to",
     "search": "Tìm kiếm",
     "status": "Trạng thái",
     "confirm": "Xác nhận",
@@ -20,17 +21,22 @@
   },
   "settings": {
     "title": "Cài đặt",
+    "groups": {
+      "voice": "Giọng nói",
+      "settings": "Cài đặt"
+    },
     "tabs": {
       "general": "Chung",
       "audio": "Âm thanh",
-      "ai": "Mô hình AI",
+      "models": "Models",
+      "providers": "Providers",
       "history": "Lịch sử"
     },
     "unsaved_warning": "Bạn có thay đổi chưa lưu",
     "save_changes": "Lưu thay đổi",
     "saving": "Đang lưu...",
     "saved": "Đã lưu cài đặt!",
-    "reset_defaults": "Khôi phục mặc định"
+    "reset_defaults": "Mặc định"
   },
   "general": {
     "language_title": "Ngôn ngữ giao diện",
@@ -106,7 +112,7 @@
     "api_key_placeholder_groq": "Nhập Groq API Key (gsk_...)",
     "api_key_placeholder_openrouter": "Nhập OpenRouter API Key (sk-or-v1-...)",
     "api_key_placeholder_custom": "Nhập Custom API Key (Bearer key...)",
-    "test_connection_tooltip": "Kiểm tra kết nối với API Key đã lưu",
+    "test_connection_tooltip": "Kiểm tra với API Key đã lưu",
     "change_key_tooltip": "Nhập API Key mới để thay thế",
     "delete_key_tooltip": "Xóa API Key khỏi Windows Vault",
     "key_configured_help_prefix": "Khóa được lưu bảo mật trong Windows Vault. Nhấn",
@@ -129,12 +135,12 @@
     "custom_endpoint_placeholder": "http://localhost:8000/v1/audio/transcriptions",
     "system_prompt_title": "Lời nhắc hệ thống",
     "system_prompt_desc": "Chỉ dẫn cách thức AI sửa lỗi và định dạng văn bản",
-    "system_prompt_reset": "Khôi phục Prompt mặc định",
+    "system_prompt_reset": "Khôi phục",
     "custom_vocab_title": "Từ vựng chuyên ngành",
     "custom_vocab_desc": "Danh sách thuật ngữ ưu tiên nhận diện chính xác tiếng Anh trong câu tiếng Việt",
     "custom_vocab_placeholder": "Thêm từ vựng (nhấn Enter)...",
     "custom_vocab_add": "Thêm",
-    "test_connection": "Kiểm tra kết nối",
+    "test_connection": "Kiểm tra",
     "testing_connection": "Đang kiểm tra...",
     "connection_success": "Kết nối thành công!",
     "connection_failed": "Kết nối thất bại: {error}",
@@ -164,12 +170,12 @@
     "translate_model_title": "Mô hình dịch (dự phòng)",
     "translate_model_desc": "ID mô hình LLM dùng để dịch khi fallback. Ví dụ: llama-3.3-70b-versatile",
     "providers_manager": {
-      "title": "Danh sách Nhà cung cấp AI (Providers)",
+      "title": "Danh sách Nhà cung cấp AI",
       "desc": "Quản lý các nhà cung cấp tương thích chuẩn OpenAI, tải danh sách model và kiểm tra độ trễ",
       "add_provider": "Thêm Provider",
       "edit_provider": "Chỉnh sửa",
       "delete_provider": "Xóa",
-      "manage_models": "Quản lý Models ({count})",
+      "manage_models": "Models ({count})",
       "no_models_allowlisted": "Chưa có model nào trong allowlist",
       "delete_confirm_title": "Xác nhận xóa nhà cung cấp",
       "delete_confirm_desc": "Bạn có chắc chắn muốn xóa nhà cung cấp '{name}'? Toàn bộ API key trong Vault cũng sẽ bị xóa.",
@@ -184,11 +190,11 @@
         "edit_title": "Chỉnh sửa Nhà cung cấp AI",
         "name_label": "Tên hiển thị",
         "name_placeholder": "Ví dụ: Together AI, DeepSeek, vLLM Local...",
-        "base_url_label": "Địa chỉ Base URL (OpenAI-compatible)",
+        "base_url_label": "URL (OpenAI-compatible)",
         "api_key_label": "Khóa API",
-        "api_key_placeholder": "Nhập API Key (Bearer token)...",
+        "api_key_placeholder": "API Key...",
         "api_key_edit_hint": "Để trống nếu giữ nguyên khóa cũ",
-        "test_btn": "Kiểm tra kết nối",
+        "test_btn": "Kiểm tra",
         "vault_hint": "Lưu an toàn trong Windows Vault (DPAPI). Không lưu plaintext trên ổ đĩa.",
         "base_url_required": "Vui lòng nhập Base URL",
         "name_required": "Vui lòng nhập tên nhà cung cấp",
@@ -215,15 +221,15 @@
       }
     },
     "features": {
-      "section_title": "CẤU HÌNH TÍNH NĂNG (FEATURE PROFILES)",
+      "section_title": "CẤU HÌNH TÍNH NĂNG",
       "section_desc": "Thiết lập nhà cung cấp và mô hình độc lập cho từng tính năng theo quy trình 4 bước",
       "step1": "1. Chọn Nhà cung cấp",
-      "step2": "2. Chọn Model (Trong allowlist)",
-      "step3": "3. Kiểm tra kết nối",
+      "step2": "2. Chọn Model",
+      "step3": "3. Kiểm tra",
       "step4": "4. Lưu cấu hình",
       "select_provider_placeholder": "Chọn nhà cung cấp...",
       "select_model_placeholder": "Chọn model trong allowlist...",
-      "google_default_locked": "Mặc định (Google Neural RPC) - Đã khóa",
+      "google_default_locked": "Mặc định",
       "provider_not_found": "Không tìm thấy nhà cung cấp",
       "stt": {
         "title": "Nhận diện giọng nói (STT)",
@@ -231,17 +237,17 @@
         "save_btn": "4. Lưu cấu hình STT"
       },
       "translate": {
-        "title": "Dịch thuật (Translate Overlay)",
+        "title": "Dịch thuật",
         "desc": "Dịch nhanh văn bản được bôi đen trên màn hình sang tiếng Việt",
         "save_btn": "4. Lưu cấu hình Dịch"
       },
       "polish": {
-        "title": "Sửa lỗi & Chuẩn hóa (Polish)",
+        "title": "Sửa lỗi & Chuẩn hóa",
         "desc": "Sửa lỗi ngữ pháp, ngắt câu và giữ nguyên thuật ngữ kỹ thuật",
         "save_btn": "4. Lưu cấu hình Polish"
       },
-      "google_free": "Google Translate (Miễn phí - Không cần Key)",
-      "empty_models_warning": "Nhà cung cấp này chưa có model nào trong allowlist. Vui lòng bấm vào 'Quản lý Models' ở trên để thêm.",
+      "google_free": "Google Translate",
+      "empty_models_warning": "Nhà cung cấp này chưa có model nào trong allowlist. Vui lòng vào tab 'Providers' để cấu hình allowlist.",
       "save_success": "Đã lưu cấu hình thành công!"
     }
   },

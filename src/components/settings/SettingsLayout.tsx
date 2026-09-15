@@ -7,23 +7,27 @@ import {
   Sliders,
   Mic,
   Sparkles,
+  Server,
   Clock,
-  X,
   Minus,
+  Square,
+  X,
   Check,
   Loader2,
 } from "lucide-react";
 
 import { GeneralTab } from "./GeneralTab";
 import { AudioTab } from "./AudioTab";
-import { AiTab } from "./AiTab";
+import { ModelsTab } from "./ModelsTab";
+import { ProvidersTab } from "./ProvidersTab";
+import { ProviderConfig } from "./providers/ProviderDialog";
 import { HistoryTab, HistoryItem } from "./HistoryTab";
 import { KeyBinding } from "./HotkeyRecorder";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useI18n, LocaleOption } from "@/lib/i18n";
-type TabId = "general" | "audio" | "ai" | "history";
+type TabId = "general" | "audio" | "models" | "providers" | "history";
 
 export interface AppConfig {
   hotkey_mode: "push_to_talk" | "toggle";
@@ -130,11 +134,7 @@ export const SettingsLayout: React.FC = () => {
   const [vadTimeout, setVadTimeout] = useState<number>(700);
 
   const [activeProvider, setActiveProvider] = useState<string>("groq");
-  const [sttModel, setSttModel] = useState<string>("whisper-large-v3-turbo");
   const [enablePolish, setEnablePolish] = useState<boolean>(true);
-  const [customEndpoint, setCustomEndpoint] = useState<string>("");
-  const [translateEndpoint, setTranslateEndpoint] = useState<string>("");
-  const [translateModel, setTranslateModel] = useState<string>("");
 
   const [hasAiKey, setHasAiKey] = useState<boolean>(false);
 
@@ -146,8 +146,29 @@ export const SettingsLayout: React.FC = () => {
       setHasAiKey(false);
     }
   }, []);
+  const [providers, setProviders] = useState<ProviderConfig[]>([]);
 
-  const [apiKey, setApiKey] = useState<string>("");
+  const loadProviders = useCallback(async () => {
+    try {
+      const list = await invoke<ProviderConfig[]>("get_providers");
+      if (list) setProviders(list);
+    } catch (err) {
+      console.error("Failed to load providers:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadProviders();
+  }, [loadProviders]);
+
+  const handleProvidersChanged = useCallback(
+    (newProviders: ProviderConfig[]) => {
+      setProviders(newProviders);
+      checkAiKey(activeProvider);
+    },
+    [checkAiKey, activeProvider],
+  );
+
   const [systemPrompt, setSystemPrompt] = useState<string>("");
   const [customVocab, setCustomVocab] = useState<string[]>([]);
   const [defaultPrompt, setDefaultPrompt] = useState<string>("");
@@ -187,15 +208,8 @@ export const SettingsLayout: React.FC = () => {
         setActiveProvider(patch.active_provider);
         checkAiKey(patch.active_provider);
       }
-      if (patch.stt_model !== undefined) setSttModel(patch.stt_model);
       if (patch.enable_polish !== undefined)
         setEnablePolish(patch.enable_polish);
-      if (patch.custom_endpoint !== undefined)
-        setCustomEndpoint(patch.custom_endpoint || "");
-      if (patch.translate_endpoint !== undefined)
-        setTranslateEndpoint(patch.translate_endpoint || "");
-      if (patch.translate_model !== undefined)
-        setTranslateModel(patch.translate_model || "");
       if (patch.system_prompt !== undefined)
         setSystemPrompt(patch.system_prompt);
       if (patch.custom_vocabulary !== undefined)
@@ -308,24 +322,6 @@ export const SettingsLayout: React.FC = () => {
     [saveConfigPatch],
   );
 
-  const handleCustomEndpointCommit = useCallback(
-    (url: string) => {
-      saveConfigPatch({
-        custom_endpoint: url.trim() ? url.trim() : null,
-      });
-    },
-    [saveConfigPatch],
-  );
-
-  const handleTranslateEndpointCommit = useCallback(
-    (url: string) => {
-      saveConfigPatch({
-        translate_endpoint: url.trim() ? url.trim() : null,
-      });
-    },
-    [saveConfigPatch],
-  );
-
   const handleTranslateModelCommit = useCallback(
     (model: string) => {
       saveConfigPatch({
@@ -401,22 +397,11 @@ export const SettingsLayout: React.FC = () => {
           setStartMinimized(fullConfig.start_minimized);
           setVadTimeout(fullConfig.vad_timeout_ms);
           setActiveProvider(fullConfig.active_provider);
-          setSttModel(fullConfig.stt_model);
           setEnablePolish(fullConfig.enable_polish);
-          setCustomEndpoint(fullConfig.custom_endpoint || "");
-          setTranslateEndpoint(fullConfig.translate_endpoint || "");
-          setTranslateModel(fullConfig.translate_model || "");
           setSystemPrompt(fullConfig.system_prompt);
           setDefaultPrompt(fullConfig.system_prompt);
           setCustomVocab(fullConfig.custom_vocabulary);
 
-          invoke<string | null>("get_masked_provider_api_key", {
-            provider: fullConfig.active_provider,
-          })
-            .then((key) => {
-              if (key) setApiKey(key);
-            })
-            .catch(() => {});
           checkAiKey(fullConfig.active_provider);
         }
       })
@@ -518,6 +503,11 @@ export const SettingsLayout: React.FC = () => {
     const window = getCurrentWindow();
     await window.minimize();
   };
+  const handleMaximize = async () => {
+    const window = getCurrentWindow();
+    await window.toggleMaximize();
+  };
+
 
   const handleTitleBarMouseDown = async (e: React.MouseEvent) => {
     if (e.button === 0 && !(e.target as HTMLElement).closest("button")) {
@@ -566,6 +556,16 @@ export const SettingsLayout: React.FC = () => {
             type="button"
             variant="ghost"
             size="icon"
+            onClick={handleMaximize}
+            className="w-8 h-7 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 rounded"
+            title={t("common.maximize")}
+          >
+            <Square className="w-3 h-3" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={handleClose}
             className="w-8 h-7 text-zinc-400 hover:text-zinc-100 hover:bg-rose-900/80 rounded"
             title={t("common.close")}
@@ -589,49 +589,73 @@ export const SettingsLayout: React.FC = () => {
       >
         {/* Sidebar */}
         <aside className="w-48 bg-zinc-900/40 border-r border-zinc-800/80 p-3 flex flex-col justify-between">
-          <TabsList className="flex flex-col h-auto w-full bg-transparent p-0 space-y-1">
-            <TabsTrigger
-              value="general"
-              className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
-            >
-              <Sliders className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>{t("settings.tabs.general")}</span>
-            </TabsTrigger>
+          <TabsList className="flex flex-col h-auto w-full bg-transparent p-0 space-y-3">
+            {/* Nhóm 1: Giọng nói */}
+            <div className="space-y-1 w-full">
+              <div className="px-2.5 py-1 text-[10px] font-semibold tracking-wider text-zinc-500 uppercase select-none">
+                {t("settings.groups.voice")}
+              </div>
+              <div className="space-y-0.5">
+                <TabsTrigger
+                  value="audio"
+                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
+                >
+                  <Mic className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{t("settings.tabs.audio")}</span>
+                </TabsTrigger>
 
-            <TabsTrigger
-              value="audio"
-              className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
-            >
-              <Mic className="w-4 h-4 text-rose-400 shrink-0" />
-              <span>{t("settings.tabs.audio")}</span>
-            </TabsTrigger>
+                <TabsTrigger
+                  value="history"
+                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
+                >
+                  <Clock className="w-4 h-4 text-sky-400 shrink-0" />
+                  <span>{t("settings.tabs.history")}</span>
+                </TabsTrigger>
+              </div>
+            </div>
 
-            <TabsTrigger
-              value="ai"
-              className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
-            >
-              <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="flex-1 text-left">{t("settings.tabs.ai")}</span>
-              <span
-                className={cn(
-                  "w-1.5 h-1.5 rounded-full shrink-0",
-                  hasAiKey
-                    ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"
-                    : "bg-amber-500/80 shadow-[0_0_6px_rgba(245,158,11,0.6)]",
-                )}
-                title={
-                  hasAiKey ? t("ai.has_key") : t("ai.no_key")
-                }
-              />
-            </TabsTrigger>
+            {/* Nhóm 2: Cài đặt */}
+            <div className="space-y-1 w-full">
+              <div className="px-2.5 py-1 text-[10px] font-semibold tracking-wider text-zinc-500 uppercase select-none">
+                {t("settings.groups.settings")}
+              </div>
+              <div className="space-y-0.5">
+                <TabsTrigger
+                  value="general"
+                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
+                >
+                  <Sliders className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{t("settings.tabs.general")}</span>
+                </TabsTrigger>
 
-            <TabsTrigger
-              value="history"
-              className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
-            >
-              <Clock className="w-4 h-4 text-sky-400 shrink-0" />
-              <span>{t("settings.tabs.history")}</span>
-            </TabsTrigger>
+                <TabsTrigger
+                  value="models"
+                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>{t("settings.tabs.models")}</span>
+                </TabsTrigger>
+
+                <TabsTrigger
+                  value="providers"
+                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
+                >
+                  <Server className="w-4 h-4 text-indigo-400 shrink-0" />
+                  <span className="flex-1 text-left">{t("settings.tabs.providers")}</span>
+                  <span
+                    className={cn(
+                      "w-1.5 h-1.5 rounded-full shrink-0",
+                      hasAiKey
+                        ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"
+                        : "bg-amber-500/80 shadow-[0_0_6px_rgba(245,158,11,0.6)]",
+                    )}
+                    title={
+                      hasAiKey ? t("ai.has_key") : t("ai.no_key")
+                    }
+                  />
+                </TabsTrigger>
+              </div>
+            </div>
           </TabsList>
 
           {/* Auto-save Status Indicator */}
@@ -691,32 +715,27 @@ export const SettingsLayout: React.FC = () => {
             />
           </TabsContent>
 
-          <TabsContent value="ai" className="m-0 focus-visible:outline-none">
-            <AiTab
-              activeProvider={activeProvider}
-              setActiveProvider={handleActiveProviderChange}
-              sttModel={sttModel}
-              setSttModel={handleSttModelChange}
+          <TabsContent value="models" className="m-0 focus-visible:outline-none">
+            <ModelsTab
+              providers={providers}
               enablePolish={enablePolish}
               setEnablePolish={handleEnablePolishChange}
-              customEndpoint={customEndpoint}
-              setCustomEndpoint={setCustomEndpoint}
-              onCustomEndpointCommit={handleCustomEndpointCommit}
-              apiKey={apiKey}
-              setApiKey={setApiKey}
-              onKeyChange={() => checkAiKey(activeProvider)}
               systemPrompt={systemPrompt}
               setSystemPrompt={setSystemPrompt}
               onSystemPromptCommit={handleSystemPromptCommit}
               customVocab={customVocab}
               setCustomVocab={handleCustomVocabChange}
               defaultPrompt={defaultPrompt}
-              translateEndpoint={translateEndpoint}
-              setTranslateEndpoint={setTranslateEndpoint}
-              onTranslateEndpointCommit={handleTranslateEndpointCommit}
-              translateModel={translateModel}
-              setTranslateModel={setTranslateModel}
-              onTranslateModelCommit={handleTranslateModelCommit}
+              setActiveProvider={handleActiveProviderChange}
+              setSttModel={handleSttModelChange}
+              setTranslateModel={handleTranslateModelCommit}
+            />
+          </TabsContent>
+
+          <TabsContent value="providers" className="m-0 focus-visible:outline-none">
+            <ProvidersTab
+              providers={providers}
+              onProvidersChanged={handleProvidersChanged}
             />
           </TabsContent>
 

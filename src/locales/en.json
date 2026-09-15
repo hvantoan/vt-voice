@@ -12,6 +12,7 @@
     "clear": "Clear All",
     "close": "Close",
     "minimize": "Minimize",
+    "maximize": "Maximize",
     "search": "Search",
     "status": "Status",
     "confirm": "Confirm",
@@ -20,10 +21,15 @@
   },
   "settings": {
     "title": "Settings",
+    "groups": {
+      "voice": "Voice",
+      "settings": "Settings"
+    },
     "tabs": {
       "general": "General",
       "audio": "Audio",
-      "ai": "AI Models",
+      "models": "Models",
+      "providers": "Providers",
       "history": "History"
     },
     "unsaved_warning": "You have unsaved changes",
@@ -241,7 +247,7 @@
         "save_btn": "4. Save Polish Profile"
       },
       "google_free": "Google Translate (Free - No Key Required)",
-      "empty_models_warning": "This provider has no models in its allowlist yet. Click 'Manage Models' above to add.",
+      "empty_models_warning": "This provider has no allowlisted models. Please go to the 'Providers' tab to configure allowlist.",
       "save_success": "Configuration saved successfully!"
     }
   },

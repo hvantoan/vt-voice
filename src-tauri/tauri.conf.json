@@ -16,7 +16,7 @@
         "title": "vt-voice Settings",
         "width": 720,
         "height": 560,
-        "resizable": false,
+        "resizable": true,
         "center": true,
         "visible": false,
         "decorations": false,

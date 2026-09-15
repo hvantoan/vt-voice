@@ -15,8 +15,17 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
       expect(vi.settings.tabs.audio).toBe("Âm thanh");
       expect(en.settings.tabs.audio).toBe("Audio");
 
-      expect(vi.settings.tabs.ai).toBe("Mô hình AI");
-      expect(en.settings.tabs.ai).toBe("AI Models");
+      expect(vi.settings.tabs.models).toBe("Models");
+      expect(en.settings.tabs.models).toBe("Models");
+
+      expect(vi.settings.tabs.providers).toBe("Providers");
+      expect(en.settings.tabs.providers).toBe("Providers");
+
+      expect(vi.settings.groups.voice).toBe("Giọng nói");
+      expect(en.settings.groups.voice).toBe("Voice");
+
+      expect(vi.settings.groups.settings).toBe("Cài đặt");
+      expect(en.settings.groups.settings).toBe("Settings");
 
       expect(vi.settings.tabs.history).toBe("Lịch sử");
       expect(en.settings.tabs.history).toBe("History");
@@ -84,7 +93,8 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
       "settings/SettingsLayout.tsx",
       "settings/GeneralTab.tsx",
       "settings/AudioTab.tsx",
-      "settings/AiTab.tsx",
+      "settings/ModelsTab.tsx",
+      "settings/ProvidersTab.tsx",
       "settings/HistoryTab.tsx",
       "settings/HotkeyRecorder.tsx",
       "settings/providers/ProviderDialog.tsx",

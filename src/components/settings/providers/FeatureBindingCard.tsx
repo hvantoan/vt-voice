@@ -189,7 +189,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
       </div>
 
       {/* 4 Steps Container */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-zinc-850">
+      <div className="grid grid-cols-1 gap-3 pt-2 border-t border-zinc-850">
         {/* Bước 1: Chọn Provider */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
@@ -293,14 +293,14 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
       {/* Bước 3 & Bước 4: Test kết nối & Lưu cấu hình */}
       <div className="pt-2 border-t border-zinc-850/80 flex flex-wrap items-center justify-between gap-2">
         {/* Bước 3: Nút Test */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={handleTestConnection}
             disabled={isTesting || (!isGoogleFree && !activeProvider)}
-            className="h-8 px-3 text-xs border-zinc-800 text-zinc-300 hover:bg-zinc-850"
+            className="h-8 px-3 text-xs border-zinc-800 text-zinc-300 hover:bg-zinc-850 shrink-0"
           >
             {isTesting ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
@@ -312,7 +312,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
 
           {testResult && (
             <span
-              className={`text-xs flex items-center gap-1.5 px-2.5 py-1 rounded-md ${
+              className={`text-xs flex items-center gap-1.5 px-2.5 py-1 rounded-md min-w-0 ${
                 testResult.success
                   ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
                   : "bg-red-500/10 text-red-300 border border-red-500/20"
@@ -320,15 +320,15 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
             >
               {testResult.success ? (
                 <>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="truncate">
                     {t("ai.connection_success")} <strong className="font-mono">{testResult.latency} ms</strong>
                   </span>
                 </>
               ) : (
                 <>
-                  <AlertCircle className="w-3.5 h-3.5 text-red-400" />
-                  <span className="truncate max-w-[200px]">{testResult.error}</span>
+                  <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                  <span className="truncate max-w-xs" title={testResult.error}>{testResult.error}</span>
                 </>
               )}
             </span>
@@ -336,7 +336,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
         </div>
 
         {/* Bước 4: Nút Lưu */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {saveSuccess && (
             <span className="text-xs text-emerald-400 flex items-center gap-1 font-medium animate-in fade-in">
               <Check className="w-3.5 h-3.5" />
@@ -345,9 +345,9 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
           )}
 
           {saveError && (
-            <span className="text-xs text-red-400 flex items-center gap-1 animate-in fade-in max-w-xs truncate">
+            <span className="text-xs text-red-400 flex items-center gap-1 animate-in fade-in max-w-xs truncate" title={saveError}>
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              {saveError}
+              <span className="truncate">{saveError}</span>
             </span>
           )}
 
@@ -356,7 +356,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
             size="sm"
             onClick={handleSave}
             disabled={isSaving || !canSave}
-            className="h-8 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium shadow-sm"
+            className="h-8 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium shadow-sm shrink-0"
           >
             {isSaving ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />

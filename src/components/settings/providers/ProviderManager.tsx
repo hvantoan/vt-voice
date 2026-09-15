@@ -166,21 +166,21 @@ export const ProviderManager: React.FC<ProviderManagerProps> = ({
               className="p-3.5 rounded-xl bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700/80 transition-all space-y-3"
             >
               {/* Row 1: Name, Status badge & Actions */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-zinc-100">{p.name}</span>
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-semibold text-sm text-zinc-100 truncate" title={p.name}>{p.name}</span>
                   {p.is_builtin ? (
-                    <span className="px-1.5 py-0.2 rounded text-[10px] uppercase font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    <span className="px-1.5 py-0.2 rounded text-[10px] uppercase font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
                       {t("ai.providers_manager.builtin_badge")}
                     </span>
                   ) : (
-                    <span className="px-1.5 py-0.2 rounded text-[10px] uppercase font-semibold bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                    <span className="px-1.5 py-0.2 rounded text-[10px] uppercase font-semibold bg-sky-500/15 text-sky-400 border border-sky-500/30 shrink-0">
                       {t("ai.providers_manager.custom_badge")}
                     </span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {/* Test Ping button / badge */}
                   <Button
                     type="button"
@@ -276,15 +276,13 @@ export const ProviderManager: React.FC<ProviderManagerProps> = ({
 
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => handleOpenAllowlist(p)}
-                  className="h-7 px-2.5 text-xs border-zinc-750 text-zinc-300 hover:bg-zinc-800 shrink-0"
+                  className="shrink-0"
+                  title={t("ai.providers_manager.allowlist_modal.title", { provider: p.name })}
                 >
-                  <Layers className="w-3 h-3 mr-1 text-emerald-400" />
-                  {t("ai.providers_manager.manage_models", {
-                    count: p.models.length,
-                  })}
+                  <Layers className="text-emerald-400" />
                 </Button>
               </div>
             </div>

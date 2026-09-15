@@ -204,7 +204,7 @@ export const ModelAllowlistModal: React.FC<ModelAllowlistModalProps> = ({
                 {t("ai.providers_manager.no_models_allowlisted")}
               </div>
             ) : (
-              <div className="flex flex-wrap gap-1.5 p-3 rounded-lg bg-zinc-900/60 border border-zinc-800 max-h-32 overflow-y-auto">
+              <div className="flex flex-wrap gap-1.5 p-3 rounded-lg bg-zinc-900/60 border border-zinc-800">
                 {currentModels.map((m) => (
                   <span
                     key={m.id}
@@ -311,7 +311,7 @@ export const ModelAllowlistModal: React.FC<ModelAllowlistModalProps> = ({
                 </div>
 
                 {/* Danh sách model kết quả */}
-                <div className="border border-zinc-800 rounded-lg max-h-56 overflow-y-auto divide-y divide-zinc-850/60 bg-zinc-900/30">
+                <div className="border border-zinc-800 rounded-lg divide-y divide-zinc-850/60 bg-zinc-900/30">
                   {filteredDiscovered.length === 0 ? (
                     <div className="p-4 text-center text-xs text-zinc-500">
                       {t("ai.providers_manager.allowlist_modal.no_matching_models")}
