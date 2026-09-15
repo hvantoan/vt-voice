@@ -377,21 +377,35 @@ export const SettingsLayout: React.FC = () => {
       })
       .catch(() => {});
   }, []);
-  const loadHistory = useCallback(async () => {
-    try {
-      const items = await invoke<HistoryItem[]>("get_transcription_history");
-      if (Array.isArray(items)) {
-        setHistory(items);
+  // Merge a fresh snapshot with live-updated items so events that arrived
+  // while the snapshot was in flight are not overwritten. Newer (prepended)
+  // live items win; the snapshot fills in the rest.
+  const mergeHistory = (prev: HistoryItem[], items: HistoryItem[]) => {
+    const seen = new Set<string>();
+    const merged: HistoryItem[] = [];
+    for (const item of [...prev, ...items]) {
+      if (!seen.has(item.id)) {
+        seen.add(item.id);
+        merged.push(item);
       }
-    } catch (err) {
-      console.error("Failed to load transcription history:", err);
     }
-  }, []);
+    return merged.slice(0, 50);
+  };
+
+   const loadHistory = useCallback(async () => {
+     try {
+       const items = await invoke<HistoryItem[]>("get_transcription_history");
+      if (Array.isArray(items)) {
+        setHistory((prev) => mergeHistory(prev, items));
+      }
+     } catch (err) {
+       console.error("Failed to load transcription history:", err);
+     }
+   }, []);
 
   // Load transcription history on mount and listen for real-time history updates
   useEffect(() => {
-    loadHistory();
-
+    let cancelled = false;
     const unlistenUpdatedPromise = listen<HistoryItem>(
       "history-updated",
       (event) => {
@@ -408,11 +422,24 @@ export const SettingsLayout: React.FC = () => {
       setHistory([]);
     });
 
+    // Wait for listener registration to complete before snapshotting so no
+    // event emitted during the async load is lost, then merge it via
+    // loadHistory's dedupe instead of overwriting.
+    Promise.all([unlistenUpdatedPromise, unlistenClearedPromise])
+      .then(() => {
+        if (!cancelled) loadHistory();
+      })
+      .catch((err) => {
+        console.error("Failed to register history listeners:", err);
+      });
+
     return () => {
+      cancelled = true;
       unlistenUpdatedPromise.then((f) => f()).catch(() => {});
       unlistenClearedPromise.then((f) => f()).catch(() => {});
     };
   }, [loadHistory]);
+
 
   const handleClearHistory = useCallback(async () => {
     try {

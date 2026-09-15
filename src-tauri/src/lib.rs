@@ -43,6 +43,20 @@ fn clear_transcription_history(app: AppHandle, state: State<'_, AppState>) -> Re
     let _ = app.emit("history-cleared", ());
     Ok(())
 }
+#[tauri::command]
+fn export_transcription_history_json(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let items = state.history.lock().clone();
+    let dir = app.path().download_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join("vt-voice-history.json");
+    let json = serde_json::to_string_pretty(&items).map_err(|e| e.to_string())?;
+    std::fs::write(&path, json).map_err(|e| e.to_string())?;
+    let _ = tauri_plugin_opener::reveal_item_in_dir(&path);
+    Ok(path.to_string_lossy().into_owned())
+}
 
 #[tauri::command]
 fn get_audio_devices() -> Result<Vec<AudioDevice>, String> {
@@ -584,6 +598,7 @@ pub fn run() {
             get_api_key_cmd,
             update_tray_locale_cmd,
             get_transcription_history,
+            export_transcription_history_json,
             clear_transcription_history,
         ])
         .run(tauri::generate_context!())

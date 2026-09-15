@@ -166,7 +166,8 @@
     "copied_tooltip": "Đã sao chép!",
     "stt_time": "STT: {ms}ms",
     "polish_time": "AI: {ms}ms",
-    "total_time": "Tổng: {ms}ms"
+    "total_time": "Tổng: {ms}ms",
+    "export_btn": "Xuất JSON"
   },
   "hotkey": {
     "press_key": "Bấm 1 phím bất kỳ hoặc tổ hợp phím...",

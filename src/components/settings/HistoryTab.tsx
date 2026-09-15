@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
-import { Copy, Check, Trash2, Search, Clock, Zap } from "lucide-react";
+import { Copy, Check, Trash2, Search, Clock, Zap, Download } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,15 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
       isConfirmingRef.current = false;
     }
   };
+
+  const handleExport = async () => {
+    try {
+      await invoke<string>("export_transcription_history_json");
+    } catch (err) {
+      console.error("Failed to export transcription history:", err);
+    }
+  };
+
   const filteredHistory = history.filter(
     (item) =>
       item.polishedText.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -76,6 +86,19 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
             className="w-full bg-zinc-900/60 border-zinc-800 pl-9 pr-3 h-9 text-xs text-zinc-200 focus-visible:ring-emerald-500/50"
           />
         </div>
+
+        {history.length > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            className="h-9 px-3 border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs"
+          >
+            <Download className="w-3.5 h-3.5 mr-1.5" />
+            <span>{t("history.export_btn")}</span>
+          </Button>
+        )}
 
         {history.length > 0 && (
           <Button
