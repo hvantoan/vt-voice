@@ -177,6 +177,8 @@
       "custom_badge": "Tùy chỉnh",
       "cannot_delete_title": "Không thể xóa nhà cung cấp",
       "test_ping_btn": "Kiểm tra",
+      "pinging": "Đang ping...",
+      "more_models": "+{count} nữa",
       "dialog": {
         "add_title": "Thêm Nhà cung cấp AI",
         "edit_title": "Chỉnh sửa Nhà cung cấp AI",
@@ -187,7 +189,11 @@
         "api_key_placeholder": "Nhập API Key (Bearer token)...",
         "api_key_edit_hint": "Để trống nếu giữ nguyên khóa cũ",
         "test_btn": "Kiểm tra kết nối",
-        "vault_hint": "Lưu an toàn trong Windows Vault (DPAPI). Không lưu plaintext trên ổ đĩa."
+        "vault_hint": "Lưu an toàn trong Windows Vault (DPAPI). Không lưu plaintext trên ổ đĩa.",
+        "base_url_required": "Vui lòng nhập Base URL",
+        "name_required": "Vui lòng nhập tên nhà cung cấp",
+        "base_url_test_required": "Vui lòng nhập Base URL trước khi kiểm tra",
+        "endpoint_hint": "Endpoint phải hỗ trợ chuẩn GET /models và POST /chat/completions hoặc /audio/transcriptions"
       },
       "allowlist_modal": {
         "title": "Quản lý Models - {provider}",
@@ -203,7 +209,9 @@
         "already_added": "(Đã có)",
         "chat_translate": "Chat / Dịch",
         "select_hint": "Tick chọn các model mong muốn rồi bấm Thêm",
-        "selected_count": "Đã chọn {count} model"
+        "selected_count": "Đã chọn {count} model",
+        "discover_title": "Khám phá từ API endpoint",
+        "no_matching_models": "Không tìm thấy model nào phù hợp bộ lọc"
       }
     },
     "features": {

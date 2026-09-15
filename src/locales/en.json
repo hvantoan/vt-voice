@@ -177,6 +177,8 @@
       "custom_badge": "Custom",
       "cannot_delete_title": "Cannot Delete Provider",
       "test_ping_btn": "Test",
+      "pinging": "Ping...",
+      "more_models": "+{count} more",
       "dialog": {
         "add_title": "Add AI Provider",
         "edit_title": "Edit AI Provider",
@@ -187,7 +189,11 @@
         "api_key_placeholder": "Enter API Key (Bearer token)...",
         "api_key_edit_hint": "Leave empty to keep existing key",
         "test_btn": "Test Connection",
-        "vault_hint": "Securely stored in Windows Vault (DPAPI). Never saved as plaintext on disk."
+        "vault_hint": "Securely stored in Windows Vault (DPAPI). Never saved as plaintext on disk.",
+        "base_url_required": "Please enter Base URL",
+        "name_required": "Please enter provider name",
+        "base_url_test_required": "Please enter Base URL before testing",
+        "endpoint_hint": "Endpoint must support standard GET /models and POST /chat/completions or /audio/transcriptions"
       },
       "allowlist_modal": {
         "title": "Manage Models - {provider}",
@@ -203,7 +209,9 @@
         "already_added": "(Already added)",
         "chat_translate": "Chat / Translation",
         "select_hint": "Select desired models and click Add",
-        "selected_count": "{count} model(s) selected"
+        "selected_count": "{count} model(s) selected",
+        "discover_title": "Discover from API Endpoint",
+        "no_matching_models": "No models match the filter"
       }
     },
     "features": {

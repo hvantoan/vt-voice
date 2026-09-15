@@ -87,6 +87,10 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
       "settings/AiTab.tsx",
       "settings/HistoryTab.tsx",
       "settings/HotkeyRecorder.tsx",
+      "settings/providers/ProviderDialog.tsx",
+      "settings/providers/ProviderManager.tsx",
+      "settings/providers/FeatureBindingCard.tsx",
+      "settings/providers/ModelAllowlistModal.tsx",
       "OverlayPill.tsx",
     ];
 

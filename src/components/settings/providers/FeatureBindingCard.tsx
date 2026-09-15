@@ -207,7 +207,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
                 <SelectItem value="google_free" className="text-xs focus:bg-zinc-900 focus:text-zinc-100">
                   <div className="flex items-center gap-2">
                     <Globe className="w-3.5 h-3.5 text-sky-400" />
-                    <span>Google Translate (Miễn phí - Không cần Key)</span>
+                    <span>{t("ai.features.google_free")}</span>
                   </div>
                 </SelectItem>
               )}

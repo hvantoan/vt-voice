@@ -27,4 +27,3 @@ dist-ssr
 
 # Temporary build & test probe output
 src-tauri/*.txt
-*.txt

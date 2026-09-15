@@ -240,7 +240,7 @@ export const ModelAllowlistModal: React.FC<ModelAllowlistModalProps> = ({
           <div className="space-y-3 pt-2 border-t border-zinc-850">
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
-                Khám phá từ API endpoint
+                {t("ai.providers_manager.allowlist_modal.discover_title")}
               </span>
               <Button
                 type="button"
@@ -314,7 +314,7 @@ export const ModelAllowlistModal: React.FC<ModelAllowlistModalProps> = ({
                 <div className="border border-zinc-800 rounded-lg max-h-56 overflow-y-auto divide-y divide-zinc-850/60 bg-zinc-900/30">
                   {filteredDiscovered.length === 0 ? (
                     <div className="p-4 text-center text-xs text-zinc-500">
-                      Không tìm thấy model nào phù hợp bộ lọc
+                      {t("ai.providers_manager.allowlist_modal.no_matching_models")}
                     </div>
                   ) : (
                     filteredDiscovered.map((m) => {

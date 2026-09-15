@@ -78,7 +78,7 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
     if (!baseUrl.trim()) {
       setTestResult({
         success: false,
-        error: "Vui lòng nhập Base URL trước khi kiểm tra",
+        error: t("ai.providers_manager.dialog.base_url_test_required"),
       });
       return;
     }
@@ -119,11 +119,11 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
 
   const handleSave = async () => {
     if (!name.trim()) {
-      setSaveError("Vui lòng nhập tên nhà cung cấp");
+      setSaveError(t("ai.providers_manager.dialog.name_required"));
       return;
     }
     if (!baseUrl.trim()) {
-      setSaveError("Vui lòng nhập Base URL");
+      setSaveError(t("ai.providers_manager.dialog.base_url_required"));
       return;
     }
 
@@ -200,7 +200,7 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
               className="bg-zinc-900 border-zinc-800 text-zinc-200 placeholder:text-zinc-600 focus:border-zinc-700 font-mono text-xs"
             />
             <p className="text-[11px] text-zinc-500">
-              Endpoint phải hỗ trợ chuẩn GET /models và POST /chat/completions hoặc /audio/transcriptions
+              {t("ai.providers_manager.dialog.endpoint_hint")}
             </p>
           </div>
 

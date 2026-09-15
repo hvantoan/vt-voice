@@ -198,7 +198,7 @@ export const ProviderManager: React.FC<ProviderManagerProps> = ({
                       <Zap className="w-3 h-3 mr-1 text-amber-400" />
                     )}
                     {latInfo?.loading ? (
-                      "Ping..."
+                      t("ai.providers_manager.pinging")
                     ) : latInfo?.latency !== undefined ? (
                       <span className="font-mono text-emerald-300">{latInfo.latency} ms</span>
                     ) : (
@@ -267,7 +267,9 @@ export const ProviderManager: React.FC<ProviderManagerProps> = ({
                   )}
                   {p.models.length > 4 && (
                     <span className="text-[11px] text-zinc-500 font-mono">
-                      +{p.models.length - 4} nữa
+                      {t("ai.providers_manager.more_models", {
+                        count: p.models.length - 4,
+                      })}
                     </span>
                   )}
                 </div>
