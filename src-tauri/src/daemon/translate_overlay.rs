@@ -25,6 +25,10 @@ pub struct TranslatePayload {
 pub struct TranslateResult {
     pub translated_text: String,
     pub is_loading: bool,
+    #[serde(default)]
+    pub detected_lang: Option<String>,
+    #[serde(default)]
+    pub target_lang: Option<String>,
 }
 
 #[derive(Clone)]
@@ -93,10 +97,10 @@ fn window_size_physical(window: &WebviewWindow) -> (i32, i32) {
             return (sz.width as i32, sz.height as i32);
         }
     }
-    // Fallback: logical 340x150 scaled.
+    // Fallback: logical 400x270 scaled.
     let scale = window.scale_factor().unwrap_or(1.0);
     (
-        (340.0 * scale).round() as i32,
-        (150.0 * scale).round() as i32,
+        (400.0 * scale).round() as i32,
+        (270.0 * scale).round() as i32,
     )
 }

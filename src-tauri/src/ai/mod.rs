@@ -19,4 +19,7 @@ pub use provider::{
     polish_with_endpoint, test_endpoint_latency, test_provider_connection,
     transcribe_with_endpoint, transcribe_with_provider, AiProvider,
 };
-pub use translate::{translate_chat, translate_google};
+pub use translate::{
+    translate_chat, translate_chat_with_lang, translate_google, translate_google_with_langs,
+    TranslationResult,
+};

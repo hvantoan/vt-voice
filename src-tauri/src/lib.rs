@@ -188,6 +188,76 @@ fn copy_translation(app: AppHandle, state: State<'_, AppState>) -> Result<(), St
 }
 
 #[tauri::command]
+async fn translate_text(
+    state: State<'_, AppState>,
+    text: String,
+    source_lang: Option<String>,
+    target_lang: Option<String>,
+) -> Result<daemon::TranslateResult, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Ok(daemon::TranslateResult {
+            translated_text: String::new(),
+            is_loading: false,
+            detected_lang: None,
+            target_lang,
+        });
+    }
+
+    let sl = source_lang.as_deref().unwrap_or("auto");
+    let tl = target_lang.as_deref().unwrap_or("vi");
+
+    let translate_profile = {
+        let cfg = state.config.lock();
+        cfg.feature_profiles
+            .get("translate")
+            .cloned()
+            .unwrap_or_else(|| storage::FeatureProfile {
+                provider_id: "google_free".to_string(),
+                model_id: None,
+            })
+    };
+
+    let result = if translate_profile.provider_id == "google_free" {
+        ai::translate_google_with_langs(&state.http_client, trimmed, sl, tl).await
+    } else if let Some(provider) = storage::get_provider(&translate_profile.provider_id) {
+        if let Some(api_key) = storage::get_provider_key(&translate_profile.provider_id).unwrap_or(None) {
+            let model = translate_profile.model_id.as_deref().unwrap_or("llama-3.3-70b-versatile");
+            ai::translate_chat_with_lang(
+                &state.http_client,
+                Some(&provider.base_url),
+                &api_key,
+                model,
+                trimmed,
+                tl,
+            )
+            .await
+            .map(|t| ai::TranslationResult {
+                translated_text: t,
+                detected_lang: None,
+            })
+        } else {
+            Err(ai::AiError::MissingApiKey)
+        }
+    } else {
+        ai::translate_google_with_langs(&state.http_client, trimmed, sl, tl).await
+    };
+
+    match result {
+        Ok(res) => {
+            set_translate_last_result(&res.translated_text);
+            Ok(daemon::TranslateResult {
+                translated_text: res.translated_text,
+                is_loading: false,
+                detected_lang: res.detected_lang,
+                target_lang: Some(tl.to_string()),
+            })
+        }
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
 async fn test_ai_connection(
     state: State<'_, AppState>,
     api_key: String,
@@ -690,33 +760,40 @@ pub fn run() {
                                 };
 
                                 let translation = if translate_profile.provider_id == "google_free" {
-                                    ai::translate::translate_google(&hp, &text).await
+                                    ai::translate_google_with_langs(&hp, &text, "auto", "vi").await
                                 } else if let Some(provider) = storage::get_provider(&translate_profile.provider_id) {
                                     if let Some(api_key) = storage::get_provider_key(&translate_profile.provider_id).unwrap_or(None) {
                                         let model = translate_profile.model_id.as_deref().unwrap_or("llama-3.3-70b-versatile");
-                                        ai::translate::translate_chat(
+                                        ai::translate_chat_with_lang(
                                             &hp,
                                             Some(&provider.base_url),
                                             &api_key,
                                             model,
                                             &text,
+                                            "vi",
                                         )
                                         .await
+                                        .map(|t| ai::TranslationResult {
+                                            translated_text: t,
+                                            detected_lang: None,
+                                        })
                                     } else {
                                         Err(ai::AiError::MissingApiKey)
                                     }
                                 } else {
-                                    ai::translate::translate_google(&hp, &text).await
+                                    ai::translate_google_with_langs(&hp, &text, "auto", "vi").await
                                 };
 
                                 match translation {
-                                    Ok(vi) => {
-                                        set_translate_last_result(&vi);
+                                    Ok(res) => {
+                                        set_translate_last_result(&res.translated_text);
                                         tl.emit_result(
                                             &ap,
                                             &daemon::TranslateResult {
-                                                translated_text: vi.clone(),
+                                                translated_text: res.translated_text.clone(),
                                                 is_loading: false,
+                                                detected_lang: res.detected_lang,
+                                                target_lang: Some("vi".to_string()),
                                             },
                                         );
                                         // Clipboard is written only on explicit Copy (button/Enter) —
@@ -1014,6 +1091,7 @@ pub fn run() {
             clear_transcription_history,
             hide_translate_overlay,
             copy_translation,
+            translate_text,
             get_providers,
             save_provider,
             delete_provider_cmd,

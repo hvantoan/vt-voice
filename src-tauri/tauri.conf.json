@@ -39,8 +39,8 @@
       {
         "label": "translate-overlay",
         "title": "vt-voice Translate",
-        "width": 340,
-        "height": 150,
+        "width": 400,
+        "height": 270,
         "resizable": false,
         "transparent": true,
         "decorations": false,

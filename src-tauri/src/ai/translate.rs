@@ -4,33 +4,53 @@ use serde::Deserialize;
 use super::client::{AiError, AiHttpClient};
 use super::openrouter::sanitize_error_message;
 
-/// Public Google Translate RPC endpoint (free, no key).
-const GOOGLE_TRANSLATE_URL: &str =
-    "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=vi&dt=t";
+/// Translation outcome with translated text and detected source language.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TranslationResult {
+    pub translated_text: String,
+    pub detected_lang: Option<String>,
+}
 
 const DEFAULT_CHAT_BASE_URL: &str = "https://api.groq.com/openai/v1";
 
-/// Translate text to Vietnamese via the free Google Translate RPC endpoint.
-///
-/// `client` is reused for connection pooling. Short timeout because it is the fast deterministic
-/// default over the LLM fallback.
+/// Translate text to Vietnamese via the free Google Translate RPC endpoint (backward compatible).
 pub async fn translate_google(http: &AiHttpClient, text: &str) -> Result<String, AiError> {
+    translate_google_with_langs(http, text, "auto", "vi")
+        .await
+        .map(|r| r.translated_text)
+}
+
+/// Translate text with configurable source and target languages via Google Translate RPC.
+pub async fn translate_google_with_langs(
+    http: &AiHttpClient,
+    text: &str,
+    source_lang: &str,
+    target_lang: &str,
+) -> Result<TranslationResult, AiError> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
         return Err(AiError::ParseError("empty input".to_string()));
     }
 
-    let url = format!("{}&q={}", GOOGLE_TRANSLATE_URL, urlencode(trimmed));
+    let sl = if source_lang.trim().is_empty() { "auto" } else { source_lang.trim() };
+    let tl = if target_lang.trim().is_empty() { "vi" } else { target_lang.trim() };
+
+    let url = format!(
+        "https://translate.googleapis.com/translate_a/single?client=gtx&sl={}&tl={}&dt=t&q={}",
+        sl,
+        tl,
+        urlencode(trimmed)
+    );
 
     let res = http
         .client
         .get(&url)
-        .timeout(Duration::from_secs(2))
+        .timeout(Duration::from_secs(3))
         .send()
         .await
         .map_err(|e| {
             if e.is_timeout() {
-                AiError::Timeout(2)
+                AiError::Timeout(3)
             } else {
                 AiError::Network(e)
             }
@@ -43,8 +63,7 @@ pub async fn translate_google(http: &AiHttpClient, text: &str) -> Result<String,
     }
 
     let body = res.text().await.map_err(|e| AiError::ParseError(e.to_string()))?;
-    let segments = parse_google_response(&body)?;
-    Ok(segments)
+    parse_google_response_with_lang(&body)
 }
 
 /// Tiny URL-encoder (percent-encodes UTF-8), avoiding a dependency for one endpoint.
@@ -62,8 +81,8 @@ fn urlencode(input: &str) -> String {
     out
 }
 
-/// Parse Google RPC response: `[[["<vi>","<en>",...]],...]`, concatenating `[0][i][0]`.
-fn parse_google_response(body: &str) -> Result<String, AiError> {
+/// Parse Google RPC response, extracting both translated segments and detected source language.
+pub fn parse_google_response_with_lang(body: &str) -> Result<TranslationResult, AiError> {
     let parsed: serde_json::Value = serde_json::from_str(body)
         .map_err(|e| AiError::ParseError(format!("google response: {}", e)))?;
     let rows = parsed
@@ -80,20 +99,40 @@ fn parse_google_response(body: &str) -> Result<String, AiError> {
     if out.trim().is_empty() {
         return Err(AiError::ParseError("google response: empty translation".to_string()));
     }
-    Ok(out)
+
+    // Index 2 contains detected language code (e.g. "en", "vi", "ja")
+    let detected_lang = parsed.get(2).and_then(|v| v.as_str()).map(|s| s.to_string());
+
+    Ok(TranslationResult {
+        translated_text: out,
+        detected_lang,
+    })
 }
 
-/// OpenAI-compatible chat completion translation fallback.
-///
-/// Reuses the `AiHttpClient` (no new dependency). `base_url` is the OpenAI-compatible root (e.g.
-/// `https://api.groq.com/openai/v1`); the request posts to `{base_url}/chat/completions`.
-/// `api_key` is used as Bearer and redacted from error messages.
+#[allow(dead_code)]
+fn parse_google_response(body: &str) -> Result<String, AiError> {
+    parse_google_response_with_lang(body).map(|r| r.translated_text)
+}
+
+/// OpenAI-compatible chat completion translation fallback (backward compatible).
 pub async fn translate_chat(
     http: &AiHttpClient,
     base_url: Option<&str>,
     api_key: &str,
     model: &str,
     text: &str,
+) -> Result<String, AiError> {
+    translate_chat_with_lang(http, base_url, api_key, model, text, "vi").await
+}
+
+/// OpenAI-compatible chat completion translation with target language specification.
+pub async fn translate_chat_with_lang(
+    http: &AiHttpClient,
+    base_url: Option<&str>,
+    api_key: &str,
+    model: &str,
+    text: &str,
+    target_lang: &str,
 ) -> Result<String, AiError> {
     let key = api_key.trim();
     if key.is_empty() {
@@ -108,10 +147,26 @@ pub async fn translate_chat(
     let clean_base = super::provider::normalize_base_url(base);
     let url = format!("{}/chat/completions", clean_base);
 
+    let lang_target_name = match target_lang {
+        "vi" => "Vietnamese",
+        "en" => "English",
+        "ja" => "Japanese",
+        "zh" => "Chinese",
+        "ko" => "Korean",
+        "fr" => "French",
+        "de" => "German",
+        other => other,
+    };
+
+    let system_prompt = format!(
+        "Translate the following text from its source language to {lang_target_name}. \
+Preserve code identifiers, variables, keywords, and technical terms verbatim. Output only the translation."
+    );
+
     let request_body = serde_json::json!({
         "model": model,
         "messages": [
-            { "role": "system", "content": CHAT_SYSTEM_PROMPT },
+            { "role": "system", "content": system_prompt },
             { "role": "user", "content": trimmed }
         ],
         "temperature": 0.1,
@@ -142,10 +197,6 @@ pub async fn translate_chat(
         .map(|c| c.message.content.trim().to_string())
         .ok_or_else(|| AiError::ParseError("chat response: no choices".to_string()))
 }
-
-const CHAT_SYSTEM_PROMPT: &str = "Translate the following text from its source language to Vietnamese. \
-Preserve code identifiers, variables, keywords, and technical terms verbatim. Output only the translation.";
-
 #[derive(Deserialize)]
 struct ChatMessage {
     content: String,
@@ -177,6 +228,10 @@ mod tests {
         let body = r#"[[["Xin chào thế giới","hello world",null,null,1]],null,"en"]"#;
         let out = parse_google_response(body).expect("parse");
         assert_eq!(out, "Xin chào thế giới");
+
+        let res = parse_google_response_with_lang(body).expect("parse with lang");
+        assert_eq!(res.translated_text, "Xin chào thế giới");
+        assert_eq!(res.detected_lang.as_deref(), Some("en"));
     }
 
     #[test]
