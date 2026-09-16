@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Dialog,
@@ -46,6 +46,8 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
   const [apiKey, setApiKey] = useState("");
   const [initialMaskedKey, setInitialMaskedKey] = useState("");
   const [showKey, setShowKey] = useState(false);
+  const userEditedKeyRef = useRef(false);
+  const requestIdRef = useRef(0);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{
     success: boolean;
@@ -57,16 +59,36 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const isEdit = Boolean(provider);
-
   useEffect(() => {
+    let isCancelled = false;
+    const reqId = ++requestIdRef.current;
+    userEditedKeyRef.current = false;
+
     if (open) {
+      // Luôn xóa sạch trạng thái API key đồng bộ để không giữ key thô từ lần mở trước
+      setApiKey("");
+      setInitialMaskedKey("");
+      setShowKey(false);
+      setTestResult(null);
+      setSaveError(null);
+
       if (provider) {
         setName(provider.name);
         setBaseUrl(provider.base_url);
+        const targetProviderId = provider.id;
+
         invoke<string | null>("get_masked_provider_api_key", {
-          provider: provider.id,
+          provider: targetProviderId,
         })
           .then((masked) => {
+            if (
+              isCancelled ||
+              reqId !== requestIdRef.current ||
+              userEditedKeyRef.current ||
+              provider.id !== targetProviderId
+            ) {
+              return;
+            }
             if (masked) {
               setApiKey(masked);
               setInitialMaskedKey(masked);
@@ -78,6 +100,14 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
             }
           })
           .catch(() => {
+            if (
+              isCancelled ||
+              reqId !== requestIdRef.current ||
+              userEditedKeyRef.current ||
+              provider.id !== targetProviderId
+            ) {
+              return;
+            }
             setApiKey("");
             setInitialMaskedKey("");
             setShowKey(false);
@@ -85,13 +115,12 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
       } else {
         setName("");
         setBaseUrl("");
-        setApiKey("");
-        setInitialMaskedKey("");
-        setShowKey(false);
       }
-      setTestResult(null);
-      setSaveError(null);
     }
+
+    return () => {
+      isCancelled = true;
+    };
   }, [open, provider]);
 
   const handleTestConnection = async () => {
@@ -235,7 +264,10 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
               <Input
                 type={showKey ? "text" : "password"}
                 value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
+                onChange={(e) => {
+                  userEditedKeyRef.current = true;
+                  setApiKey(e.target.value);
+                }}
                 placeholder={
                   isEdit
                     ? t("ai.providers_manager.dialog.api_key_edit_hint")

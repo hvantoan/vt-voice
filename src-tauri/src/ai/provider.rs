@@ -26,6 +26,30 @@ impl AiProvider {
         }
     }
 }
+/// Strips trailing slashes and common API endpoint suffixes (`/models`, `/audio/transcriptions`, `/chat/completions`)
+/// returning the normalized base URL.
+pub fn normalize_base_url(base_url: &str) -> String {
+    const SUFFIXES: &[&str] = &[
+        "/audio/transcriptions",
+        "/chat/completions",
+        "/models",
+    ];
+
+    let mut clean = base_url.trim().trim_end_matches('/');
+    loop {
+        let next = SUFFIXES
+            .iter()
+            .find_map(|suffix| clean.strip_suffix(suffix))
+            .map(|s| s.trim_end_matches('/'))
+            .unwrap_or(clean);
+
+        if next == clean {
+            break;
+        }
+        clean = next;
+    }
+    clean.to_string()
+}
 
 /// Universal endpoint latency tester measuring ping to {base_url}/models
 pub async fn test_endpoint_latency(
@@ -33,13 +57,8 @@ pub async fn test_endpoint_latency(
     base_url: &str,
     api_key: Option<&str>,
 ) -> Result<u64, AiError> {
-    let clean_base = base_url.trim().trim_end_matches('/');
-    let clean_base = clean_base.strip_suffix("/audio/transcriptions").unwrap_or(clean_base);
-    let url = if clean_base.ends_with("/models") {
-        clean_base.to_string()
-    } else {
-        format!("{}/models", clean_base)
-    };
+    let clean_base = normalize_base_url(base_url);
+    let url = format!("{}/models", clean_base);
     let start = std::time::Instant::now();
 
     let mut req = http
@@ -112,13 +131,8 @@ pub async fn polish_with_endpoint(
         .filter(|p| !p.trim().is_empty())
         .unwrap_or(super::prompts::DEFAULT_POLISH_SYSTEM_PROMPT);
 
-    let clean_base = base_url.trim().trim_end_matches('/');
-    let clean_base = clean_base.strip_suffix("/audio/transcriptions").unwrap_or(clean_base);
-    let url = if clean_base.ends_with("/chat/completions") {
-        clean_base.to_string()
-    } else {
-        format!("{}/chat/completions", clean_base)
-    };
+    let clean_base = normalize_base_url(base_url);
+    let url = format!("{}/chat/completions", clean_base);
 
     let model_name = if model.trim().is_empty() {
         "llama-3.3-70b-versatile"
@@ -268,6 +282,34 @@ mod tests {
         assert_eq!(
             AiProvider::from_str("custom", Some("http://localhost:8000".into())),
             AiProvider::Custom(Some("http://localhost:8000".into()))
+        );
+    }
+
+    #[test]
+    fn test_normalize_base_url() {
+        assert_eq!(
+            normalize_base_url("https://api.openai.com/v1/models"),
+            "https://api.openai.com/v1"
+        );
+        assert_eq!(
+            normalize_base_url("https://api.openai.com/v1/models/"),
+            "https://api.openai.com/v1"
+        );
+        assert_eq!(
+            normalize_base_url("https://api.openai.com/v1/audio/transcriptions"),
+            "https://api.openai.com/v1"
+        );
+        assert_eq!(
+            normalize_base_url("https://api.openai.com/v1/chat/completions/"),
+            "https://api.openai.com/v1"
+        );
+        assert_eq!(
+            normalize_base_url("  https://api.groq.com/openai/v1/  "),
+            "https://api.groq.com/openai/v1"
+        );
+        assert_eq!(
+            normalize_base_url("https://api.groq.com/openai/v1"),
+            "https://api.groq.com/openai/v1"
         );
     }
 }

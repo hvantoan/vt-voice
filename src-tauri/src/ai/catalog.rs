@@ -117,13 +117,8 @@ pub async fn fetch_openai_models(
     base_url: &str,
     api_key: Option<&str>,
 ) -> Result<Vec<DiscoveredModel>, AiError> {
-    let clean_base = base_url.trim().trim_end_matches('/');
-    let clean_base = clean_base.strip_suffix("/audio/transcriptions").unwrap_or(clean_base);
-    let url = if clean_base.ends_with("/models") {
-        clean_base.to_string()
-    } else {
-        format!("{}/models", clean_base)
-    };
+    let clean_base = super::provider::normalize_base_url(base_url);
+    let url = format!("{}/models", clean_base);
     let is_openrouter = clean_base.contains("openrouter.ai");
 
     let mut req = http

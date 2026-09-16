@@ -317,12 +317,12 @@ async fn test_provider_endpoint_cmd(
             if let Some(pid) = &provider_id {
                 storage::get_provider_key(pid).ok().flatten()
             } else {
-                let clean_base = base_url.trim().trim_end_matches('/');
+                let clean_base = ai::provider::normalize_base_url(&base_url);
                 let catalog = storage::load_models_catalog();
                 catalog
                     .providers
                     .iter()
-                    .find(|p| p.base_url.trim().trim_end_matches('/') == clean_base)
+                    .find(|p| ai::provider::normalize_base_url(&p.base_url) == clean_base)
                     .and_then(|p| storage::get_provider_key(&p.id).ok().flatten())
             }
         }

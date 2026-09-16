@@ -74,12 +74,8 @@ pub async fn transcribe_openrouter(
 
     let url = match custom_endpoint.filter(|e| !e.trim().is_empty()) {
         Some(ep) => {
-            let clean = ep.trim().trim_end_matches('/');
-            if clean.ends_with("/audio/transcriptions") {
-                clean.to_string()
-            } else {
-                format!("{}/audio/transcriptions", clean)
-            }
+            let clean = super::provider::normalize_base_url(ep);
+            format!("{}/audio/transcriptions", clean)
         }
         None => OPENROUTER_AUDIO_URL.to_string(),
     };
@@ -140,12 +136,8 @@ pub async fn test_openrouter_connection(
 
     let (url, is_openrouter) = match custom_endpoint.filter(|e| !e.trim().is_empty()) {
         Some(endpoint) => {
-            // If custom endpoint given, check if it points to /audio/transcriptions -> probe parent /models or base
-            if endpoint.ends_with("/audio/transcriptions") {
-                (endpoint.replace("/audio/transcriptions", "/models"), false)
-            } else {
-                (endpoint.to_string(), false)
-            }
+            let clean = super::provider::normalize_base_url(endpoint);
+            (format!("{}/models", clean), false)
         }
         None => (OPENROUTER_AUTH_KEY_URL.to_string(), true),
     };
