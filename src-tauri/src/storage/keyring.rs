@@ -22,16 +22,19 @@ pub fn get_account_name(provider: &str) -> String {
 }
 
 /// Masks an API key for safe UI presentation.
-/// For keys with 12 or more characters: preserves first 4 and last 4 chars, replacing middle with 8 bullets.
-/// For shorter keys: returns 8 bullets.
+/// For keys with more than 6 characters: preserves first 3 and last 3 characters,
+/// replacing the hidden characters with exactly that many asterisks ('*').
+/// For keys with 6 or fewer characters: replaces all characters with asterisks.
 pub fn mask_key(key: &str) -> String {
     let chars: Vec<char> = key.trim().chars().collect();
-    if chars.len() >= 12 {
-        let prefix: String = chars[..4].iter().collect();
-        let suffix: String = chars[chars.len() - 4..].iter().collect();
-        format!("{}••••••••{}", prefix, suffix)
-    } else if !chars.is_empty() {
-        "••••••••".to_string()
+    let len = chars.len();
+    if len > 6 {
+        let prefix: String = chars[..3].iter().collect();
+        let suffix: String = chars[len - 3..].iter().collect();
+        let asterisks = "*".repeat(len - 6);
+        format!("{}{}{}", prefix, asterisks, suffix)
+    } else if len > 0 {
+        "*".repeat(len)
     } else {
         String::new()
     }
@@ -117,24 +120,34 @@ mod tests {
 
     #[test]
     fn test_mask_key_short() {
-        assert_eq!(mask_key("short"), "••••••••");
-        assert_eq!(mask_key("12345678901"), "••••••••"); // 11 chars
+        assert_eq!(mask_key("abc"), "***");
+        assert_eq!(mask_key("short"), "*****"); // 5 chars -> 5 asterisks
+        assert_eq!(mask_key("123456"), "******"); // 6 chars -> 6 asterisks
     }
 
     #[test]
-    fn test_mask_key_twelve_chars() {
-        assert_eq!(mask_key("123456789012"), "1234••••••••9012");
+    fn test_mask_key_seven_chars() {
+        assert_eq!(mask_key("1234567"), "123*567"); // 7 chars: 3 prefix, 1 hidden, 3 suffix
+    }
+
+    #[test]
+    fn test_mask_key_nine_chars() {
+        assert_eq!(mask_key("sk-123adb"), "sk-***adb"); // 9 chars: 3 prefix, 3 hidden, 3 suffix
     }
 
     #[test]
     fn test_mask_key_typical_api_keys() {
         assert_eq!(
+            mask_key("sk-123456789adb"),
+            "sk-*********adb" // 15 chars: 3 prefix, 9 asterisks, 3 suffix
+        );
+        assert_eq!(
             mask_key("gsk_1234567890abcdef1234"),
-            "gsk_••••••••1234"
+            "gsk******************234" // 24 chars: 3 prefix, 18 asterisks, 3 suffix
         );
         assert_eq!(
             mask_key("sk-or-v1-abcdef1234567890abcdef4a2f"),
-            "sk-o••••••••4a2f"
+            format!("sk-{}a2f", "*".repeat(34 - 6))
         );
     }
 }

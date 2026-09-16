@@ -117,8 +117,9 @@ fn update_tray_locale_cmd(app: AppHandle, locale: String) -> Result<(), String> 
 }
 
 #[tauri::command]
-fn get_api_key_cmd() -> Result<Option<String>, String> {
-    storage::get_api_key().map_err(|e| e.to_string())
+fn get_api_key_cmd(provider: Option<String>) -> Result<Option<String>, String> {
+    let prov = provider.as_deref().unwrap_or("groq");
+    storage::get_provider_key(prov).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -140,7 +141,7 @@ fn save_provider_api_key(
     if trimmed.is_empty() {
         return Err("API key cannot be empty".to_string());
     }
-    if trimmed.contains('•') {
+    if trimmed.contains('•') || trimmed.contains('*') {
         return Err("Cannot save a masked API key".to_string());
     }
     storage::set_provider_key(&provider, trimmed).map_err(|e| e.to_string())
@@ -200,7 +201,7 @@ async fn test_provider_connection(
     endpoint: Option<String>,
 ) -> Result<u64, String> {
     let key = match api_key {
-        Some(k) if !k.trim().is_empty() && !k.contains('•') => k,
+        Some(k) if !k.trim().is_empty() && !k.contains('•') && !k.contains('*') => k,
         _ => storage::get_provider_key(&provider)
             .map_err(|e| e.to_string())?
             .ok_or_else(|| "Chưa cấu hình API key cho provider này".to_string())?,
@@ -304,8 +305,26 @@ async fn test_provider_endpoint_cmd(
     state: State<'_, AppState>,
     base_url: String,
     api_key: Option<String>,
+    provider_id: Option<String>,
 ) -> Result<u64, String> {
-    ai::test_endpoint_latency(&state.http_client, &base_url, api_key.as_deref())
+    let resolved_key = match api_key.filter(|k| !k.trim().is_empty() && !k.contains('•') && !k.contains('*')) {
+        Some(k) => Some(k),
+        None => {
+            if let Some(pid) = &provider_id {
+                storage::get_provider_key(pid).ok().flatten()
+            } else {
+                let clean_base = base_url.trim().trim_end_matches('/');
+                let catalog = storage::load_models_catalog();
+                catalog
+                    .providers
+                    .iter()
+                    .find(|p| p.base_url.trim().trim_end_matches('/') == clean_base)
+                    .and_then(|p| storage::get_provider_key(&p.id).ok().flatten())
+            }
+        }
+    };
+
+    ai::test_endpoint_latency(&state.http_client, &base_url, resolved_key.as_deref())
         .await
         .map_err(|e| e.to_string())
 }
@@ -771,26 +790,38 @@ pub fn run() {
 
                             tauri::async_runtime::spawn(async move {
                                 let total_start = std::time::Instant::now();
-                                let (provider, model, enable_polish, custom_endpoint, vocab, sys_prompt) = {
+                                let (stt_profile, polish_profile, enable_polish, vocab, sys_prompt) = {
                                     let cfg = config_async.lock();
+                                    let stt = cfg.feature_profiles.get("stt").cloned().unwrap_or_else(|| storage::FeatureProfile {
+                                        provider_id: cfg.active_provider.clone(),
+                                        model_id: Some(cfg.stt_model.clone()),
+                                    });
+                                    let polish = cfg.feature_profiles.get("polish").cloned().unwrap_or_else(|| storage::FeatureProfile {
+                                        provider_id: cfg.active_provider.clone(),
+                                        model_id: Some(cfg.polish_model.clone()),
+                                    });
                                     (
-                                        cfg.active_provider.clone(),
-                                        cfg.stt_model.clone(),
+                                        stt,
+                                        polish,
                                         cfg.enable_polish,
-                                        cfg.custom_endpoint.clone(),
                                         cfg.custom_vocabulary.clone(),
                                         cfg.system_prompt.clone(),
                                     )
                                 };
 
-                                let key = storage::get_provider_key(&provider).unwrap_or(None).unwrap_or_default();
+                                let stt_prov = storage::get_provider(&stt_profile.provider_id);
+                                let provider_display = stt_prov
+                                    .as_ref()
+                                    .map(|p| p.name.clone())
+                                    .unwrap_or_else(|| match stt_profile.provider_id.as_str() {
+                                        "openrouter" => "OpenRouter".to_string(),
+                                        "custom" => "Custom Endpoint".to_string(),
+                                        _ => "Groq".to_string(),
+                                    });
+
+                                let key = storage::get_provider_key(&stt_profile.provider_id).unwrap_or(None).unwrap_or_default();
 
                                 if key.trim().is_empty() {
-                                    let provider_display = match provider.as_str() {
-                                        "openrouter" => "OpenRouter",
-                                        "custom" => "Custom Endpoint",
-                                        _ => "Groq",
-                                    };
                                     overlay_async.set_error(
                                         &app_async,
                                         &format!("Chưa cài đặt API key cho {}", provider_display),
@@ -801,28 +832,40 @@ pub fn run() {
 
                                 // 1. Transcribe with active provider
                                 let stt_start = std::time::Instant::now();
-                                let transcribe_res = ai::transcribe_with_provider(
-                                    &provider,
-                                    &http_async,
-                                    &key,
-                                    &model,
-                                    wav_bytes,
-                                    &vocab,
-                                    custom_endpoint.as_deref(),
-                                )
-                                .await;
+                                let stt_model = stt_profile
+                                    .model_id
+                                    .as_deref()
+                                    .unwrap_or("whisper-large-v3-turbo");
+
+                                let transcribe_res = if let Some(prov) = &stt_prov {
+                                    ai::transcribe_with_endpoint(
+                                        &http_async,
+                                        &prov.base_url,
+                                        &key,
+                                        stt_model,
+                                        wav_bytes,
+                                        &vocab,
+                                    )
+                                    .await
+                                } else {
+                                    ai::transcribe_with_provider(
+                                        &stt_profile.provider_id,
+                                        &http_async,
+                                        &key,
+                                        stt_model,
+                                        wav_bytes,
+                                        &vocab,
+                                        None,
+                                    )
+                                    .await
+                                };
 
                                 let raw_text = match transcribe_res {
                                     Ok(text) => text,
                                     Err(err) => {
-                                        let provider_name = match provider.as_str() {
-                                            "openrouter" => "OpenRouter",
-                                            "custom" => "Custom",
-                                            _ => "Groq",
-                                        };
                                         overlay_async.set_error(
                                             &app_async,
-                                            &format!("Lỗi {}: {}", provider_name, err),
+                                            &format!("Lỗi {}: {}", provider_display, err),
                                         );
                                         TrayManager::set_idle(&app_async);
                                         return;
@@ -843,18 +886,36 @@ pub fn run() {
                                     (raw_text.clone(), 0)
                                 } else {
                                     let llm_start = std::time::Instant::now();
-                                    let groq_key = storage::get_provider_key("groq").unwrap_or(None).unwrap_or_default();
-                                    let polished = if !groq_key.trim().is_empty() {
-                                        match ai::polish_grammar(
-                                            &http_async,
-                                            &groq_key,
-                                            &raw_text,
-                                            Some(&sys_prompt),
-                                        )
-                                        .await
-                                        {
-                                            Ok(p) => p,
-                                            Err(_) => ai::LocalPolisher::polish(&raw_text),
+                                    let polish_key = storage::get_provider_key(&polish_profile.provider_id).unwrap_or(None).unwrap_or_default();
+                                    let polished = if !polish_key.trim().is_empty() {
+                                        if polish_profile.provider_id.eq_ignore_ascii_case("groq") {
+                                            match ai::polish_grammar(
+                                                &http_async,
+                                                &polish_key,
+                                                &raw_text,
+                                                Some(&sys_prompt),
+                                            )
+                                            .await
+                                            {
+                                                Ok(p) => p,
+                                                Err(_) => ai::LocalPolisher::polish(&raw_text),
+                                            }
+                                        } else if let Some(polish_prov) = storage::get_provider(&polish_profile.provider_id) {
+                                            let model = polish_profile.model_id.as_deref().unwrap_or("llama-3.3-70b-versatile");
+                                            match ai::translate_chat(
+                                                &http_async,
+                                                Some(&polish_prov.base_url),
+                                                &polish_key,
+                                                model,
+                                                &raw_text,
+                                            )
+                                            .await
+                                            {
+                                                Ok(p) => p,
+                                                Err(_) => ai::LocalPolisher::polish(&raw_text),
+                                            }
+                                        } else {
+                                            ai::LocalPolisher::polish(&raw_text)
                                         }
                                     } else {
                                         ai::LocalPolisher::polish(&raw_text)

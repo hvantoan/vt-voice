@@ -44,8 +44,8 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [initialMaskedKey, setInitialMaskedKey] = useState("");
   const [showKey, setShowKey] = useState(false);
-
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{
     success: boolean;
@@ -63,12 +63,32 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
       if (provider) {
         setName(provider.name);
         setBaseUrl(provider.base_url);
+        invoke<string | null>("get_masked_provider_api_key", {
+          provider: provider.id,
+        })
+          .then((masked) => {
+            if (masked) {
+              setApiKey(masked);
+              setInitialMaskedKey(masked);
+              setShowKey(true);
+            } else {
+              setApiKey("");
+              setInitialMaskedKey("");
+              setShowKey(false);
+            }
+          })
+          .catch(() => {
+            setApiKey("");
+            setInitialMaskedKey("");
+            setShowKey(false);
+          });
       } else {
         setName("");
         setBaseUrl("");
+        setApiKey("");
+        setInitialMaskedKey("");
+        setShowKey(false);
       }
-      setApiKey("");
-      setShowKey(false);
       setTestResult(null);
       setSaveError(null);
     }
@@ -87,22 +107,18 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
     setTestResult(null);
 
     try {
-      // Nếu không nhập key mới ở chế độ sửa, backend có thể đọc key đã lưu từ vault qua provider.id
-      let keyToTest = apiKey.trim() ? apiKey.trim() : undefined;
-      if (!keyToTest && provider) {
-        try {
-          const storedKey = await invoke<string | null>("get_api_key_cmd", {
-            provider: provider.id,
-          });
-          if (storedKey) keyToTest = storedKey;
-        } catch {
-          // ignore
-        }
-      }
+      const isMaskedOrUnchanged =
+        !apiKey.trim() ||
+        apiKey === initialMaskedKey ||
+        apiKey.includes("*") ||
+        apiKey.includes("•");
+
+      const keyToTest = isMaskedOrUnchanged ? null : apiKey.trim();
 
       const latency = await invoke<number>("test_provider_endpoint_cmd", {
         baseUrl: baseUrl.trim(),
-        apiKey: keyToTest || null,
+        apiKey: keyToTest,
+        providerId: provider?.id || null,
       });
 
       setTestResult({ success: true, latency });
@@ -145,7 +161,13 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
 
       await invoke("save_provider", { provider: updatedProvider });
 
-      if (apiKey.trim()) {
+      const isNewKeyEntered =
+        Boolean(apiKey.trim()) &&
+        apiKey !== initialMaskedKey &&
+        !apiKey.includes("*") &&
+        !apiKey.includes("•");
+
+      if (isNewKeyEntered) {
         await invoke("save_provider_api_key", {
           provider: id,
           key: apiKey.trim(),

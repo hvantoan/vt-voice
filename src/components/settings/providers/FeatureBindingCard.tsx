@@ -123,6 +123,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
         const latency = await invoke<number>("test_provider_endpoint_cmd", {
           baseUrl: activeProvider.base_url,
           apiKey: null, // Đọc từ vault
+          providerId: activeProvider.id,
         });
         setTestResult({ success: true, latency });
       } else {

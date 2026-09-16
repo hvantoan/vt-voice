@@ -64,6 +64,7 @@ export const ProviderManager: React.FC<ProviderManagerProps> = ({
       const latency = await invoke<number>("test_provider_endpoint_cmd", {
         baseUrl: provider.base_url,
         apiKey: null, // Backend sẽ tự lấy từ Windows Vault
+        providerId: provider.id,
       });
 
       setLatencies((prev) => ({

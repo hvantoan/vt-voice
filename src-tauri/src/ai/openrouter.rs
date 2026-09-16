@@ -72,9 +72,17 @@ pub async fn transcribe_openrouter(
         .text("temperature", "0.0")
         .text("prompt", initial_prompt);
 
-    let url = custom_endpoint
-        .filter(|e| !e.trim().is_empty())
-        .unwrap_or(OPENROUTER_AUDIO_URL);
+    let url = match custom_endpoint.filter(|e| !e.trim().is_empty()) {
+        Some(ep) => {
+            let clean = ep.trim().trim_end_matches('/');
+            if clean.ends_with("/audio/transcriptions") {
+                clean.to_string()
+            } else {
+                format!("{}/audio/transcriptions", clean)
+            }
+        }
+        None => OPENROUTER_AUDIO_URL.to_string(),
+    };
 
     let is_openrouter = url.contains("openrouter.ai");
 
