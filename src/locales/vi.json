@@ -301,6 +301,21 @@
     "tooltip_processing": "vt-voice: Đang xử lý AI...",
     "tooltip_error": "vt-voice: Lỗi - {msg}"
   },
+  "translate": {
+    "title": "Dịch nhanh",
+    "detected_lang": "Ngôn ngữ phát hiện",
+    "target_lang": "Bản dịch",
+    "swap_languages": "Đổi chiều ngôn ngữ",
+    "auto_detect": "Tự động phát hiện",
+    "shortcut_hint": "Esc: Đóng • Enter: Sao chép",
+    "source_placeholder": "Đoạn văn bản gốc...",
+    "target_placeholder": "Kết quả dịch sẽ hiển thị tại đây...",
+    "lang_vi": "Tiếng Việt",
+    "lang_en": "Tiếng Anh",
+    "lang_ja": "Tiếng Nhật",
+    "lang_zh": "Tiếng Trung",
+    "lang_ko": "Tiếng Hàn"
+  },
   "errors": {
     "api_key_empty": "Khóa API không được để trống",
     "api_key_masked": "Không thể lưu khóa API bị ẩn",

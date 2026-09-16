@@ -301,6 +301,21 @@
     "tooltip_processing": "vt-voice: Processing AI...",
     "tooltip_error": "vt-voice: Error - {msg}"
   },
+  "translate": {
+    "title": "Quick Translate",
+    "detected_lang": "Detected Language",
+    "target_lang": "Translation",
+    "swap_languages": "Swap languages",
+    "auto_detect": "Auto detect",
+    "shortcut_hint": "Esc: Close • Enter: Copy",
+    "source_placeholder": "Source text...",
+    "target_placeholder": "Translation will appear here...",
+    "lang_vi": "Vietnamese",
+    "lang_en": "English",
+    "lang_ja": "Japanese",
+    "lang_zh": "Chinese",
+    "lang_ko": "Korean"
+  },
   "errors": {
     "api_key_empty": "API key cannot be empty",
     "api_key_masked": "Cannot save a masked API key",
