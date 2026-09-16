@@ -134,7 +134,7 @@ export const ProviderManager: React.FC<ProviderManagerProps> = ({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
             <Server className="w-4 h-4 text-emerald-400" />

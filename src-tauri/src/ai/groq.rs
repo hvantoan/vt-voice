@@ -4,10 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use super::client::{AiError, AiHttpClient};
 use super::fallback::LocalPolisher;
-use super::prompts::{DEFAULT_INITIAL_PROMPT, DEFAULT_POLISH_SYSTEM_PROMPT};
+use super::prompts::DEFAULT_INITIAL_PROMPT;
 
 const GROQ_AUDIO_URL: &str = "https://api.groq.com/openai/v1/audio/transcriptions";
-const GROQ_CHAT_URL: &str = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODELS_URL: &str = "https://api.groq.com/openai/v1/models";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,35 +19,6 @@ pub struct AiPipelineResult {
 #[derive(Deserialize)]
 struct WhisperResponse {
     text: String,
-}
-
-#[derive(Serialize)]
-struct ChatMessage<'a> {
-    role: &'a str,
-    content: &'a str,
-}
-
-#[derive(Serialize)]
-struct ChatCompletionRequest<'a> {
-    model: &'a str,
-    messages: Vec<ChatMessage<'a>>,
-    temperature: f32,
-    max_tokens: u32,
-}
-
-#[derive(Deserialize)]
-struct ChatChoiceMessage {
-    content: String,
-}
-
-#[derive(Deserialize)]
-struct ChatChoice {
-    message: ChatChoiceMessage,
-}
-
-#[derive(Deserialize)]
-struct ChatCompletionResponse {
-    choices: Vec<ChatChoice>,
 }
 
 /// Transcribe in-memory WAV audio bytes using Groq Whisper-large-v3-turbo
@@ -120,71 +90,15 @@ pub async fn polish_grammar(
     raw_text: &str,
     system_prompt: Option<&str>,
 ) -> Result<String, AiError> {
-    let key = api_key.trim();
-    if key.is_empty() {
-        return Err(AiError::MissingApiKey);
-    }
-
-    let trimmed = raw_text.trim();
-    if trimmed.is_empty() {
-        return Ok(String::new());
-    }
-
-    let sys_prompt = system_prompt
-        .filter(|p| !p.trim().is_empty())
-        .unwrap_or(DEFAULT_POLISH_SYSTEM_PROMPT);
-
-    let request_body = ChatCompletionRequest {
-        model: "llama-3.3-70b-versatile",
-        messages: vec![
-            ChatMessage {
-                role: "system",
-                content: sys_prompt,
-            },
-            ChatMessage {
-                role: "user",
-                content: trimmed,
-            },
-        ],
-        temperature: 0.1,
-        max_tokens: 512,
-    };
-
-    let res = http
-        .client
-        .post(GROQ_CHAT_URL)
-        .bearer_auth(key)
-        .timeout(http.timeout)
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let status = res.status().as_u16();
-    if !res.status().is_success() {
-        let err_body = res.text().await.unwrap_or_default();
-        return Err(AiError::Api {
-            status,
-            message: err_body,
-        });
-    }
-
-    let data: ChatCompletionResponse = res
-        .json()
-        .await
-        .map_err(|e| AiError::ParseError(format!("Failed to parse Chat JSON: {}", e)))?;
-
-    if let Some(first_choice) = data.choices.into_iter().next() {
-        let output = first_choice.message.content.trim().to_string();
-
-        // Anti-hallucination guard: If LLM output is empty or > 2.5x original length, fallback
-        if output.is_empty() || output.len() > (trimmed.len() * 3) {
-            Ok(LocalPolisher::polish(trimmed))
-        } else {
-            Ok(output)
-        }
-    } else {
-        Ok(LocalPolisher::polish(trimmed))
-    }
+    super::provider::polish_with_endpoint(
+        http,
+        "https://api.groq.com/openai/v1",
+        api_key,
+        "llama-3.3-70b-versatile",
+        raw_text,
+        system_prompt,
+    )
+    .await
 }
 
 /// Test connection to Groq and return latency in milliseconds

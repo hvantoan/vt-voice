@@ -16,7 +16,7 @@ pub use groq::{polish_grammar, run_pipeline, test_connection, transcribe, AiPipe
 pub use openrouter::{test_openrouter_connection, transcribe_openrouter};
 pub use prompts::{DEFAULT_INITIAL_PROMPT, DEFAULT_POLISH_SYSTEM_PROMPT};
 pub use provider::{
-    test_endpoint_latency, test_provider_connection, transcribe_with_endpoint,
-    transcribe_with_provider, AiProvider,
+    polish_with_endpoint, test_endpoint_latency, test_provider_connection,
+    transcribe_with_endpoint, transcribe_with_provider, AiProvider,
 };
 pub use translate::{translate_chat, translate_google};

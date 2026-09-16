@@ -91,12 +91,16 @@ fn get_app_config(state: State<'_, AppState>) -> AppConfig {
 fn save_app_config(
     app: AppHandle,
     state: State<'_, AppState>,
-    config: AppConfig,
+    mut config: AppConfig,
 ) -> Result<(), String> {
     let locale_changed = {
         let current = state.config.lock();
+        if config.feature_profiles.is_empty() {
+            config.feature_profiles = current.feature_profiles.clone();
+        }
         current.locale != config.locale
     };
+    config.ensure_feature_profiles_migrated();
     save_config(&config).map_err(|e| e.to_string())?;
     state
         .hotkey_manager
@@ -466,27 +470,25 @@ async fn transcribe_and_polish(
             .unwrap_or_default();
 
         let polished = if !polish_key.trim().is_empty() {
-            if polish_profile.provider_id.eq_ignore_ascii_case("groq") {
-                match ai::polish_grammar(&state.http_client, &polish_key, &raw_text, Some(&sys_prompt)).await {
-                    Ok(p) => p,
-                    Err(_) => ai::LocalPolisher::polish(&raw_text),
-                }
-            } else if let Some(polish_provider) = storage::get_provider(&polish_profile.provider_id) {
-                let model = polish_profile.model_id.as_deref().unwrap_or("llama-3.3-70b-versatile");
-                match ai::translate_chat(
-                    &state.http_client,
-                    Some(&polish_provider.base_url),
-                    &polish_key,
-                    model,
-                    &raw_text,
-                )
-                .await
-                {
-                    Ok(p) => p,
-                    Err(_) => ai::LocalPolisher::polish(&raw_text),
-                }
-            } else {
-                ai::LocalPolisher::polish(&raw_text)
+            let base_url = storage::get_provider(&polish_profile.provider_id)
+                .map(|p| p.base_url)
+                .unwrap_or_else(|| match polish_profile.provider_id.to_lowercase().as_str() {
+                    "openrouter" => "https://openrouter.ai/api/v1".to_string(),
+                    _ => "https://api.groq.com/openai/v1".to_string(),
+                });
+            let model = polish_profile.model_id.as_deref().unwrap_or("llama-3.3-70b-versatile");
+            match ai::polish_with_endpoint(
+                &state.http_client,
+                &base_url,
+                &polish_key,
+                model,
+                &raw_text,
+                Some(&sys_prompt),
+            )
+            .await
+            {
+                Ok(p) => p,
+                Err(_) => ai::LocalPolisher::polish(&raw_text),
             }
         } else {
             ai::LocalPolisher::polish(&raw_text)
@@ -888,34 +890,25 @@ pub fn run() {
                                     let llm_start = std::time::Instant::now();
                                     let polish_key = storage::get_provider_key(&polish_profile.provider_id).unwrap_or(None).unwrap_or_default();
                                     let polished = if !polish_key.trim().is_empty() {
-                                        if polish_profile.provider_id.eq_ignore_ascii_case("groq") {
-                                            match ai::polish_grammar(
-                                                &http_async,
-                                                &polish_key,
-                                                &raw_text,
-                                                Some(&sys_prompt),
-                                            )
-                                            .await
-                                            {
-                                                Ok(p) => p,
-                                                Err(_) => ai::LocalPolisher::polish(&raw_text),
-                                            }
-                                        } else if let Some(polish_prov) = storage::get_provider(&polish_profile.provider_id) {
-                                            let model = polish_profile.model_id.as_deref().unwrap_or("llama-3.3-70b-versatile");
-                                            match ai::translate_chat(
-                                                &http_async,
-                                                Some(&polish_prov.base_url),
-                                                &polish_key,
-                                                model,
-                                                &raw_text,
-                                            )
-                                            .await
-                                            {
-                                                Ok(p) => p,
-                                                Err(_) => ai::LocalPolisher::polish(&raw_text),
-                                            }
-                                        } else {
-                                            ai::LocalPolisher::polish(&raw_text)
+                                        let base_url = storage::get_provider(&polish_profile.provider_id)
+                                            .map(|p| p.base_url)
+                                            .unwrap_or_else(|| match polish_profile.provider_id.to_lowercase().as_str() {
+                                                "openrouter" => "https://openrouter.ai/api/v1".to_string(),
+                                                _ => "https://api.groq.com/openai/v1".to_string(),
+                                            });
+                                        let model = polish_profile.model_id.as_deref().unwrap_or("llama-3.3-70b-versatile");
+                                        match ai::polish_with_endpoint(
+                                            &http_async,
+                                            &base_url,
+                                            &polish_key,
+                                            model,
+                                            &raw_text,
+                                            Some(&sys_prompt),
+                                        )
+                                        .await
+                                        {
+                                            Ok(p) => p,
+                                            Err(_) => ai::LocalPolisher::polish(&raw_text),
                                         }
                                     } else {
                                         ai::LocalPolisher::polish(&raw_text)

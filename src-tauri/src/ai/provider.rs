@@ -90,6 +90,111 @@ pub async fn transcribe_with_endpoint(
     openrouter::transcribe_openrouter(http, api_key, model, wav_bytes, custom_vocab, Some(base_url)).await
 }
 
+/// Unified chat completion polisher targeting an arbitrary OpenAI-compatible base URL with system prompt
+pub async fn polish_with_endpoint(
+    http: &AiHttpClient,
+    base_url: &str,
+    api_key: &str,
+    model: &str,
+    raw_text: &str,
+    system_prompt: Option<&str>,
+) -> Result<String, AiError> {
+    let key = api_key.trim();
+    if key.is_empty() {
+        return Err(AiError::MissingApiKey);
+    }
+    let trimmed = raw_text.trim();
+    if trimmed.is_empty() {
+        return Ok(String::new());
+    }
+
+    let sys_prompt = system_prompt
+        .filter(|p| !p.trim().is_empty())
+        .unwrap_or(super::prompts::DEFAULT_POLISH_SYSTEM_PROMPT);
+
+    let clean_base = base_url.trim().trim_end_matches('/');
+    let clean_base = clean_base.strip_suffix("/audio/transcriptions").unwrap_or(clean_base);
+    let url = if clean_base.ends_with("/chat/completions") {
+        clean_base.to_string()
+    } else {
+        format!("{}/chat/completions", clean_base)
+    };
+
+    let model_name = if model.trim().is_empty() {
+        "llama-3.3-70b-versatile"
+    } else {
+        model.trim()
+    };
+
+    let request_body = serde_json::json!({
+        "model": model_name,
+        "messages": [
+            { "role": "system", "content": sys_prompt },
+            { "role": "user", "content": trimmed }
+        ],
+        "temperature": 0.1,
+        "max_tokens": 512,
+    });
+
+    let mut req = http
+        .client
+        .post(&url)
+        .bearer_auth(key)
+        .timeout(http.timeout)
+        .json(&request_body);
+
+    if clean_base.contains("openrouter.ai") {
+        req = req
+            .header("HTTP-Referer", openrouter::OPENROUTER_REFERER)
+            .header("X-Title", openrouter::OPENROUTER_TITLE);
+    }
+
+    let res = req.send().await?;
+    let status = res.status().as_u16();
+    if !res.status().is_success() {
+        let err_body = res.text().await.unwrap_or_default();
+        let sanitized = openrouter::sanitize_error_message(&err_body, key);
+        return Err(AiError::Api {
+            status,
+            message: sanitized,
+        });
+    }
+
+    #[derive(serde::Deserialize)]
+    struct PolishChatMessage {
+        #[serde(default)]
+        content: Option<String>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct PolishChatChoice {
+        message: PolishChatMessage,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct PolishChatResponse {
+        choices: Vec<PolishChatChoice>,
+    }
+
+    let data: PolishChatResponse = res
+        .json()
+        .await
+        .map_err(|e| AiError::ParseError(format!("Failed to parse Chat JSON: {}", e)))?;
+
+    if let Some(first_choice) = data.choices.into_iter().next() {
+        let output = first_choice.message.content.unwrap_or_default().trim().to_string();
+
+        // Anti-hallucination guard: If LLM output is empty or > 3x original length, fallback
+        if output.is_empty() || output.len() > (trimmed.len() * 3) {
+            Ok(super::fallback::LocalPolisher::polish(trimmed))
+        } else {
+            Ok(output)
+        }
+    } else {
+        Ok(super::fallback::LocalPolisher::polish(trimmed))
+    }
+}
+
 /// Unified STT transcription dispatcher across Groq, OpenRouter, and Custom OpenAI endpoints
 pub async fn transcribe_with_provider(
     provider: &str,

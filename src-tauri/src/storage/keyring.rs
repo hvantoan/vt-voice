@@ -145,9 +145,10 @@ mod tests {
             mask_key("gsk_1234567890abcdef1234"),
             "gsk******************234" // 24 chars: 3 prefix, 18 asterisks, 3 suffix
         );
+        let key = "sk-or-v1-abcdef1234567890abcdef4a2f";
         assert_eq!(
-            mask_key("sk-or-v1-abcdef1234567890abcdef4a2f"),
-            format!("sk-{}a2f", "*".repeat(34 - 6))
+            mask_key(key),
+            format!("sk-{}a2f", "*".repeat(key.len() - 6))
         );
     }
 }
