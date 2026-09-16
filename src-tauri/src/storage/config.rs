@@ -108,7 +108,7 @@ pub struct AppConfig {
     pub vad_timeout_ms: u64,
     #[serde(default = "default_locale")]
     pub locale: String,
-    #[serde(default = "default_feature_profiles")]
+    #[serde(default)]
     pub feature_profiles: HashMap<String, FeatureProfile>,
 }
 
@@ -149,6 +149,94 @@ impl Default for AppConfig {
             locale: "system".to_string(),
             feature_profiles: default_feature_profiles(),
         }
+    }
+}
+
+impl AppConfig {
+    /// Migrates legacy provider/model configurations to feature_profiles if missing.
+    /// Returns true if any migration or fallback insertion occurred.
+    pub fn ensure_feature_profiles_migrated(&mut self) -> bool {
+        let mut migrated = false;
+        if self.feature_profiles.is_empty() {
+            let trans_provider = if let Some(ep) = &self.translate_endpoint {
+                if ep.trim().is_empty() {
+                    "google_free".to_string()
+                } else {
+                    "translate".to_string()
+                }
+            } else if self.translate_model.is_some() {
+                "custom".to_string()
+            } else {
+                "google_free".to_string()
+            };
+            self.feature_profiles.insert(
+                "stt".to_string(),
+                FeatureProfile {
+                    provider_id: self.active_provider.clone(),
+                    model_id: Some(self.stt_model.clone()),
+                },
+            );
+            self.feature_profiles.insert(
+                "polish".to_string(),
+                FeatureProfile {
+                    provider_id: self.active_provider.clone(),
+                    model_id: Some(self.polish_model.clone()),
+                },
+            );
+            self.feature_profiles.insert(
+                "translate".to_string(),
+                FeatureProfile {
+                    provider_id: trans_provider,
+                    model_id: self.translate_model.clone(),
+                },
+            );
+            return true;
+        }
+
+        // Even if non-empty, ensure each required feature profile exists
+        if !self.feature_profiles.contains_key("stt") {
+            self.feature_profiles.insert(
+                "stt".to_string(),
+                FeatureProfile {
+                    provider_id: self.active_provider.clone(),
+                    model_id: Some(self.stt_model.clone()),
+                },
+            );
+            migrated = true;
+        }
+        if !self.feature_profiles.contains_key("polish") {
+            self.feature_profiles.insert(
+                "polish".to_string(),
+                FeatureProfile {
+                    provider_id: self.active_provider.clone(),
+                    model_id: Some(self.polish_model.clone()),
+                },
+            );
+            migrated = true;
+        }
+        if !self.feature_profiles.contains_key("translate") {
+            let trans_provider = if let Some(ep) = &self.translate_endpoint {
+                if ep.trim().is_empty() {
+                    "google_free".to_string()
+                } else {
+                    "translate".to_string()
+                }
+            } else if self.translate_model.is_some() {
+                "custom".to_string()
+            } else {
+                "google_free".to_string()
+            };
+            self.feature_profiles.insert(
+                "translate".to_string(),
+                FeatureProfile {
+                    provider_id: trans_provider,
+                    model_id: self.translate_model.clone(),
+                },
+            );
+            migrated = true;
+        }
+
+        migrated
     }
 }
 
@@ -224,40 +312,7 @@ pub fn load_config() -> AppConfig {
     let mut cfg: AppConfig = serde_json::from_str(&contents).unwrap_or_default();
 
     // Tự động chuyển đổi cấu hình cũ sang feature_profiles nếu chưa có
-    if cfg.feature_profiles.is_empty() {
-        cfg.feature_profiles = default_feature_profiles();
-        cfg.feature_profiles.insert(
-            "stt".to_string(),
-            FeatureProfile {
-                provider_id: cfg.active_provider.clone(),
-                model_id: Some(cfg.stt_model.clone()),
-            },
-        );
-        cfg.feature_profiles.insert(
-            "polish".to_string(),
-            FeatureProfile {
-                provider_id: cfg.active_provider.clone(),
-                model_id: Some(cfg.polish_model.clone()),
-            },
-        );
-        let trans_provider = if let Some(ep) = &cfg.translate_endpoint {
-            if ep.trim().is_empty() {
-                "google_free".to_string()
-            } else {
-                "translate".to_string()
-            }
-        } else if cfg.translate_model.is_some() {
-            "custom".to_string()
-        } else {
-            "google_free".to_string()
-        };
-        cfg.feature_profiles.insert(
-            "translate".to_string(),
-            FeatureProfile {
-                provider_id: trans_provider,
-                model_id: cfg.translate_model.clone(),
-            },
-        );
+    if cfg.ensure_feature_profiles_migrated() {
         let _ = save_config(&cfg);
     }
 
@@ -349,5 +404,61 @@ mod tests {
         let json_vi = r#"{"locale": "vi", "hotkey_mode": "push_to_talk", "hotkey_binding": {"code": 165, "name": "Right Alt", "ctrl": false, "alt": false, "shift": false, "win": false}, "audio_device_name": null, "autostart": false, "start_minimized": true, "system_prompt": "p", "custom_vocabulary": [], "vad_timeout_ms": 700}"#;
         let cfg_vi: AppConfig = serde_json::from_str(json_vi).expect("deserialize failed");
         assert_eq!(cfg_vi.locale, "vi");
+    }
+
+    #[test]
+    fn test_app_config_migration_from_legacy_without_feature_profiles() {
+        let json = r#"{
+            "hotkey_mode": "push_to_talk",
+            "hotkey_binding": {"code": 165, "name": "Right Alt", "ctrl": false, "alt": false, "shift": false, "win": false},
+            "audio_device_name": null,
+            "autostart": false,
+            "start_minimized": true,
+            "active_provider": "openrouter",
+            "stt_model": "openai/whisper-1",
+            "polish_model": "llama-3.3-70b-versatile",
+            "system_prompt": "test prompt",
+            "custom_vocabulary": ["API"],
+            "vad_timeout_ms": 700
+        }"#;
+        let mut cfg: AppConfig = serde_json::from_str(json).expect("deserialize failed");
+        assert!(cfg.feature_profiles.is_empty());
+        assert!(cfg.ensure_feature_profiles_migrated());
+        assert_eq!(cfg.feature_profiles.get("stt").unwrap().provider_id, "openrouter");
+        assert_eq!(cfg.feature_profiles.get("stt").unwrap().model_id.as_deref(), Some("openai/whisper-1"));
+        assert_eq!(cfg.feature_profiles.get("polish").unwrap().provider_id, "openrouter");
+        assert_eq!(cfg.feature_profiles.get("translate").unwrap().provider_id, "google_free");
+    }
+
+    #[test]
+    fn test_app_config_preserves_existing_split_feature_profiles() {
+        let mut cfg = AppConfig::default();
+        cfg.active_provider = "groq".to_string();
+        cfg.feature_profiles.insert(
+            "stt".to_string(),
+            FeatureProfile {
+                provider_id: "groq".to_string(),
+                model_id: Some("whisper-large-v3-turbo".to_string()),
+            },
+        );
+        cfg.feature_profiles.insert(
+            "polish".to_string(),
+            FeatureProfile {
+                provider_id: "openrouter".to_string(),
+                model_id: Some("anthropic/claude-3.5-haiku".to_string()),
+            },
+        );
+        cfg.feature_profiles.insert(
+            "translate".to_string(),
+            FeatureProfile {
+                provider_id: "google_free".to_string(),
+                model_id: None,
+            },
+        );
+
+        assert!(!cfg.ensure_feature_profiles_migrated());
+        assert_eq!(cfg.feature_profiles.get("stt").unwrap().provider_id, "groq");
+        assert_eq!(cfg.feature_profiles.get("polish").unwrap().provider_id, "openrouter");
+        assert_eq!(cfg.feature_profiles.get("translate").unwrap().provider_id, "google_free");
     }
 }

@@ -211,7 +211,8 @@ pub fn get_provider(id: &str) -> Option<ProviderConfig> {
 }
 
 /// Thêm hoặc cập nhật provider
-pub fn upsert_provider(provider: ProviderConfig) -> Result<(), CatalogError> {
+pub fn upsert_provider(mut provider: ProviderConfig) -> Result<(), CatalogError> {
+    provider.base_url = crate::ai::provider::normalize_base_url(&provider.base_url);
     let mut catalog = load_models_catalog();
     if let Some(existing) = catalog.providers.iter_mut().find(|p| p.id.eq_ignore_ascii_case(&provider.id)) {
         existing.name = provider.name;

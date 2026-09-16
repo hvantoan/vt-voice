@@ -105,7 +105,8 @@ pub async fn translate_chat(
     }
 
     let base = base_url.filter(|e| !e.trim().is_empty()).unwrap_or(DEFAULT_CHAT_BASE_URL);
-    let url = format!("{}/chat/completions", base.trim_end_matches('/'));
+    let clean_base = super::provider::normalize_base_url(base);
+    let url = format!("{}/chat/completions", clean_base);
 
     let request_body = serde_json::json!({
         "model": model,

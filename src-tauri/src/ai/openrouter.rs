@@ -72,9 +72,13 @@ pub async fn transcribe_openrouter(
         .text("temperature", "0.0")
         .text("prompt", initial_prompt);
 
-    let url = custom_endpoint
-        .filter(|e| !e.trim().is_empty())
-        .unwrap_or(OPENROUTER_AUDIO_URL);
+    let url = match custom_endpoint.filter(|e| !e.trim().is_empty()) {
+        Some(ep) => {
+            let clean = super::provider::normalize_base_url(ep);
+            format!("{}/audio/transcriptions", clean)
+        }
+        None => OPENROUTER_AUDIO_URL.to_string(),
+    };
 
     let is_openrouter = url.contains("openrouter.ai");
 
@@ -132,12 +136,8 @@ pub async fn test_openrouter_connection(
 
     let (url, is_openrouter) = match custom_endpoint.filter(|e| !e.trim().is_empty()) {
         Some(endpoint) => {
-            // If custom endpoint given, check if it points to /audio/transcriptions -> probe parent /models or base
-            if endpoint.ends_with("/audio/transcriptions") {
-                (endpoint.replace("/audio/transcriptions", "/models"), false)
-            } else {
-                (endpoint.to_string(), false)
-            }
+            let clean = super::provider::normalize_base_url(endpoint);
+            (format!("{}/models", clean), false)
         }
         None => (OPENROUTER_AUTH_KEY_URL.to_string(), true),
     };
