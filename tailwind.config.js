@@ -43,6 +43,19 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        recording: {
+          DEFAULT: "hsl(var(--recording))",
+          foreground: "hsl(var(--recording-foreground))",
+        },
+        processing: {
+          DEFAULT: "hsl(var(--processing))",
+          foreground: "hsl(var(--processing-foreground))",
+        },
+        "ai-badge": {
+          DEFAULT: "hsl(var(--ai-badge))",
+          foreground: "hsl(var(--ai-badge-foreground))",
+        },
+        "border-glass": "rgba(255, 255, 255, 0.08)",
         obsidian: {
           950: "#09090b",
           900: "#121215",
@@ -51,9 +64,11 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        xl: "var(--radius-xl, 12px)",
+        lg: "var(--radius, 8px)",
+        md: "calc(var(--radius, 8px) - 2px)",
+        sm: "calc(var(--radius, 8px) - 4px)",
+        full: "9999px",
       },
       fontFamily: {
         sans: ["'Plus Jakarta Sans'", "Segoe UI Variable Text", "Segoe UI", "sans-serif"],

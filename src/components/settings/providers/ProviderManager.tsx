@@ -164,18 +164,18 @@ export const ProviderManager: React.FC<ProviderManagerProps> = ({
           return (
             <div
               key={p.id}
-              className="p-3.5 rounded-xl bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700/80 transition-all space-y-3"
+              className="p-3.5 rounded-lg bg-card border border-border hover:border-zinc-700/80 transition-all space-y-3"
             >
               {/* Row 1: Name, Status badge & Actions */}
               <div className="flex items-center justify-between gap-2 min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-semibold text-sm text-zinc-100 truncate" title={p.name}>{p.name}</span>
                   {p.is_builtin ? (
-                    <span className="px-1.5 py-0.2 rounded text-[10px] uppercase font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
+                    <span className="px-1.5 py-0.5 rounded text-[11px] uppercase font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
                       {t("ai.providers_manager.builtin_badge")}
                     </span>
                   ) : (
-                    <span className="px-1.5 py-0.2 rounded text-[10px] uppercase font-semibold bg-sky-500/15 text-sky-400 border border-sky-500/30 shrink-0">
+                    <span className="px-1.5 py-0.5 rounded text-[11px] uppercase font-medium bg-sky-500/15 text-sky-400 border border-sky-500/30 shrink-0">
                       {t("ai.providers_manager.custom_badge")}
                     </span>
                   )}
@@ -201,7 +201,7 @@ export const ProviderManager: React.FC<ProviderManagerProps> = ({
                     {latInfo?.loading ? (
                       t("ai.providers_manager.pinging")
                     ) : latInfo?.latency !== undefined ? (
-                      <span className="font-mono text-emerald-300">{latInfo.latency} ms</span>
+                      <span className="font-mono tabular-nums text-emerald-300">{latInfo.latency} ms</span>
                     ) : (
                       t("ai.providers_manager.test_ping_btn")
                     )}
@@ -241,7 +241,7 @@ export const ProviderManager: React.FC<ProviderManagerProps> = ({
 
               {/* Lỗi test ping nếu có */}
               {latInfo?.error && (
-                <div className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded">
+                <div className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded leading-normal">
                   {latInfo.error}
                 </div>
               )}
@@ -260,14 +260,14 @@ export const ProviderManager: React.FC<ProviderManagerProps> = ({
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-zinc-800 border border-zinc-700/50 text-zinc-300 font-mono"
                       >
                         <span className="truncate max-w-[140px]">{m.name || m.id}</span>
-                        <span className="text-[9px] uppercase font-sans text-zinc-500">
+                        <span className="text-[11px] uppercase font-medium text-muted-foreground">
                           {m.capabilities.includes("stt") ? "STT" : "Chat"}
                         </span>
                       </span>
                     ))
                   )}
                   {p.models.length > 4 && (
-                    <span className="text-[11px] text-zinc-500 font-mono">
+                    <span className="text-[11px] text-muted-foreground font-mono tabular-nums">
                       {t("ai.providers_manager.more_models", {
                         count: p.models.length - 4,
                       })}

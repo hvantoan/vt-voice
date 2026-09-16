@@ -27,6 +27,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useI18n, LocaleOption } from "@/lib/i18n";
+import { toast } from "@/hooks/use-toast";
+import { translateIpcError } from "@/lib/ipcErrorMapper";
 type TabId = "general" | "audio" | "models" | "providers" | "history";
 
 export interface AppConfig {
@@ -229,6 +231,11 @@ export const SettingsLayout: React.FC = () => {
       } catch (err) {
         console.error("Failed to auto-save config:", err);
         setSaveStatus("error");
+        toast({
+          variant: "destructive",
+          title: t("settings.save_error"),
+          description: translateIpcError(err, t),
+        });
       } finally {
         setIsSaving(false);
       }
@@ -538,7 +545,7 @@ export const SettingsLayout: React.FC = () => {
           <span className="text-xs font-semibold text-zinc-300 tracking-tight">
             vt-voice {t("settings.title")}
           </span>
-          <span className="text-[10px] text-zinc-500 font-mono">v0.1.0</span>
+          <span className="text-[11px] text-zinc-500 font-mono tabular-nums">v0.1.0</span>
         </div>
 
         <div className="flex items-center gap-0.5">
@@ -589,16 +596,16 @@ export const SettingsLayout: React.FC = () => {
       >
         {/* Sidebar */}
         <aside className="w-48 bg-zinc-900/40 border-r border-zinc-800/80 p-3 flex flex-col justify-between">
-          <TabsList className="flex flex-col h-auto w-full bg-transparent p-0 space-y-3">
+          <TabsList className="flex flex-col h-auto w-full bg-transparent p-0 space-y-3 border-0 shadow-none">
             {/* Nhóm 1: Giọng nói */}
             <div className="space-y-1 w-full">
-              <div className="px-2.5 py-1 text-[10px] font-semibold tracking-wider text-zinc-500 uppercase select-none">
+              <div className="px-2.5 py-1 text-[11px] font-medium tracking-wider text-zinc-500 uppercase select-none">
                 {t("settings.groups.voice")}
               </div>
               <div className="space-y-0.5">
                 <TabsTrigger
                   value="audio"
-                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
+                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-md text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800/90 data-[state=active]:text-zinc-100 transition-colors hover:text-zinc-200 hover:bg-zinc-800/40"
                 >
                   <Mic className="w-4 h-4 text-rose-400 shrink-0" />
                   <span>{t("settings.tabs.audio")}</span>
@@ -606,7 +613,7 @@ export const SettingsLayout: React.FC = () => {
 
                 <TabsTrigger
                   value="history"
-                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
+                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-md text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800/90 data-[state=active]:text-zinc-100 transition-colors hover:text-zinc-200 hover:bg-zinc-800/40"
                 >
                   <Clock className="w-4 h-4 text-sky-400 shrink-0" />
                   <span>{t("settings.tabs.history")}</span>
@@ -616,13 +623,13 @@ export const SettingsLayout: React.FC = () => {
 
             {/* Nhóm 2: Cài đặt */}
             <div className="space-y-1 w-full">
-              <div className="px-2.5 py-1 text-[10px] font-semibold tracking-wider text-zinc-500 uppercase select-none">
+              <div className="px-2.5 py-1 text-[11px] font-medium tracking-wider text-zinc-500 uppercase select-none">
                 {t("settings.groups.settings")}
               </div>
               <div className="space-y-0.5">
                 <TabsTrigger
                   value="general"
-                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
+                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-md text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800/90 data-[state=active]:text-zinc-100 transition-colors hover:text-zinc-200 hover:bg-zinc-800/40"
                 >
                   <Sliders className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>{t("settings.tabs.general")}</span>
@@ -630,7 +637,7 @@ export const SettingsLayout: React.FC = () => {
 
                 <TabsTrigger
                   value="models"
-                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
+                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-md text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800/90 data-[state=active]:text-zinc-100 transition-colors hover:text-zinc-200 hover:bg-zinc-800/40"
                 >
                   <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
                   <span>{t("settings.tabs.models")}</span>
@@ -638,7 +645,7 @@ export const SettingsLayout: React.FC = () => {
 
                 <TabsTrigger
                   value="providers"
-                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/60 data-[state=active]:shadow-sm transition-colors hover:text-zinc-200 hover:bg-zinc-900/60"
+                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-md text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800/90 data-[state=active]:text-zinc-100 transition-colors hover:text-zinc-200 hover:bg-zinc-800/40"
                 >
                   <Server className="w-4 h-4 text-indigo-400 shrink-0" />
                   <span className="flex-1 text-left">{t("settings.tabs.providers")}</span>
@@ -659,7 +666,7 @@ export const SettingsLayout: React.FC = () => {
           </TabsList>
 
           {/* Auto-save Status Indicator */}
-          <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-zinc-900/40">
+          <div className="pt-2.5 border-t border-zinc-800/60 flex items-center justify-center gap-1.5 px-2 py-1 text-zinc-500">
             {isSaving ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />

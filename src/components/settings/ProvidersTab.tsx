@@ -34,7 +34,7 @@ export const ProvidersTab: React.FC<ProvidersTabProps> = ({
           <h4 className="text-xs font-semibold text-zinc-200">
             {t("ai.vault_badge")}
           </h4>
-          <p className="text-[11px] text-zinc-400 leading-relaxed">
+          <p className="text-[11px] text-zinc-400 leading-normal py-0.5">
             {t("ai.api_key_desc")}
           </p>
         </div>

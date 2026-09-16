@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { confirm } from "@/components/ui/confirm";
 import { useI18n } from "@/lib/i18n";
+import { toast } from "@/hooks/use-toast";
 
 export interface HistoryItem {
   id: string;
@@ -43,6 +44,10 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
       });
       if (ok) {
         onClearHistory();
+        toast({
+          title: t("common.success"),
+          description: t("history.clear_success"),
+        });
       }
     } finally {
       isConfirmingRef.current = false;
@@ -51,9 +56,19 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
 
   const handleExport = async () => {
     try {
-      await invoke<string>("export_transcription_history_json");
+      const path = await invoke<string>("export_transcription_history_json");
+      toast({
+        variant: "success",
+        title: t("common.success"),
+        description: path ? `${t("history.export_success")}: ${path}` : t("history.export_success"),
+      });
     } catch (err) {
       console.error("Failed to export transcription history:", err);
+      toast({
+        variant: "destructive",
+        title: t("common.error"),
+        description: t("history.export_error"),
+      });
     }
   };
 
@@ -68,8 +83,16 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
       await navigator.clipboard.writeText(text);
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 1500);
+      toast({
+        title: t("common.copied"),
+        description: t("history.copy_success"),
+      });
     } catch {
-      // Ignore clipboard error
+      toast({
+        variant: "destructive",
+        title: t("common.error"),
+        description: t("history.copy_error"),
+      });
     }
   };
 
@@ -127,16 +150,16 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
           {filteredHistory.map((item) => (
             <Card
               key={item.id}
-              className="bg-zinc-900/50 border-zinc-800/80 hover:border-zinc-700/80 transition-colors"
+              className="bg-card border-border hover:border-zinc-700/80 transition-colors rounded-lg"
             >
               <CardContent className="p-3.5 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-zinc-500 font-mono">{item.timestamp}</span>
+                    <span className="text-[11px] text-zinc-500 font-mono tabular-nums">{item.timestamp}</span>
                     <Badge
                       variant="secondary"
                       title={`${t("history.stt_time", { ms: item.sttDurationMs })} | ${t("history.polish_time", { ms: item.llmDurationMs })}`}
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono bg-zinc-800 text-emerald-400 font-normal cursor-help"
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono tabular-nums bg-zinc-800 text-emerald-400 font-normal cursor-help"
                     >
                       <Zap className="w-2.5 h-2.5" />
                       {item.totalDurationMs}ms
@@ -163,12 +186,12 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ history, onClearHistory 
                   </Button>
                 </div>
 
-                <div className="text-xs text-zinc-100 font-medium leading-relaxed">
+                <div className="text-xs text-zinc-100 font-medium leading-normal py-0.5">
                   {item.polishedText}
                 </div>
 
                 {item.rawText !== item.polishedText && (
-                  <div className="text-[11px] text-zinc-500 italic bg-zinc-950/40 px-2 py-1 rounded border border-zinc-800/40">
+                  <div className="text-[11px] text-zinc-500 italic bg-zinc-950/40 px-2 py-1.5 rounded border border-zinc-800/40 leading-normal">
                     {item.rawText}
                   </div>
                 )}

@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import {
-  Check,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -17,6 +16,7 @@ import {
   Save,
   Globe,
 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import { useI18n } from "@/lib/i18n";
 import { translateIpcError } from "@/lib/ipcErrorMapper";
 import { ProviderConfig } from "./ProviderDialog";
@@ -68,8 +68,6 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
   } | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentProfile) {
@@ -89,8 +87,6 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
   const handleProviderChange = (newProviderId: string) => {
     setSelectedProviderId(newProviderId);
     setTestResult(null);
-    setSaveError(null);
-    setSaveSuccess(false);
 
     if (newProviderId === "google_free") {
       setSelectedModelId("");
@@ -111,7 +107,6 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
   const handleTestConnection = async () => {
     setIsTesting(true);
     setTestResult(null);
-    setSaveError(null);
 
     try {
       if (isGoogleFree) {
@@ -139,8 +134,6 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
 
   const handleSave = async () => {
     setIsSaving(true);
-    setSaveError(null);
-    setSaveSuccess(false);
 
     try {
       const profileToSave: FeatureProfile = {
@@ -154,11 +147,18 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
       });
 
       onProfileSaved(featureKey, profileToSave);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      toast({
+        variant: "success",
+        title: t("common.success"),
+        description: t("ai.features.save_success"),
+      });
     } catch (err) {
       const msg = typeof err === "string" ? err : String(err);
-      setSaveError(translateIpcError(msg, t));
+      toast({
+        variant: "destructive",
+        title: t("common.error"),
+        description: translateIpcError(msg, t),
+      });
     } finally {
       setIsSaving(false);
     }
@@ -171,7 +171,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
       className={`p-4 rounded-xl border transition-all space-y-4 ${
         disabled
           ? "bg-zinc-950/40 border-zinc-900 opacity-60 pointer-events-none"
-          : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700/70"
+          : "bg-card border-border hover:border-zinc-700/70"
       }`}
     >
       {/* Header */}
@@ -182,7 +182,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
           </div>
           <div>
             <h4 className="text-sm font-semibold text-zinc-100">{title}</h4>
-            <p className="text-xs text-zinc-400 mt-0.5">{description}</p>
+            <p className="text-xs text-zinc-400 mt-0.5 leading-normal">{description}</p>
           </div>
         </div>
 
@@ -194,7 +194,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
         {/* Bước 1: Chọn Provider */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-zinc-800 text-zinc-300 inline-flex items-center justify-center text-[10px] font-bold">
+            <span className="w-4 h-4 rounded-full bg-zinc-800 inline-flex items-center justify-center text-[11px] font-medium text-muted-foreground">
               1
             </span>
             {t("ai.features.step1")}
@@ -220,7 +220,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
                 >
                   <div className="flex items-center justify-between w-full gap-4">
                     <span>{p.name}</span>
-                    <span className="text-[10px] text-zinc-500 font-mono">({p.models.length} models)</span>
+                    <span className="text-[11px] font-medium text-muted-foreground font-mono tabular-nums">({p.models.length} models)</span>
                   </div>
                 </SelectItem>
               ))}
@@ -231,7 +231,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
         {/* Bước 2: Chọn Model */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-zinc-800 text-zinc-300 inline-flex items-center justify-center text-[10px] font-bold">
+            <span className="w-4 h-4 rounded-full bg-zinc-800 inline-flex items-center justify-center text-[11px] font-medium text-muted-foreground">
               2
             </span>
             {t("ai.features.step2")}
@@ -247,7 +247,6 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
               value={selectedModelId}
               onValueChange={(val) => {
                 setSelectedModelId(val);
-                setSaveSuccess(false);
               }}
               disabled={allowlistedModels.length === 0}
             >
@@ -269,7 +268,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
                   >
                     <div className="flex items-center justify-between w-full gap-3">
                       <span>{m.name || m.id}</span>
-                      <span className="text-[9px] uppercase font-sans text-zinc-500 bg-zinc-900 px-1 rounded">
+                      <span className="text-[11px] uppercase font-medium text-muted-foreground bg-zinc-900 px-1.5 py-0.5 rounded">
                         {m.capabilities.includes("stt") ? "STT" : "Chat"}
                       </span>
                     </div>
@@ -323,7 +322,7 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
                 <>
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <span className="truncate">
-                    {t("ai.connection_success")} <strong className="font-mono">{testResult.latency} ms</strong>
+                    {t("ai.connection_success")} <strong className="font-mono tabular-nums">{testResult.latency} ms</strong>
                   </span>
                 </>
               ) : (
@@ -338,20 +337,6 @@ export const FeatureBindingCard: React.FC<FeatureBindingCardProps> = ({
 
         {/* Bước 4: Nút Lưu */}
         <div className="flex items-center gap-2 shrink-0">
-          {saveSuccess && (
-            <span className="text-xs text-emerald-400 flex items-center gap-1 font-medium animate-in fade-in">
-              <Check className="w-3.5 h-3.5" />
-              {t("ai.features.save_success")}
-            </span>
-          )}
-
-          {saveError && (
-            <span className="text-xs text-red-400 flex items-center gap-1 animate-in fade-in max-w-xs truncate" title={saveError}>
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">{saveError}</span>
-            </span>
-          )}
-
           <Button
             type="button"
             size="sm"

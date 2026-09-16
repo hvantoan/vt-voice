@@ -50,7 +50,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
               <div className="text-xs font-semibold text-zinc-200">
                 {t("general.language_title")}
               </div>
-              <div className="text-[11px] text-zinc-400">
+              <div className="text-[11px] text-zinc-400 leading-normal">
                 {t("general.language_desc")}
               </div>
             </div>
@@ -84,17 +84,17 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
         <h3 className="text-sm font-semibold text-zinc-100 mb-1">
           {t("general.hotkey_mode_title")}
         </h3>
-        <p className="text-xs text-zinc-400 mb-3">
+        <p className="text-xs text-zinc-400 mb-3 leading-normal">
           {t("general.hotkey_mode_desc")}
         </p>
 
         <div className="grid grid-cols-2 gap-3">
           <Card
             onClick={() => setHotkeyMode("push_to_talk")}
-            className={`cursor-pointer transition-all border ${
+            className={`cursor-pointer transition-all border rounded-lg ${
               hotkeyMode === "push_to_talk"
                 ? "bg-zinc-900 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
-                : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
+                : "bg-card border-border hover:border-zinc-700"
             }`}
           >
             <CardContent className="p-3.5">
@@ -106,7 +106,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                   {t("general.modes.push_to_talk")}
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 leading-relaxed">
+              <p className="text-[11px] text-zinc-400 leading-normal">
                 {t("general.modes.push_to_talk_desc")}
               </p>
             </CardContent>
@@ -114,10 +114,10 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
           <Card
             onClick={() => setHotkeyMode("toggle")}
-            className={`cursor-pointer transition-all border ${
+            className={`cursor-pointer transition-all border rounded-lg ${
               hotkeyMode === "toggle"
                 ? "bg-zinc-900 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
-                : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
+                : "bg-card border-border hover:border-zinc-700"
             }`}
           >
             <CardContent className="p-3.5">
@@ -129,7 +129,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                   {t("general.modes.toggle")}
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 leading-relaxed">
+              <p className="text-[11px] text-zinc-400 leading-normal">
                 {t("general.modes.toggle_desc")}
               </p>
             </CardContent>
@@ -143,7 +143,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
           <div className="text-xs font-semibold text-zinc-200">
             {t("general.hotkey_binding_title")}
           </div>
-          <div className="text-[11px] text-zinc-400">
+          <div className="text-[11px] text-zinc-400 leading-normal">
             {t("general.hotkey_binding_desc")}
           </div>
         </div>
@@ -163,7 +163,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
               <div className="text-xs text-zinc-200 font-medium">
                 {t("general.autostart_label")}
               </div>
-              <div className="text-[11px] text-zinc-500">
+              <div className="text-[11px] text-zinc-500 leading-normal">
                 {t("general.autostart_desc")}
               </div>
             </div>
@@ -182,7 +182,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
               <div className="text-xs text-zinc-200 font-medium">
                 {t("general.start_minimized_label")}
               </div>
-              <div className="text-[11px] text-zinc-500">
+              <div className="text-[11px] text-zinc-500 leading-normal">
                 {t("general.start_minimized_desc")}
               </div>
             </div>

@@ -211,7 +211,7 @@ export const ModelAllowlistModal: React.FC<ModelAllowlistModalProps> = ({
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-800 border border-zinc-700/60 text-zinc-200 text-xs font-mono"
                   >
                     <span>{m.name || m.id}</span>
-                    <span className="text-[10px] uppercase font-sans text-zinc-400 bg-zinc-750 px-1 py-0.2 rounded">
+                    <span className="text-[11px] uppercase font-medium text-muted-foreground bg-zinc-750 px-1.5 py-0.5 rounded">
                       {m.capabilities.includes("stt") ? "STT" : "Chat"}
                     </span>
                     <button
@@ -340,13 +340,13 @@ export const ModelAllowlistModal: React.FC<ModelAllowlistModalProps> = ({
                               <div className="flex items-center gap-1.5">
                                 <span className="text-xs font-mono text-zinc-200 truncate">{m.id}</span>
                                 {m.is_recommended && (
-                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 text-[10px] rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-sans">
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-medium rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-sans">
                                     <Sparkles className="w-2.5 h-2.5" />
                                     {t("ai.providers_manager.allowlist_modal.recommended_badge")}
                                   </span>
                                 )}
                                 {isAlreadyInAllowlist && (
-                                  <span className="text-[10px] text-zinc-500 italic">
+                                  <span className="text-[11px] font-medium text-muted-foreground italic">
                                     {t("ai.providers_manager.allowlist_modal.already_added")}
                                   </span>
                                 )}
@@ -371,7 +371,7 @@ export const ModelAllowlistModal: React.FC<ModelAllowlistModalProps> = ({
         </div>
 
         <DialogFooter className="p-4 border-t border-zinc-850 bg-zinc-950 flex items-center justify-between sm:justify-between">
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-zinc-500 font-mono tabular-nums">
             {selectedIds.size > 0
               ? t("ai.providers_manager.allowlist_modal.selected_count", { count: selectedIds.size })
               : t("ai.providers_manager.allowlist_modal.select_hint")}

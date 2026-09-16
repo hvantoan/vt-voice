@@ -64,16 +64,16 @@ export const OverlayPill: React.FC = () => {
 
   return (
     <div className="flex items-center justify-center w-full h-full p-1 select-none pointer-events-none">
-      <div className="flex items-center justify-between min-w-[240px] max-w-[320px] h-11 px-4 py-2 rounded-full win11-pill border border-white/10 bg-zinc-950/85 backdrop-blur-xl shadow-2xl transition-all duration-150">
+      <div className="win11-pill rounded-full h-11 border border-white/10 shadow-lg px-4 flex items-center justify-between min-w-[240px] max-w-[320px] select-none pointer-events-none transition-all duration-150">
         {/* Status indicator & Text */}
         <div className="flex items-center gap-2.5">
           {status === "listening" && (
             <>
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]"></span>
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-recording/75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-recording shadow-[0_0_10px_rgba(244,63,94,0.8)]"></span>
               </span>
-              <span className="text-xs font-semibold text-zinc-100 tracking-wide">
+              <span className="text-xs font-medium text-zinc-100 tracking-wide leading-normal py-1">
                 {t("overlay.listening")}
               </span>
             </>
@@ -81,8 +81,8 @@ export const OverlayPill: React.FC = () => {
 
           {status === "processing" && (
             <>
-              <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
-              <span className="text-xs font-semibold text-amber-300 tracking-wide">
+              <Loader2 className="w-4 h-4 text-processing animate-spin shrink-0" />
+              <span className="text-xs font-medium text-processing/90 tracking-wide leading-normal py-1">
                 {t("overlay.processing")}
               </span>
             </>
@@ -90,10 +90,10 @@ export const OverlayPill: React.FC = () => {
 
           {status === "pasted" && (
             <>
-              <div className="flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400">
+              <div className="flex items-center justify-center w-4 h-4 rounded-full bg-primary/20 text-primary shrink-0">
                 <Check className="w-3 h-3 stroke-[2.5]" />
               </div>
-              <span className="text-xs font-semibold text-emerald-300 tracking-wide">
+              <span className="text-xs font-medium text-primary tracking-wide leading-normal py-1">
                 {t("overlay.pasted")}
               </span>
             </>
@@ -101,8 +101,8 @@ export const OverlayPill: React.FC = () => {
 
           {status === "error" && (
             <>
-              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-              <span className="text-xs font-medium text-rose-300 truncate max-w-[200px]">
+              <AlertCircle className="w-4 h-4 text-recording shrink-0" />
+              <span className="text-xs font-medium text-recording/90 truncate max-w-[200px] leading-normal py-1">
                 {errorMessage ? translateIpcError(errorMessage, t) : t("overlay.error")}
               </span>
             </>

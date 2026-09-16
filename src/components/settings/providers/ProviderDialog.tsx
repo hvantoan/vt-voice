@@ -250,7 +250,7 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
               placeholder="https://api.openai.com/v1"
               className="bg-zinc-900 border-zinc-800 text-zinc-200 placeholder:text-zinc-600 focus:border-zinc-700 font-mono text-xs"
             />
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-zinc-500 leading-normal">
               {t("ai.providers_manager.dialog.endpoint_hint")}
             </p>
           </div>
@@ -283,7 +283,7 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
                 {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-zinc-500 leading-normal">
               {t("ai.vault_badge")} - {t("ai.providers_manager.dialog.vault_hint")}
             </p>
           </div>
@@ -306,7 +306,7 @@ export const ProviderDialog: React.FC<ProviderDialogProps> = ({
                 {testResult.success ? (
                   <span>
                     {t("ai.connection_success_latency")}{" "}
-                    <strong className="font-mono text-emerald-200">{testResult.latency} ms</strong>
+                    <strong className="font-mono tabular-nums text-emerald-200">{testResult.latency} ms</strong>
                   </span>
                 ) : (
                   <span>{testResult.error || t("ai.connection_failed", { error: "" })}</span>

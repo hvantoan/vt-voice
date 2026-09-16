@@ -29,13 +29,13 @@ export const ConfirmationDialog: React.FC<ConfirmDialogProps<ConfirmOptions, boo
 }) => {
   return (
     <Dialog open={show} onOpenChange={(open) => !open && proceed(false)}>
-      <DialogContent className="sm:max-w-md bg-zinc-950 border-zinc-800 text-zinc-100">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-sm font-semibold text-zinc-100">
+          <DialogTitle className="text-base font-semibold leading-normal text-foreground">
             {title}
           </DialogTitle>
           {description && (
-            <DialogDescription className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
+            <DialogDescription className="text-xs text-muted-foreground mt-1.5 leading-normal">
               {description}
             </DialogDescription>
           )}
@@ -46,7 +46,6 @@ export const ConfirmationDialog: React.FC<ConfirmDialogProps<ConfirmOptions, boo
             variant="outline"
             size="sm"
             onClick={() => proceed(false)}
-            className="h-8 px-3 border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 text-xs"
           >
             {cancelText}
           </Button>
@@ -55,11 +54,6 @@ export const ConfirmationDialog: React.FC<ConfirmDialogProps<ConfirmOptions, boo
             variant={variant}
             size="sm"
             onClick={() => proceed(true)}
-            className={
-              variant === "destructive"
-                ? "h-8 px-3 bg-rose-600 hover:bg-rose-700 text-white text-xs"
-                : "h-8 px-3 text-xs"
-            }
           >
             {confirmText}
           </Button>

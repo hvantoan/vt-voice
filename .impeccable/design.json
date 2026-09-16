@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-16T12:00:00.000Z",
+  "title": "Design System: vt-voice",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Electric Emerald",
+        "canonical": "#10b981",
+        "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#a7f3d0"]
+      },
+      "recording": {
+        "role": "accent",
+        "displayName": "Sonic Rose",
+        "canonical": "#f43f5e",
+        "tonalRamp": ["#4c0519", "#881337", "#9f1239", "#be123c", "#e11d48", "#f43f5e", "#fb7185", "#fecdd3"]
+      },
+      "processing": {
+        "role": "accent",
+        "displayName": "Amber Shimmer",
+        "canonical": "#fbbf24",
+        "tonalRamp": ["#451a03", "#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fbbf24", "#fef3c7"]
+      },
+      "ai-badge": {
+        "role": "accent",
+        "displayName": "Cloud Indigo",
+        "canonical": "#6366f1",
+        "tonalRamp": ["#1e1b4b", "#312e81", "#3730a3", "#4338ca", "#4f46e5", "#6366f1", "#818cf8", "#e0e7ff"]
+      },
+      "canvas-dark": {
+        "role": "neutral",
+        "displayName": "Deep Obsidian Canvas",
+        "canonical": "#09090b",
+        "tonalRamp": ["#040405", "#09090b", "#121215", "#18181b", "#27272a", "#3f3f46", "#52525b", "#71717a"]
+      },
+      "card-dark": {
+        "role": "neutral",
+        "displayName": "Elevated Card Surface",
+        "canonical": "#18181b",
+        "tonalRamp": ["#09090b", "#121215", "#18181b", "#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa"]
+      },
+      "elevated-dark": {
+        "role": "neutral",
+        "displayName": "Surface Hover Control",
+        "canonical": "#27272a",
+        "tonalRamp": ["#121215", "#18181b", "#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa", "#d4d4d8"]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Primary Text",
+        "canonical": "#f4f4f5",
+        "tonalRamp": ["#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#e4e4e7", "#f4f4f5", "#fafafa", "#ffffff"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Tab titles and major screen headers." },
+      "title": { "displayName": "Title", "purpose": "Section and card header labels." },
+      "body": { "displayName": "Body", "purpose": "Standard UI reading text, settings descriptions, and translations." },
+      "label": { "displayName": "Label", "purpose": "Form field labels, metadata captions, and status chips." },
+      "mono": { "displayName": "Mono", "purpose": "Keyboard shortcut badges, latency telemetry, audio sizes." }
+    },
+    "shadows": [
+      {
+        "name": "acrylic-depth",
+        "value": "0 16px 40px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.06)",
+        "purpose": "Windows 11 acrylic window and popover frame depth."
+      },
+      {
+        "name": "pill-glow",
+        "value": "0 12px 32px -4px rgba(0, 0, 0, 0.7)",
+        "purpose": "Floating overlay pill elevation above taskbar."
+      },
+      {
+        "name": "beacon-halo",
+        "value": "0 0 10px rgba(244, 63, 94, 0.8)",
+        "purpose": "Active voice recording status beacon glow."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 2px #09090b, 0 0 0 4px rgba(16, 185, 129, 0.5)",
+        "purpose": "Keyboard navigation visible focus ring."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Snappy entrance easing for overlays and menus (150ms)."
+      },
+      {
+        "name": "ease-waveform",
+        "value": "ease-out",
+        "purpose": "Smooth, non-jittery real-time audio waveform reactivity (60ms)."
+      },
+      {
+        "name": "press-spring",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Tactile button press scale feedback (100ms)."
+      }
+    ],
+    "breakpoints": [
+      { "name": "base-desktop", "value": "720px" },
+      { "name": "wide-desktop", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action button with Electric Emerald accent and tactile feedback.",
+      "html": "<button class=\"ds-btn-primary\"><svg class=\"ds-btn-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"></polyline></svg>Save Changes</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background-color: #10b981; color: #09090b; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; transition: background-color 0.15s, transform 0.1s; } .ds-btn-primary:hover { background-color: #34d399; } .ds-btn-primary:active { transform: scale(0.98); } .ds-btn-icon { width: 14px; height: 14px; stroke-width: 2.5; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Subtle dark button for secondary dialog actions and controls.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; background-color: #27272a; color: #f4f4f5; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 8px 16px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; cursor: pointer; transition: background-color 0.15s, border-color 0.15s; } .ds-btn-secondary:hover { background-color: #3f3f46; border-color: rgba(255, 255, 255, 0.16); } .ds-btn-secondary:active { transform: scale(0.98); }"
+    },
+    {
+      "name": "Hotkey Badge",
+      "kind": "chip",
+      "refersTo": "badge-hotkey",
+      "description": "Physical key glyph badge formatted in JetBrains Mono.",
+      "html": "<span class=\"ds-badge-hotkey\">Ctrl + Space</span>",
+      "css": ".ds-badge-hotkey { display: inline-flex; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: #a1a1aa; background-color: #18181b; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 4px; padding: 2px 8px; letter-spacing: 0.04em; user-select: none; }"
+    },
+    {
+      "name": "Settings Input",
+      "kind": "input",
+      "refersTo": "input-base",
+      "description": "Dark text input with emerald focus ring and Vietnamese diacritics vertical padding.",
+      "html": "<input type=\"text\" class=\"ds-input-text\" placeholder=\"Enter custom vocabulary...\" value=\"Refactor API Endpoint\" />",
+      "css": ".ds-input-text { width: 100%; height: 36px; background-color: #09090b; color: #f4f4f5; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; line-height: 1.5; padding: 8px 12px; border: 1px solid rgba(39, 39, 42, 0.8); border-radius: 6px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; } .ds-input-text:focus { border-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2); } .ds-input-text::placeholder { color: #71717a; }"
+    },
+    {
+      "name": "Overlay Pill",
+      "kind": "custom",
+      "refersTo": "overlay-capsule",
+      "description": "Signature non-activating floating pill with real-time waveform bars.",
+      "html": "<div class=\"ds-overlay-pill\"><div class=\"ds-pill-beacon-wrap\"><span class=\"ds-pill-beacon-ping\"></span><span class=\"ds-pill-beacon\"></span></div><span class=\"ds-pill-label\">Listening...</span><div class=\"ds-pill-meter\"><span class=\"ds-bar bar-1\"></span><span class=\"ds-bar bar-2\"></span><span class=\"ds-bar bar-3\"></span><span class=\"ds-bar bar-4\"></span><span class=\"ds-bar bar-5\"></span></div></div>",
+      "css": ".ds-overlay-pill { display: inline-flex; align-items: center; justify-content: space-between; min-width: 240px; height: 44px; padding: 8px 16px; border-radius: 9999px; background-color: rgba(9, 9, 11, 0.88); backdrop-filter: blur(20px) saturate(180%); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.7); } .ds-pill-beacon-wrap { position: relative; display: flex; width: 10px; height: 10px; margin-right: 10px; } .ds-pill-beacon { position: relative; display: inline-flex; width: 10px; height: 10px; border-radius: 50%; background-color: #f43f5e; box-shadow: 0 0 8px rgba(244, 63, 94, 0.8); } .ds-pill-beacon-ping { position: absolute; display: inline-flex; width: 100%; height: 100%; border-radius: 50%; background-color: #fb7185; opacity: 0.75; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; } @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } } .ds-pill-label { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 600; color: #f4f4f5; letter-spacing: 0.02em; flex: 1; } .ds-pill-meter { display: flex; align-items: center; gap: 3px; } .ds-bar { width: 2.5px; border-radius: 1px; background: linear-gradient(to top, #e11d48, #fb7185); } .bar-1 { height: 6px; } .bar-2 { height: 14px; } .bar-3 { height: 20px; } .bar-4 { height: 12px; } .bar-5 { height: 7px; }"
+    },
+    {
+      "name": "Translate Popover Card",
+      "kind": "card",
+      "refersTo": "card-dark",
+      "description": "Floating selection translation card with source text preview and quick copy.",
+      "html": "<div class=\"ds-translate-card\"><div class=\"ds-translate-header\"><span class=\"ds-translate-source\">Zero-distraction ambient typing utility</span></div><div class=\"ds-translate-body\"><span class=\"ds-translate-result\">Tiện ích gõ văn bản ngầm không gây xao nhãng</span></div><div class=\"ds-translate-footer\"><button class=\"ds-btn-icon-action\" title=\"Copy\"><svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"9\" y=\"9\" width=\"13\" height=\"13\" rx=\"2\" ry=\"2\"></rect><path d=\"M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\"></path></svg></button></div></div>",
+      "css": ".ds-translate-card { width: 340px; background-color: rgba(9, 9, 11, 0.9); backdrop-filter: blur(24px) saturate(190%); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.6); padding: 12px; display: flex; flex-direction: column; gap: 8px; } .ds-translate-source { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; color: #a1a1aa; line-height: 1.4; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-translate-result { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 500; color: #f4f4f5; line-height: 1.5; display: block; } .ds-translate-footer { display: flex; justify-content: flex-end; pt: 4px; border-top: 1px solid rgba(255, 255, 255, 0.06); } .ds-btn-icon-action { background: transparent; border: none; color: #a1a1aa; padding: 4px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color 0.15s, background-color 0.15s; } .ds-btn-icon-action:hover { color: #f4f4f5; background-color: rgba(255, 255, 255, 0.1); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Sonic Precision",
+    "overview": "vt-voice mang triết lý thẩm mỹ của một thiết bị thu phát phòng thu chuyên nghiệp đặt trong không gian Windows 11 Fluent Acrylic hiện đại. Không có chi tiết thừa, không có hoạt ảnh phô trương. Mọi tương tác thị giác tồn tại để phục vụ tốc độ suy nghĩ, hỗ trợ lập trình viên, nhân viên văn phòng và người học ngoại ngữ chuyển lời nói thành văn bản chính xác trong tích tắc.\n\nBề mặt ứng dụng được điêu khắc từ các lớp kính mờ tối màu (Obsidian Zinc) sâu thẳm, bắt sáng tinh tế qua những đường viền hairline 1px bán trong suốt (rgba(255, 255, 255, 0.08)). Khi người dùng nói, thanh chỉ báo xuất hiện như một viên thuốc âm thanh nổi không trọng lượng (win11-pill) ngay phía trên thanh tác vụ Windows, giao tiếp trạng thái tức thì bằng các xung nhịp màu sắc chuẩn mực: sắc hoa hồng phát tín hiệu ghi âm, sắc hổ phách biểu thị trí tuệ nhân tạo đang trau chuốt, và ánh ngọc lục bảo xác nhận văn bản đã được đưa vào ứng dụng đích.\n\nHệ thống thiết kế từ chối các yếu tố gây xao nhãng: không cướp focus cửa sổ làm việc (WS_EX_NOACTIVATE), không làm biến dạng clipboard, và tuyệt đối nâng niu tính toàn vẹn của thanh dấu tiếng Việt trên mọi độ phân giải hiển thị.",
+    "keyCharacteristics": [
+      "Ambient Translucency: Mô phỏng vật liệu Windows 11 Acrylic & Frosted Glass với độ mờ 20px-24px và bão hòa 180%-190%.",
+      "Studio-Grade Telemetry: Các chỉ số độ trễ, phím tắt và tần số âm thanh được định dạng bằng typography đơn cách (JetBrains Mono) sắc bén, số dạng tabular.",
+      "Zero-Occlusion Etiquette: Cửa sổ nổi tự thu gọn hoặc ẩn hoàn toàn khi không hoạt động; vị trí và kích thước được tính toán để không che khuất dòng mã hoặc tài liệu đang mở.",
+      "Bilingual & Diacritics Safety: Hệ thống khoảng cách dọc và chiều cao dòng được kiến tạo có chủ đích để bảo vệ mọi dấu mũ, dấu thanh tiếng Việt không bao giờ bị cắt xén."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Màu Electric Emerald chỉ được xuất hiện ở tối đa một thành phần hành động chính trên một màn hình tại một thời điểm. Độ hiếm của màu xanh lục chính là sự bảo chứng cho tính định hướng người dùng.",
+        "section": "colors"
+      },
+      {
+        "name": "The Beacon Isolation Rule",
+        "body": "Màu Sonic Rose chỉ được dùng duy nhất cho hành động ghi âm giọng nói và trạng thái lỗi nghiêm trọng. Tuyệt đối không dùng Sonic Rose cho các nút trang trí hoặc nhãn thông thường.",
+        "section": "colors"
+      },
+      {
+        "name": "The Diacritics Sanctuary Rule",
+        "body": "Mọi thẻ HTML chứa văn bản hiển thị tiếng Việt hoặc dữ liệu nhập liệu không bao giờ được áp dụng leading-none hoặc leading-tight. Bắt buộc duy trì tối thiểu leading-normal (1.5) cùng khoảng cách đệm dọc (py-2 / 8px) để các dấu hỏi, ngã, nặng, sắc, huyền trên các nguyên âm mở rộng (ễ, ệ, ở, ứ) được hiển thị tròn vẹn, không bị xén đỉnh hay đáy.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Telemetry Rule",
+        "body": "Mọi con số biểu thị thời gian, độ trễ, dung lượng hoặc tần số âm thanh phải luôn được render với font JetBrains Mono và thuộc tính tabular-nums để ngăn hiện tượng giật chiều rộng khi giá trị thay đổi liên tục.",
+        "section": "typography"
+      },
+      {
+        "name": "The Fixed Header Anchor Rule",
+        "body": "Khung cửa sổ cài đặt duy trì thanh tiêu đề cố định với nút điều khiển cửa sổ chuẩn Windows (Minimize, Maximize/Restore, Close) và hiển thị trực quan trạng thái lưu tự động (Auto-save Indicator) mà không làm dịch chuyển bố cục bên dưới.",
+        "section": "layout"
+      },
+      {
+        "name": "The Ghost Border Rule",
+        "body": "Mọi thẻ nổi kính mờ bắt buộc phải sở hữu đường viền hairline 1px với màu trắng mờ rgba(255, 255, 255, 0.08). Khi nằm trên nền tối hoặc hình nền desktop đa sắc, viền sáng này đảm bảo phân tách thị giác rõ ràng mà không cần gia tăng bóng đổ đen.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do bảo toàn cờ Win32 WS_EX_NOACTIVATE trên mọi cửa sổ overlay để đảm bảo 100% không cướp focus ứng dụng đích của người dùng.",
+      "Do sử dụng Plus Jakarta Sans cho văn bản ngôn ngữ và JetBrains Mono cho phím tắt, độ trễ, telemetry.",
+      "Do đệm thở tối thiểu py-2 và dùng leading-normal hoặc leading-relaxed trên mọi vùng văn bản hiển thị tiếng Việt.",
+      "Do sử dụng viền hairline trắng mờ rgba(255, 255, 255, 0.08) trên các thành phần kính mờ Fluent Acrylic.",
+      "Do phản hồi trạng thái lưu tự động (Auto-save) một cách tinh tế trong sidebar thay vì yêu cầu nút Save thủ công cồng kềnh."
+    ],
+    "donts": [
+      "Don't áp dụng leading-none hoặc overflow-hidden gây cắt xén dấu thanh tiếng Việt trên các nguyên âm tiếng Việt.",
+      "Don't sử dụng màu sắc rực rỡ ngoài 3 màu ngữ nghĩa cốt lõi (Emerald cho thành công, Rose cho ghi âm/lỗi, Amber cho xử lý/cảnh báo).",
+      "Don't tạo hoạt ảnh chuyển động kéo dài vượt quá 200ms; mọi micro-interaction phải kết thúc nhanh gọn (< 150ms) để giữ cảm giác tức thì.",
+      "Don't biến đổi clipboard của người dùng mà không có cơ chế hoàn trả lại dữ liệu gốc ngay sau khi inject văn bản.",
+      "Don't hardcode chuỗi ký tự hiển thị trực tiếp trong component; bắt buộc gọi qua hook useI18n() với các khóa song ngữ đồng bộ trong vi.json và en.json."
+    ]
+  }
+}

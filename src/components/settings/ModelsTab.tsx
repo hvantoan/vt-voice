@@ -117,7 +117,7 @@ export const ModelsTab: React.FC<ModelsTabProps> = ({
             <Sparkles className="w-4 h-4 text-amber-400" />
             {t("ai.features.section_title")}
           </h3>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs text-zinc-400 mt-0.5 leading-normal">
             {t("ai.features.section_desc")}
           </p>
         </div>
@@ -179,7 +179,7 @@ export const ModelsTab: React.FC<ModelsTabProps> = ({
                 <label className="text-xs font-semibold text-zinc-200">
                   {t("ai.system_prompt_title")}
                 </label>
-                <p className="text-[11px] text-zinc-400">
+                <p className="text-[11px] text-zinc-400 leading-normal">
                   {t("ai.system_prompt_desc")}
                 </p>
               </div>
@@ -222,7 +222,7 @@ export const ModelsTab: React.FC<ModelsTabProps> = ({
             <BookOpen className="w-4 h-4 text-emerald-400" />
             {t("ai.custom_vocab_title")}
           </h3>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs text-zinc-400 mt-0.5 leading-normal">
             {t("ai.custom_vocab_desc")}
           </p>
         </div>

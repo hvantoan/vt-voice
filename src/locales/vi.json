@@ -36,6 +36,7 @@
     "save_changes": "Lưu thay đổi",
     "saving": "Đang lưu...",
     "saved": "Đã lưu cài đặt!",
+    "save_error": "Không thể lưu cài đặt",
     "reset_defaults": "Mặc định"
   },
   "general": {
@@ -223,10 +224,10 @@
     "features": {
       "section_title": "CẤU HÌNH TÍNH NĂNG",
       "section_desc": "Thiết lập nhà cung cấp và mô hình độc lập cho từng tính năng theo quy trình 4 bước",
-      "step1": "1. Chọn Nhà cung cấp",
-      "step2": "2. Chọn Model",
-      "step3": "3. Kiểm tra",
-      "step4": "4. Lưu cấu hình",
+      "step1": "Chọn Nhà cung cấp",
+      "step2": "Chọn Model",
+      "step3": "Kiểm tra",
+      "step4": "Lưu cấu hình",
       "select_provider_placeholder": "Chọn nhà cung cấp...",
       "select_model_placeholder": "Chọn model trong allowlist...",
       "google_default_locked": "Mặc định",
@@ -234,17 +235,17 @@
       "stt": {
         "title": "Nhận diện giọng nói (STT)",
         "desc": "Mô hình Whisper chuyển đổi âm thanh giọng nói thành văn bản thô",
-        "save_btn": "4. Lưu cấu hình STT"
+        "save_btn": "Lưu"
       },
       "translate": {
         "title": "Dịch thuật",
         "desc": "Dịch nhanh văn bản được bôi đen trên màn hình sang tiếng Việt",
-        "save_btn": "4. Lưu cấu hình Dịch"
+        "save_btn": "Lưu"
       },
       "polish": {
         "title": "Sửa lỗi & Chuẩn hóa",
         "desc": "Sửa lỗi ngữ pháp, ngắt câu và giữ nguyên thuật ngữ kỹ thuật",
-        "save_btn": "4. Lưu cấu hình Polish"
+        "save_btn": "Lưu"
       },
       "google_free": "Google Translate",
       "empty_models_warning": "Nhà cung cấp này chưa có model nào trong allowlist. Vui lòng vào tab 'Providers' để cấu hình allowlist.",
@@ -264,7 +265,12 @@
     "stt_time": "STT: {ms}ms",
     "polish_time": "AI: {ms}ms",
     "total_time": "Tổng: {ms}ms",
-    "export_btn": "Xuất JSON"
+    "export_btn": "Xuất JSON",
+    "copy_success": "Đã sao chép vào clipboard",
+    "copy_error": "Không thể sao chép văn bản",
+    "export_success": "Đã xuất lịch sử thành công",
+    "export_error": "Không thể xuất lịch sử",
+    "clear_success": "Đã xóa toàn bộ lịch sử"
   },
   "hotkey": {
     "press_key": "Bấm 1 phím bất kỳ hoặc tổ hợp phím...",

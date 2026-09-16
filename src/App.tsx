@@ -25,7 +25,7 @@ export const App: React.FC = () => {
     return <TranslateOverlay />;
   }
 
-  return <SettingsLayout />;
+  return <SettingsLayout />
 };
 
 export default App;

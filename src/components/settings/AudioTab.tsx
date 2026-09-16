@@ -146,7 +146,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({
                         <Mic className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                         <span className="truncate">{d.name}</span>
                         {d.is_default && (
-                          <span className="text-[10px] text-emerald-400 font-medium ml-1.5 shrink-0">
+                          <span className="text-[11px] text-emerald-400 font-medium ml-1.5 shrink-0">
                             ({t("common.default")})
                           </span>
                         )}
@@ -201,11 +201,11 @@ export const AudioTab: React.FC<AudioTabProps> = ({
             <span className="text-xs font-semibold text-zinc-200">
               {t("audio.vad_timeout_label")}
             </span>
-            <span className="text-xs font-mono text-emerald-400 font-semibold">
+            <span className="text-xs font-mono tabular-nums text-emerald-400 font-semibold">
               {vadTimeout} ms
             </span>
           </div>
-          <p className="text-[11px] text-zinc-400 mb-3">
+          <p className="text-[11px] text-zinc-400 mb-3 leading-normal">
             {t("audio.vad_desc")}
           </p>
           <div className="py-2">
@@ -223,7 +223,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({
               className="w-full"
             />
           </div>
-          <div className="flex justify-between text-[10px] text-zinc-500 mt-1">
+          <div className="flex justify-between text-[11px] font-mono tabular-nums text-zinc-500 mt-1">
             <span>300ms</span>
             <span>700ms</span>
             <span>2000ms</span>
@@ -233,7 +233,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({
 
       <div className="p-3.5 rounded-xl bg-zinc-900/30 border border-zinc-800/80 flex items-start gap-2.5">
         <Info className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5" />
-        <div className="text-[11px] text-zinc-400 leading-relaxed">
+        <div className="text-[11px] text-zinc-400 leading-normal py-0.5">
           <span className="font-medium text-zinc-300">
             {t("audio.audio_format_hint")}
           </span>

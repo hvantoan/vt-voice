@@ -36,6 +36,7 @@
     "save_changes": "Save Changes",
     "saving": "Saving...",
     "saved": "Settings saved!",
+    "save_error": "Failed to save settings",
     "reset_defaults": "Reset to Defaults"
   },
   "general": {
@@ -223,10 +224,10 @@
     "features": {
       "section_title": "FEATURE PROFILES CONFIGURATION",
       "section_desc": "Configure provider and model independently for each feature via a guarded 4-step flow",
-      "step1": "1. Select Provider",
-      "step2": "2. Select Model (Allowlist)",
-      "step3": "3. Test Connection",
-      "step4": "4. Save Configuration",
+      "step1": "Select Provider",
+      "step2": "Select Model",
+      "step3": "Test Connection",
+      "step4": "Save Configuration",
       "select_provider_placeholder": "Select provider...",
       "select_model_placeholder": "Select model from allowlist...",
       "google_default_locked": "Default (Google Neural RPC) - Locked",
@@ -246,7 +247,7 @@
         "desc": "Correct grammar and punctuation while preserving technical terms",
         "save_btn": "4. Save Polish Profile"
       },
-      "google_free": "Google Translate (Free - No Key Required)",
+      "google_free": "Google Translate",
       "empty_models_warning": "This provider has no allowlisted models. Please go to the 'Providers' tab to configure allowlist.",
       "save_success": "Configuration saved successfully!"
     }
@@ -264,7 +265,12 @@
     "stt_time": "STT: {ms}ms",
     "polish_time": "AI: {ms}ms",
     "total_time": "Total: {ms}ms",
-    "export_btn": "Export JSON"
+    "export_btn": "Export JSON",
+    "copy_success": "Copied to clipboard",
+    "copy_error": "Failed to copy text",
+    "export_success": "Transcription history exported successfully",
+    "export_error": "Failed to export history",
+    "clear_success": "Transcription history cleared"
   },
   "hotkey": {
     "press_key": "Press any key or combination...",

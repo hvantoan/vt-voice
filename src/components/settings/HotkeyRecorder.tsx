@@ -313,7 +313,7 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
         <button
           type="button"
           onClick={() => setIsRecording(true)}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-mono border transition-all ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-mono tabular-nums border transition-all ${
             isRecording
               ? "bg-rose-500/20 border-rose-500 text-rose-300 animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.2)]"
               : "bg-zinc-800/80 border-zinc-700 text-zinc-200 hover:bg-zinc-700/80 hover:border-zinc-600 hover:text-white"
@@ -347,7 +347,7 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
 
       {/* Quick Presets for Mouse & Common Keys */}
       <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-        <span className="text-[10px] text-zinc-400 mr-1 font-medium">{t("hotkey.presets_label")}</span>
+        <span className="text-[11px] text-zinc-400 mr-1 font-medium">{t("hotkey.presets_label")}</span>
         {PRESET_BINDINGS.map((preset) => {
           const isSelected =
             value.code === preset.binding.code &&
@@ -364,7 +364,7 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
                 onChange(preset.binding);
                 setIsRecording(false);
               }}
-              className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-colors cursor-pointer ${
+              className={`px-2 py-1 rounded text-[11px] font-mono tabular-nums border transition-colors cursor-pointer ${
                 isSelected
                   ? "bg-emerald-500/15 border-emerald-500/60 text-emerald-300 font-semibold"
                   : "bg-zinc-800/40 border-zinc-700/60 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 hover:bg-zinc-800"
