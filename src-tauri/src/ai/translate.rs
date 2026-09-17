@@ -253,21 +253,35 @@ Preserve code identifiers, variables, keywords, and technical terms verbatim. Ou
         return Err(AiError::Api { status, message: sanitized });
     }
 
+    // `status` + `content_type` là metadata, không phải văn bản người dùng. Nhờ chúng mà
+    // một hồi quy `parse_error` phân biệt được "gateway trả SSE/HTML" với "shape JSON lệch"
+    // mà không cần ghi log body (ràng buộc Zero-PII).
+    let content_type = res
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("unknown")
+        .to_string();
+
     let data: ChatCompletionResponse = res.json().await.map_err(|e| {
         log::warn!(
             target: "vt_voice::ai::translate",
-            "Chat translate failed: target_lang={}, duration_ms={}, error_kind={}",
-            target_lang, started.elapsed().as_millis() as u64,
+            "Chat translate failed: target_lang={}, status={}, content_type={}, duration_ms={}, error_kind={}",
+            target_lang, status, content_type, started.elapsed().as_millis() as u64,
             error_kind(&AiError::ParseError(e.to_string()))
         );
         AiError::ParseError(e.to_string())
     })?;
 
-    let out = data.choices
+    // Nội dung rỗng/none (gateway reasoning có thể trả `"content": null`) là phản hồi không
+    // dùng được, phải nổi lên thành lỗi thay vì hiển thị khoảng trắng như bản dịch.
+    let out = data
+        .choices
         .into_iter()
         .next()
-        .map(|c| c.message.content.trim().to_string())
-        .ok_or_else(|| AiError::ParseError("chat response: no choices".to_string()));
+        .map(|c| c.message.content.unwrap_or_default().trim().to_string())
+        .filter(|text| !text.is_empty())
+        .ok_or_else(|| AiError::ParseError("chat response: no usable content".to_string()));
     match &out {
         Ok(text) => log::info!(
             target: "vt_voice::ai::translate",
@@ -284,7 +298,10 @@ Preserve code identifiers, variables, keywords, and technical terms verbatim. Ou
 }
 #[derive(Deserialize)]
 struct ChatMessage {
-    content: String,
+    /// Gateway kiểu reasoning (9router/ollama) có thể trả `"content": null` kèm
+    /// `reasoning_content`; `polish_with_endpoint` đã dùng `Option` cho lý do này.
+    #[serde(default)]
+    content: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -324,6 +341,24 @@ mod tests {
         let body = r#"{"choices":[{"message":{"content":"  Bản dịch  "}}]}"#;
         let data: ChatCompletionResponse = serde_json::from_str(body).expect("parse");
         let content = data.choices.into_iter().next().unwrap().message.content;
-        assert_eq!(content.trim(), "Bản dịch");
+        assert_eq!(content.as_deref().unwrap_or_default().trim(), "Bản dịch");
+    }
+
+    /// Gateway kiểu reasoning (9router/ollama) trả `"content": null` kèm `reasoning_content`.
+    /// Phải deserialize được (không panic) — đây chính là parity với `polish_with_endpoint`.
+    #[test]
+    fn test_chat_parse_null_content() {
+        let body = r#"{"choices":[{"message":{"content":null,"reasoning_content":"..."}}]}"#;
+        let data: ChatCompletionResponse = serde_json::from_str(body).expect("parse null content");
+        let content = data.choices.into_iter().next().unwrap().message.content;
+        assert!(content.is_none());
+    }
+
+    /// Response thiếu hẳn trường `content` cũng không được làm hỏng deserialize.
+    #[test]
+    fn test_chat_parse_missing_content() {
+        let body = r#"{"choices":[{"message":{}}]}"#;
+        let data: ChatCompletionResponse = serde_json::from_str(body).expect("parse missing content");
+        assert!(data.choices.into_iter().next().unwrap().message.content.is_none());
     }
 }

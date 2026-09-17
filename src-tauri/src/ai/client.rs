@@ -27,7 +27,17 @@ pub struct AiHttpClient {
 
 impl AiHttpClient {
     pub fn new() -> Self {
+        // Gateway tương thích OpenAI mặc định trả SSE (`text/event-stream`, body `data: {...}`)
+        // khi client không khai báo Accept, khiến `res.json()` thất bại. Khai báo tường minh
+        // để luôn nhận JSON một lần.
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            reqwest::header::ACCEPT,
+            reqwest::header::HeaderValue::from_static("application/json"),
+        );
+
         let client = Client::builder()
+            .default_headers(headers)
             .pool_idle_timeout(Duration::from_secs(90))
             .pool_max_idle_per_host(5)
             .tcp_keepalive(Duration::from_secs(60))

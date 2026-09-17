@@ -33,6 +33,7 @@ const ALLOWED_LABELS: &[&str] = &[
     "source_lang",
     "target_lang",
     "status",
+    "content_type",
 ];
 
 /// Identifiers that must never be interpolated into a log line. Matches are
