@@ -107,6 +107,41 @@ export const TranslateOverlay: React.FC = () => {
       unlistenResult.then((fn) => fn());
     };
   }, []);
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        void invoke("hide_translate_overlay");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleManualTranslate = async (textToTranslate: string) => {
+    const trimmed = textToTranslate.trim();
+    if (!trimmed || loading) return;
+    setLoading(true);
+    setError("");
+    setTranslated("");
+    const start = Date.now();
+    try {
+      const res = await invoke<TranslateResult>("translate_text", {
+        text: trimmed,
+        sourceLang: detectedLang || (sourceLang !== "auto" ? sourceLang : "auto"),
+        targetLang: targetLang || "vi",
+      });
+      setTranslated(res.translatedText);
+      if (res.detectedLang) {
+        setDetectedLang(res.detectedLang);
+      }
+      setLatency(Date.now() - start);
+    } catch (err: unknown) {
+      const msg = typeof err === "string" ? err : String(err);
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCopy = () => {
     void invoke("copy_translation");
@@ -177,9 +212,6 @@ export const TranslateOverlay: React.FC = () => {
     }
   };
 
-  if (!source && !translated && !error && !loading) {
-    return null;
-  }
 
   const detectedKey = detectedLang ? LANG_NAME_MAP[detectedLang.toLowerCase()] : null;
   const detectedDisplay = detectedKey
@@ -255,16 +287,34 @@ export const TranslateOverlay: React.FC = () => {
         <div className="flex flex-col gap-1 shrink-0">
           <div className="flex items-center justify-between text-[11px] text-zinc-400 font-medium px-0.5">
             <span>{t("translate.detected_lang")}</span>
-            <span className="text-zinc-500 font-mono text-[11px] uppercase">
-              {detectedLang || sourceLang}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-zinc-500 font-mono text-[11px] uppercase">
+                {detectedLang || sourceLang}
+              </span>
+              {source.trim() && !loading && (
+                <button
+                  type="button"
+                  onClick={() => void handleManualTranslate(source)}
+                  className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/40 active:scale-95 transition-all cursor-pointer"
+                >
+                  {t("translate.translate_btn")} ↵
+                </button>
+              )}
+            </div>
           </div>
           <textarea
-            readOnly
+            readOnly={loading}
             rows={3}
             value={source}
-            placeholder={t("translate.source_placeholder")}
-            className="w-full min-h-[54px] max-h-[66px] resize-none text-xs text-zinc-300 bg-zinc-900/60 border border-zinc-800/80 rounded-md p-2 leading-relaxed select-text cursor-text focus:outline-none"
+            onChange={(e) => setSource(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void handleManualTranslate(source);
+              }
+            }}
+            placeholder={t("translate.manual_input_placeholder")}
+            className="w-full min-h-[54px] max-h-[66px] resize-none text-xs text-zinc-200 bg-zinc-900/60 border border-zinc-800/80 rounded-md p-2 leading-relaxed select-text cursor-text focus:outline-none focus:border-zinc-700 transition-colors"
           />
         </div>
 

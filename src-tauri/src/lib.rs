@@ -685,8 +685,21 @@ pub fn run() {
                                     set_translate_visible(false);
                                     return;
                                 }
+                                // 2. Hiển thị popup ngay lập tức tại vị trí con trỏ chuột (< 50ms)
+                                tl.show_at_cursor(&ap);
+                                set_translate_visible(true);
+                                tl.emit_payload(
+                                    &ap,
+                                    &daemon::TranslatePayload {
+                                        source_text: String::new(),
+                                        source_lang: "auto".into(),
+                                        target_lang: "vi".into(),
+                                        is_loading: true,
+                                        error: None,
+                                    },
+                                );
 
-                                // Capture the current selection (guarded Ctrl+C).
+                                // 3. Đọc vùng chọn qua clipboard chạy ngầm (guarded Ctrl+C)
                                 let selection = match capture_selected_text(Arc::clone(&cb)).await {
                                     Ok(result) => result,
                                     Err(err) => {
@@ -700,18 +713,100 @@ pub fn run() {
                                                 error: Some(format!("Không đọc được vùng chọn: {}", err)),
                                             },
                                         );
-                                        tl.show_at_cursor(&ap);
-                                        set_translate_visible(true);
-                                        // Auto-hide after the error is shown.
-                                        tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
-                                        tl.hide(&ap);
-                                        set_translate_visible(false);
                                         return;
                                     }
                                 };
 
-                                let text = match selection {
-                                    SelectionResult::Captured { text } => text,
+                                match selection {
+                                    SelectionResult::Captured { text } => {
+                                        tl.emit_payload(
+                                            &ap,
+                                            &daemon::TranslatePayload {
+                                                source_text: text.clone(),
+                                                source_lang: "auto".into(),
+                                                target_lang: "vi".into(),
+                                                is_loading: true,
+                                                error: None,
+                                            },
+                                        );
+
+                                        // Điều phối theo feature_profiles["translate"]
+                                        let translate_profile = {
+                                            let cfg = cf.lock();
+                                            cfg.feature_profiles
+                                                .get("translate")
+                                                .cloned()
+                                                .unwrap_or_else(|| storage::FeatureProfile {
+                                                    provider_id: "google_free".to_string(),
+                                                    model_id: None,
+                                                })
+                                        };
+
+                                        let translation = if translate_profile.provider_id == "google_free" {
+                                            ai::translate_google_with_langs(&hp, &text, "auto", "vi").await
+                                        } else if let Some(provider) = storage::get_provider(&translate_profile.provider_id) {
+                                            if let Some(api_key) = storage::get_provider_key(&translate_profile.provider_id).unwrap_or(None) {
+                                                let model = translate_profile.model_id.as_deref().unwrap_or("llama-3.3-70b-versatile");
+                                                ai::translate_chat_with_lang(
+                                                    &hp,
+                                                    Some(&provider.base_url),
+                                                    &api_key,
+                                                    model,
+                                                    &text,
+                                                    "vi",
+                                                )
+                                                .await
+                                                .map(|t| ai::TranslationResult {
+                                                    translated_text: t,
+                                                    detected_lang: None,
+                                                })
+                                            } else {
+                                                Err(ai::AiError::MissingApiKey)
+                                            }
+                                        } else {
+                                            ai::translate_google_with_langs(&hp, &text, "auto", "vi").await
+                                        };
+
+                                        match translation {
+                                            Ok(res) => {
+                                                set_translate_last_result(&res.translated_text);
+                                                tl.emit_result(
+                                                    &ap,
+                                                    &daemon::TranslateResult {
+                                                        translated_text: res.translated_text.clone(),
+                                                        is_loading: false,
+                                                        detected_lang: res.detected_lang,
+                                                        target_lang: Some("vi".to_string()),
+                                                    },
+                                                );
+                                            }
+                                            Err(err) => {
+                                                tl.emit_payload(
+                                                    &ap,
+                                                    &daemon::TranslatePayload {
+                                                        source_text: text,
+                                                        source_lang: "auto".into(),
+                                                        target_lang: "vi".into(),
+                                                        is_loading: false,
+                                                        error: Some(err.to_string()),
+                                                    },
+                                                );
+                                            }
+                                        }
+                                    }
+                                    SelectionResult::EmptySelection => {
+                                        // Không có text bôi đen: thông báo frontend mở ô gõ thủ công
+                                        tl.emit_payload(
+                                            &ap,
+                                            &daemon::TranslatePayload {
+                                                source_text: String::new(),
+                                                source_lang: "auto".into(),
+                                                target_lang: "vi".into(),
+                                                is_loading: false,
+                                                error: None,
+                                            },
+                                        );
+                                    }
                                     SelectionResult::TargetElevated => {
                                         tl.emit_payload(
                                             &ap,
@@ -720,100 +815,9 @@ pub fn run() {
                                                 source_lang: "auto".into(),
                                                 target_lang: "vi".into(),
                                                 is_loading: false,
-                                                error: Some("Không thể sao chép: cửa sổ đang chạy với quyền quản trị viên".into()),
+                                                error: Some("Không thể tự động sao chép: cửa sổ đang chạy với quyền Administrator. Bạn có thể dán thủ công vào đây.".into()),
                                             },
                                         );
-                                        tl.show_at_cursor(&ap);
-                                        set_translate_visible(true);
-                                        tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
-                                        tl.hide(&ap);
-                                        set_translate_visible(false);
-                                        return;
-                                    }
-                                    SelectionResult::EmptySelection => return, // nothing selected → do nothing
-                                };
-
-                                // Show "loading…" popover at the cursor, then translate in the background.
-                                tl.emit_payload(
-                                    &ap,
-                                    &daemon::TranslatePayload {
-                                        source_text: text.clone(),
-                                        source_lang: "auto".into(),
-                                        target_lang: "vi".into(),
-                                        is_loading: true,
-                                        error: None,
-                                    },
-                                );
-                                tl.show_at_cursor(&ap);
-                                set_translate_visible(true);
-
-                                // Điều phối theo feature_profiles["translate"]
-                                let translate_profile = {
-                                    let cfg = cf.lock();
-                                    cfg.feature_profiles
-                                        .get("translate")
-                                        .cloned()
-                                        .unwrap_or_else(|| storage::FeatureProfile {
-                                            provider_id: "google_free".to_string(),
-                                            model_id: None,
-                                        })
-                                };
-
-                                let translation = if translate_profile.provider_id == "google_free" {
-                                    ai::translate_google_with_langs(&hp, &text, "auto", "vi").await
-                                } else if let Some(provider) = storage::get_provider(&translate_profile.provider_id) {
-                                    if let Some(api_key) = storage::get_provider_key(&translate_profile.provider_id).unwrap_or(None) {
-                                        let model = translate_profile.model_id.as_deref().unwrap_or("llama-3.3-70b-versatile");
-                                        ai::translate_chat_with_lang(
-                                            &hp,
-                                            Some(&provider.base_url),
-                                            &api_key,
-                                            model,
-                                            &text,
-                                            "vi",
-                                        )
-                                        .await
-                                        .map(|t| ai::TranslationResult {
-                                            translated_text: t,
-                                            detected_lang: None,
-                                        })
-                                    } else {
-                                        Err(ai::AiError::MissingApiKey)
-                                    }
-                                } else {
-                                    ai::translate_google_with_langs(&hp, &text, "auto", "vi").await
-                                };
-
-                                match translation {
-                                    Ok(res) => {
-                                        set_translate_last_result(&res.translated_text);
-                                        tl.emit_result(
-                                            &ap,
-                                            &daemon::TranslateResult {
-                                                translated_text: res.translated_text.clone(),
-                                                is_loading: false,
-                                                detected_lang: res.detected_lang,
-                                                target_lang: Some("vi".to_string()),
-                                            },
-                                        );
-                                        // Clipboard is written only on explicit Copy (button/Enter) —
-                                        // auto-copying here would clobber the clipboard selection capture restored.
-                                    }
-                                    Err(err) => {
-                                        tl.emit_payload(
-                                            &ap,
-                                            &daemon::TranslatePayload {
-                                                source_text: text,
-                                                source_lang: "auto".into(),
-                                                target_lang: "vi".into(),
-                                                is_loading: false,
-                                                error: Some(err.to_string()),
-                                            },
-                                        );
-                                        // Auto-hide after error.
-                                        tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
-                                        tl.hide(&ap);
-                                        set_translate_visible(false);
                                     }
                                 }
                             });

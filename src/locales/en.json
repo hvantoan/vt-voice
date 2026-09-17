@@ -57,6 +57,17 @@
     },
     "hotkey_binding_title": "Activation Hotkey",
     "hotkey_binding_desc": "Global system shortcut to trigger voice input",
+    "shortcuts_title": "System Shortcuts",
+    "shortcuts_desc": "Manage global shortcuts for quick system-wide capabilities",
+    "translate_hotkey_title": "Selection Translation",
+    "translate_hotkey_desc": "Trigger instant translation for currently highlighted text",
+    "hotkey_collision_error": "Translation shortcut conflicts with Voice Typing shortcut. Please choose a different key combination.",
+    "shortcuts_table_feature": "Feature",
+    "shortcuts_table_hotkey": "Shortcut",
+    "shortcuts_table_action": "Action",
+    "reset_default": "Default",
+    "reset_default_tooltip": "Reset to default ({default})",
+    "reset_all_defaults": "Reset all defaults",
     "startup_title": "Startup & Window",
     "autostart_label": "Start with Windows",
     "autostart_desc": "Automatically launch vt-voice when logging into Windows",
@@ -284,7 +295,10 @@
       "mouse_5": "Mouse 5",
       "middle_mouse": "Middle Mouse",
       "ctrl_space": "Ctrl + Space",
-      "f7": "F7"
+      "f7": "F7",
+      "alt_t": "Alt + T",
+      "ctrl_shift_t": "Ctrl + Shift + T",
+      "alt_d": "Alt + D"
     }
   },
   "overlay": {
@@ -314,7 +328,9 @@
     "lang_en": "English",
     "lang_ja": "Japanese",
     "lang_zh": "Chinese",
-    "lang_ko": "Korean"
+    "lang_ko": "Korean",
+    "manual_input_placeholder": "Type text or phrases to translate... (Press Enter to translate)",
+    "translate_btn": "Translate"
   },
   "errors": {
     "api_key_empty": "API key cannot be empty",

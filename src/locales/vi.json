@@ -57,6 +57,17 @@
     },
     "hotkey_binding_title": "Phím kích hoạt",
     "hotkey_binding_desc": "Phím tắt toàn hệ thống để bắt đầu nhập liệu giọng nói",
+    "shortcuts_title": "Phím tắt hệ thống",
+    "shortcuts_desc": "Quản lý phím tắt cho các tính năng nhanh trên toàn hệ điều hành",
+    "translate_hotkey_title": "Dịch văn bản đã chọn",
+    "translate_hotkey_desc": "Kích hoạt dịch tức thì cho đoạn văn bản đang được bôi đen",
+    "hotkey_collision_error": "Phím tắt dịch đang bị trùng với phím nhập giọng nói. Vui lòng chọn tổ hợp phím khác.",
+    "shortcuts_table_feature": "Tính năng",
+    "shortcuts_table_hotkey": "Phím tắt",
+    "shortcuts_table_action": "Thao tác",
+    "reset_default": "Mặc định",
+    "reset_default_tooltip": "Khôi phục phím tắt mặc định ({default})",
+    "reset_all_defaults": "Khôi phục tất cả",
     "startup_title": "Khởi động & Cửa sổ",
     "autostart_label": "Khởi động cùng Windows",
     "autostart_desc": "Tự động chạy vt-voice khi bạn đăng nhập vào máy tính",
@@ -284,7 +295,10 @@
       "mouse_5": "Chuột 5",
       "middle_mouse": "Chuột giữa",
       "ctrl_space": "Ctrl + Space",
-      "f7": "F7"
+      "f7": "F7",
+      "alt_t": "Alt + T",
+      "ctrl_shift_t": "Ctrl + Shift + T",
+      "alt_d": "Alt + D"
     }
   },
   "overlay": {
@@ -314,7 +328,9 @@
     "lang_en": "Tiếng Anh",
     "lang_ja": "Tiếng Nhật",
     "lang_zh": "Tiếng Trung",
-    "lang_ko": "Tiếng Hàn"
+    "lang_ko": "Tiếng Hàn",
+    "manual_input_placeholder": "Nhập từ hoặc câu cần dịch... (Nhấn Enter để dịch)",
+    "translate_btn": "Dịch"
   },
   "errors": {
     "api_key_empty": "Khóa API không được để trống",
