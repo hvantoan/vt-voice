@@ -72,7 +72,12 @@
     "autostart_label": "Start with Windows",
     "autostart_desc": "Automatically launch vt-voice when logging into Windows",
     "start_minimized_label": "Start Minimized",
-    "start_minimized_desc": "Run silently in system tray without opening settings window"
+    "start_minimized_desc": "Run silently in system tray without opening settings window",
+    "logs_title": "Logs & Diagnostics",
+    "logs_desc": "Application logs capture AI requests, statuses and metrics — never your text or keys",
+    "logs_folder_label": "Log Files",
+    "open_logs_folder": "Open Logs Folder",
+    "logs_folder_opened": "Logs folder opened"
   },
   "audio": {
     "input_device_title": "Recording Device",

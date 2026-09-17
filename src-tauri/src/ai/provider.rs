@@ -9,6 +9,34 @@ pub enum AiProvider {
     Custom(Option<String>),
 }
 
+/// Categorizes an AiError into a short sanitized kind string for zero-PII logging.
+/// Never logs the underlying message, which may embed user text or API key fragments.
+pub fn error_kind(e: &AiError) -> &'static str {
+    match e {
+        AiError::MissingApiKey => "missing_api_key",
+        AiError::AudioTooShort => "audio_too_short",
+        AiError::EmptyAudio => "empty_audio",
+        AiError::Timeout(_) => "timeout",
+        AiError::Network(_) => "network",
+        AiError::Api { status, .. } => error_kind_status(*status),
+        AiError::ParseError(_) => "parse_error",
+    }
+}
+
+/// HTTP status → sanitized kind. `_` keeps the match total for any status.
+pub fn error_kind_status(status: u16) -> &'static str {
+    match status {
+        400 => "bad_request",
+        401 => "unauthorized",
+        403 => "forbidden",
+        404 => "not_found",
+        408 => "request_timeout",
+        429 => "rate_limit",
+        500..=599 => "server_error",
+        _ => "api_error",
+    }
+}
+
 impl AiProvider {
     pub fn from_str(provider: &str, custom_endpoint: Option<String>) -> Self {
         match provider.trim().to_lowercase().as_str() {
@@ -26,6 +54,22 @@ impl AiProvider {
         }
     }
 }
+
+/// Prepares a base URL for logging: rebuilds `scheme://host[:port]/path`,
+/// dropping query, fragment, and userinfo (`user:pass@`). Input that does not
+/// parse as an absolute URL is replaced by a marker — never echoed back.
+pub fn sanitize_base_url_for_log(base_url: &str) -> String {
+    let Ok(u) = reqwest::Url::parse(base_url.trim()) else {
+        return "<invalid-url>".to_string();
+    };
+    let mut out = format!("{}://{}", u.scheme(), u.host_str().unwrap_or(""));
+    if let Some(port) = u.port() {
+        out.push_str(&format!(":{}", port));
+    }
+    out.push_str(u.path());
+    out
+}
+
 /// Strips trailing slashes and common API endpoint suffixes (`/models`, `/audio/transcriptions`, `/chat/completions`)
 /// returning the normalized base URL.
 pub fn normalize_base_url(base_url: &str) -> String {
@@ -103,10 +147,47 @@ pub async fn transcribe_with_endpoint(
     wav_bytes: Vec<u8>,
     custom_vocab: &[String],
 ) -> Result<String, AiError> {
-    if wav_bytes.len() < 44 + 4800 {
+    let started = std::time::Instant::now();
+    let audio_size_bytes = wav_bytes.len();
+    log::info!(
+        target: "vt_voice::ai::stt",
+        "STT request started: base_url={}, model={}, audio_size_bytes={}",
+        sanitize_base_url_for_log(base_url),
+        model,
+        audio_size_bytes
+    );
+    if audio_size_bytes < 44 + 4800 {
+        log::warn!(
+            target: "vt_voice::ai::stt",
+            "STT rejected: base_url={}, model={}, audio_size_bytes={}, error_kind={}",
+            sanitize_base_url_for_log(base_url),
+            model,
+            audio_size_bytes,
+            error_kind(&AiError::AudioTooShort)
+        );
         return Err(AiError::AudioTooShort);
     }
-    openrouter::transcribe_openrouter(http, api_key, model, wav_bytes, custom_vocab, Some(base_url)).await
+    let result = openrouter::transcribe_openrouter(http, api_key, model, wav_bytes, custom_vocab, Some(base_url)).await;
+    let duration_ms = started.elapsed().as_millis() as u64;
+    match &result {
+        Ok(text) => log::info!(
+            target: "vt_voice::ai::stt",
+            "STT completed: base_url={}, model={}, duration_ms={}, text_len={}",
+            sanitize_base_url_for_log(base_url),
+            model,
+            duration_ms,
+            text.len()
+        ),
+        Err(e) => log::error!(
+            target: "vt_voice::ai::stt",
+            "STT failed: base_url={}, model={}, duration_ms={}, error_kind={}",
+            sanitize_base_url_for_log(base_url),
+            model,
+            duration_ms,
+            error_kind(e)
+        ),
+    }
+    result
 }
 
 /// Unified chat completion polisher targeting an arbitrary OpenAI-compatible base URL with system prompt
@@ -133,12 +214,19 @@ pub async fn polish_with_endpoint(
 
     let clean_base = normalize_base_url(base_url);
     let url = format!("{}/chat/completions", clean_base);
-
+    let started = std::time::Instant::now();
     let model_name = if model.trim().is_empty() {
         "llama-3.3-70b-versatile"
     } else {
         model.trim()
     };
+    log::info!(
+        target: "vt_voice::ai::polish",
+        "Polish request started: base_url={}, model={}, input_len={}",
+        sanitize_base_url_for_log(base_url),
+        model_name,
+        trimmed.len()
+    );
 
     let request_body = serde_json::json!({
         "model": model_name,
@@ -168,6 +256,14 @@ pub async fn polish_with_endpoint(
     if !res.status().is_success() {
         let err_body = res.text().await.unwrap_or_default();
         let sanitized = openrouter::sanitize_error_message(&err_body, key);
+        log::warn!(
+            target: "vt_voice::ai::polish",
+            "Polish failed: base_url={}, model={}, duration_ms={}, error_kind={}",
+            sanitize_base_url_for_log(base_url),
+            model_name,
+            started.elapsed().as_millis() as u64,
+            error_kind_status(status)
+        );
         return Err(AiError::Api {
             status,
             message: sanitized,
@@ -200,11 +296,34 @@ pub async fn polish_with_endpoint(
 
         // Anti-hallucination guard: If LLM output is empty or > 3x original length, fallback
         if output.is_empty() || output.len() > (trimmed.len() * 3) {
+            log::warn!(
+                target: "vt_voice::ai::polish",
+                "Polish output rejected by guard, using local fallback: base_url={}, model={}, duration_ms={}, output_len={}",
+                sanitize_base_url_for_log(base_url),
+                model_name,
+                started.elapsed().as_millis() as u64,
+                output.len()
+            );
             Ok(super::fallback::LocalPolisher::polish(trimmed))
         } else {
+            log::info!(
+                target: "vt_voice::ai::polish",
+                "Polish completed: base_url={}, model={}, duration_ms={}, output_len={}",
+                sanitize_base_url_for_log(base_url),
+                model_name,
+                started.elapsed().as_millis() as u64,
+                output.len()
+            );
             Ok(output)
         }
     } else {
+        log::warn!(
+            target: "vt_voice::ai::polish",
+            "Polish returned no choices, using local fallback: base_url={}, model={}, duration_ms={}",
+            sanitize_base_url_for_log(base_url),
+            model_name,
+            started.elapsed().as_millis() as u64
+        );
         Ok(super::fallback::LocalPolisher::polish(trimmed))
     }
 }
@@ -311,5 +430,70 @@ mod tests {
             normalize_base_url("https://api.groq.com/openai/v1"),
             "https://api.groq.com/openai/v1"
         );
+    }
+
+    #[test]
+    fn test_sanitize_base_url_for_log_strips_secrets() {
+        // Query params and fragments may carry tokens — never log them.
+        assert_eq!(
+            sanitize_base_url_for_log("https://api.example.com/v1?api_key=sk-secret&x=1"),
+            "https://api.example.com/v1"
+        );
+        assert_eq!(
+            sanitize_base_url_for_log("https://api.example.com/v1#token=abc"),
+            "https://api.example.com/v1"
+        );
+        // Userinfo (user:pass@) must be dropped, scheme+host kept.
+        assert_eq!(
+            sanitize_base_url_for_log("https://user:secret@api.example.com/v1"),
+            "https://api.example.com/v1"
+        );
+        // Uppercase scheme is normalized, not truncated.
+        assert_eq!(
+            sanitize_base_url_for_log("HTTPS://user:secret@api.example.com/v1"),
+            "https://api.example.com/v1"
+        );
+        // An `@` in the path must not rewrite the URL into a bogus host.
+        assert_eq!(
+            sanitize_base_url_for_log("https://host/v1/path@weird"),
+            "https://host/v1/path@weird"
+        );
+        // Multiple `@`: only the authority's userinfo is dropped, never leaked.
+        assert_eq!(
+            sanitize_base_url_for_log("https://user:pa@ss@host/v1"),
+            "https://host/v1"
+        );
+        // A path with no userinfo must not be mistaken for credentials.
+        assert_eq!(
+            sanitize_base_url_for_log("https://host/proxy@v1"),
+            "https://host/proxy@v1"
+        );
+        // Non-absolute input is replaced by a marker, never echoed back.
+        assert_eq!(sanitize_base_url_for_log("api.example.com/v1"), "<invalid-url>");
+        assert_eq!(sanitize_base_url_for_log("not a url"), "<invalid-url>");
+        // Clean URLs pass through untouched.
+        assert_eq!(
+            sanitize_base_url_for_log("https://api.groq.com/openai/v1"),
+            "https://api.groq.com/openai/v1"
+        );
+    }
+
+    #[test]
+    fn test_error_kind_status_boundaries() {
+        assert_eq!(error_kind_status(400), "bad_request");
+        assert_eq!(error_kind_status(401), "unauthorized");
+        assert_eq!(error_kind_status(403), "forbidden");
+        assert_eq!(error_kind_status(404), "not_found");
+        assert_eq!(error_kind_status(408), "request_timeout");
+        assert_eq!(error_kind_status(429), "rate_limit");
+        assert_eq!(error_kind_status(500), "server_error");
+        assert_eq!(error_kind_status(503), "server_error");
+        assert_eq!(error_kind_status(599), "server_error");
+        // Redirects and informational codes must NOT be reported as server errors.
+        assert_eq!(error_kind_status(100), "api_error");
+        assert_eq!(error_kind_status(301), "api_error");
+        assert_eq!(error_kind_status(302), "api_error");
+        assert_eq!(error_kind_status(0), "api_error");
+        assert_eq!(error_kind_status(999), "api_error");
     }
 }

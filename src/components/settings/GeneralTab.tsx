@@ -1,8 +1,12 @@
 import React from "react";
 import { HotkeyRecorder, KeyBinding, DEFAULT_HOTKEY_BINDING, DEFAULT_TRANSLATE_BINDING, isSameBinding } from "./HotkeyRecorder";
-import { Mic, Radio, Rocket, Monitor, Globe, Languages, AlertTriangle, RotateCcw } from "lucide-react";
+import { Mic, Radio, Rocket, Monitor, Globe, Languages, AlertTriangle, RotateCcw, FolderOpen } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
+import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { translateIpcError } from "@/lib/ipcErrorMapper";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -345,6 +349,46 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
             onCheckedChange={setStartMinimized}
             className="data-[state=checked]:bg-emerald-600"
           />
+        </div>
+      </div>
+
+      {/* Logs & Diagnostics */}
+      <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-4">
+        <h4 className="text-xs font-semibold text-zinc-200 mb-2">
+          {t("general.logs_title")}
+        </h4>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <FolderOpen className="w-4 h-4 text-zinc-400" />
+            <div>
+              <div className="text-xs text-zinc-200 font-medium">
+                {t("general.logs_folder_label")}
+              </div>
+              <div className="text-[11px] text-zinc-500 leading-normal">
+                {t("general.logs_desc")}
+              </div>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                await invoke("open_logs_dir");
+                toast({ title: t("general.logs_folder_opened") });
+              } catch (err) {
+                toast({
+                  title: t("common.error"),
+                  description: translateIpcError(err, t),
+                  variant: "destructive",
+                });
+              }
+            }}
+          >
+            {t("general.open_logs_folder")}
+          </Button>
         </div>
       </div>
     </div>

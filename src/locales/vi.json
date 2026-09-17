@@ -72,7 +72,12 @@
     "autostart_label": "Khởi động cùng Windows",
     "autostart_desc": "Tự động chạy vt-voice khi bạn đăng nhập vào máy tính",
     "start_minimized_label": "Khởi động thu nhỏ",
-    "start_minimized_desc": "Chạy ngầm trên khay hệ thống, không tự mở cửa sổ cài đặt"
+    "start_minimized_desc": "Chạy ngầm trên khay hệ thống, không tự mở cửa sổ cài đặt",
+    "logs_title": "Nhật ký & Chẩn đoán",
+    "logs_desc": "Nhật ký ứng dụng ghi lại yêu cầu AI, trạng thái và số liệu — không bao giờ chứa văn bản hoặc khóa của bạn",
+    "logs_folder_label": "Tệp nhật ký",
+    "open_logs_folder": "Mở thư mục nhật ký",
+    "logs_folder_opened": "Đã mở thư mục nhật ký"
   },
   "audio": {
     "input_device_title": "Thiết bị ghi âm",

@@ -40,7 +40,7 @@ fn get_transcription_history(state: State<'_, AppState>) -> Result<Vec<HistoryIt
 fn clear_transcription_history(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     let mut h = state.history.lock();
     storage::clear_history().map_err(|e| {
-        eprintln!("[vt-voice] Failed to clear transcription history: {}", e);
+        log::error!("Failed to clear transcription history: {}", e);
         e.to_string()
     })?;
     h.clear();
@@ -60,6 +60,23 @@ fn export_transcription_history_json(
     std::fs::write(&path, json).map_err(|e| e.to_string())?;
     let _ = tauri_plugin_opener::reveal_item_in_dir(&path);
     Ok(path.to_string_lossy().into_owned())
+}
+
+/// Base file name of the application log, shared by the plugin builder and
+/// `open_logs_dir` so the revealed file is always the active one.
+const LOG_FILE_STEM: &str = "vt-voice";
+
+/// Opens the application log directory, creating it and an initial log file
+/// when absent so the folder is never empty on first use.
+#[tauri::command]
+fn open_logs_dir(app: AppHandle) -> Result<(), String> {
+    let dir = app.path().app_log_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let log_file = dir.join(format!("{LOG_FILE_STEM}.log"));
+    if !log_file.exists() {
+        std::fs::write(&log_file, "").map_err(|e| e.to_string())?;
+    }
+    tauri_plugin_opener::reveal_item_in_dir(&log_file).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -558,7 +575,14 @@ async fn transcribe_and_polish(
             .await
             {
                 Ok(p) => p,
-                Err(_) => ai::LocalPolisher::polish(&raw_text),
+                Err(err) => {
+                    log::warn!(
+                        target: "vt_voice::ai::polish",
+                        "Polish failed, using local fallback: error_kind={}",
+                        ai::provider::error_kind(&err)
+                    );
+                    ai::LocalPolisher::polish(&raw_text)
+                }
             }
         } else {
             ai::LocalPolisher::polish(&raw_text)
@@ -583,7 +607,7 @@ async fn transcribe_and_polish(
         h.clone()
     };
     if let Err(e) = storage::save_history(&history_snapshot) {
-        eprintln!("[vt-voice] Failed to persist transcription history: {}", e);
+        log::error!("Failed to persist transcription history: {}", e);
     } else {
         let _ = app.emit("history-updated", &history_item);
     }
@@ -631,8 +655,26 @@ pub fn run() {
         config: Arc::clone(&config),
         history: Arc::clone(&history),
     };
+
+    // Structured logging: tauri-plugin-log with 5MB x 3-file rotation to app log dir.
+    // Zero-PII: only metadata (provider, model, duration, status, lengths) is logged.
+    let log_plugin = tauri_plugin_log::Builder::new()
+        .targets([
+            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                file_name: Some(LOG_FILE_STEM.into()),
+            }),
+        ])
+        .max_file_size(5 * 1024 * 1024)
+        .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(3))
+        .level(log::LevelFilter::Info)
+        .level_for("reqwest", log::LevelFilter::Warn)
+        .level_for("tracing", log::LevelFilter::Warn)
+        .build();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(log_plugin)
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
@@ -989,7 +1031,14 @@ pub fn run() {
                                         .await
                                         {
                                             Ok(p) => p,
-                                            Err(_) => ai::LocalPolisher::polish(&raw_text),
+                                            Err(err) => {
+                                                log::warn!(
+                                                    target: "vt_voice::ai::polish",
+                                                    "Polish failed, using local fallback: error_kind={}",
+                                                    ai::provider::error_kind(&err)
+                                                );
+                                                ai::LocalPolisher::polish(&raw_text)
+                                            }
                                         }
                                     } else {
                                         ai::LocalPolisher::polish(&raw_text)
@@ -1043,7 +1092,7 @@ pub fn run() {
                                     h.clone()
                                 };
                                 if let Err(e) = storage::save_history(&history_snapshot) {
-                                    eprintln!("[vt-voice] Failed to persist transcription history: {}", e);
+                                    log::error!("Failed to persist transcription history: {}", e);
                                 } else {
                                     let _ = app_async.emit("history-updated", &history_item);
                                 }
@@ -1105,6 +1154,7 @@ pub fn run() {
             test_provider_endpoint_cmd,
             get_feature_profiles,
             set_feature_profile,
+            open_logs_dir,
         ])
         .run(tauri::generate_context!())
         .expect("error while running vt-voice daemon");

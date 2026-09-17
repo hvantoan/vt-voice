@@ -3,6 +3,7 @@ use serde::Deserialize;
 
 use super::client::{AiError, AiHttpClient};
 use super::openrouter::sanitize_error_message;
+use super::provider::{error_kind, error_kind_status};
 
 /// Translation outcome with translated text and detected source language.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,11 +30,23 @@ pub async fn translate_google_with_langs(
 ) -> Result<TranslationResult, AiError> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
+        log::warn!(
+            target: "vt_voice::ai::translate",
+            "Google translate rejected: source_lang={}, target_lang={}, input_len=0, error_kind={}",
+            source_lang, target_lang,
+            error_kind(&AiError::ParseError(String::new()))
+        );
         return Err(AiError::ParseError("empty input".to_string()));
     }
 
     let sl = if source_lang.trim().is_empty() { "auto" } else { source_lang.trim() };
     let tl = if target_lang.trim().is_empty() { "vi" } else { target_lang.trim() };
+    let started = std::time::Instant::now();
+    log::info!(
+        target: "vt_voice::ai::translate",
+        "Google translate started: source_lang={}, target_lang={}, input_len={}",
+        sl, tl, trimmed.len()
+    );
 
     let url = format!(
         "https://translate.googleapis.com/translate_a/single?client=gtx&sl={}&tl={}&dt=t&q={}",
@@ -59,11 +72,37 @@ pub async fn translate_google_with_langs(
     let status = res.status().as_u16();
     if !res.status().is_success() {
         let body = res.text().await.unwrap_or_default();
+        log::warn!(
+            target: "vt_voice::ai::translate",
+            "Google translate failed: source_lang={}, target_lang={}, duration_ms={}, error_kind={}",
+            sl, tl, started.elapsed().as_millis() as u64, error_kind_status(status)
+        );
         return Err(AiError::Api { status, message: body });
     }
 
-    let body = res.text().await.map_err(|e| AiError::ParseError(e.to_string()))?;
-    parse_google_response_with_lang(&body)
+    let body = res.text().await.map_err(|e| {
+        log::warn!(
+            target: "vt_voice::ai::translate",
+            "Google translate failed: source_lang={}, target_lang={}, duration_ms={}, error_kind={}",
+            sl, tl, started.elapsed().as_millis() as u64,
+            error_kind(&AiError::ParseError(e.to_string()))
+        );
+        AiError::ParseError(e.to_string())
+    })?;
+    let parsed = parse_google_response_with_lang(&body);
+    match &parsed {
+        Ok(result) => log::info!(
+            target: "vt_voice::ai::translate",
+            "Google translate completed: source_lang={}, target_lang={}, duration_ms={}, output_len={}",
+            sl, tl, started.elapsed().as_millis() as u64, result.translated_text.len()
+        ),
+        Err(e) => log::warn!(
+            target: "vt_voice::ai::translate",
+            "Google translate failed: source_lang={}, target_lang={}, duration_ms={}, error_kind={}",
+            sl, tl, started.elapsed().as_millis() as u64, error_kind(e)
+        ),
+    }
+    parsed
 }
 
 /// Tiny URL-encoder (percent-encodes UTF-8), avoiding a dependency for one endpoint.
@@ -136,12 +175,24 @@ pub async fn translate_chat_with_lang(
 ) -> Result<String, AiError> {
     let key = api_key.trim();
     if key.is_empty() {
+        log::warn!(
+            target: "vt_voice::ai::translate",
+            "Chat translate rejected: model={}, target_lang={}, input_len={}, error_kind={}",
+            model, target_lang, text.len(),
+            error_kind(&AiError::MissingApiKey)
+        );
         return Err(AiError::MissingApiKey);
     }
     let trimmed = text.trim();
     if trimmed.is_empty() {
         return Ok(String::new());
     }
+    let started = std::time::Instant::now();
+    log::info!(
+        target: "vt_voice::ai::translate",
+        "Chat translate started: model={}, target_lang={}, input_len={}",
+        model, target_lang, trimmed.len()
+    );
 
     let base = base_url.filter(|e| !e.trim().is_empty()).unwrap_or(DEFAULT_CHAT_BASE_URL);
     let clean_base = super::provider::normalize_base_url(base);
@@ -179,23 +230,57 @@ Preserve code identifiers, variables, keywords, and technical terms verbatim. Ou
         .timeout(http.timeout)
         .json(&request_body)
         .send()
-        .await?;
+        .await
+        .map_err(|e| {
+            let err = if e.is_timeout() { AiError::Timeout(http.timeout.as_secs()) } else { AiError::Network(e) };
+            log::warn!(
+                target: "vt_voice::ai::translate",
+                "Chat translate failed: target_lang={}, duration_ms={}, error_kind={}",
+                target_lang, started.elapsed().as_millis() as u64, error_kind(&err)
+            );
+            err
+        })?;
 
     let status = res.status().as_u16();
     if !res.status().is_success() {
         let err_body = res.text().await.unwrap_or_default();
         let sanitized = sanitize_error_message(&err_body, key);
+        log::warn!(
+            target: "vt_voice::ai::translate",
+            "Chat translate failed: target_lang={}, duration_ms={}, error_kind={}",
+            target_lang, started.elapsed().as_millis() as u64, error_kind_status(status)
+        );
         return Err(AiError::Api { status, message: sanitized });
     }
 
-    let data: ChatCompletionResponse =
-        res.json().await.map_err(|e| AiError::ParseError(e.to_string()))?;
+    let data: ChatCompletionResponse = res.json().await.map_err(|e| {
+        log::warn!(
+            target: "vt_voice::ai::translate",
+            "Chat translate failed: target_lang={}, duration_ms={}, error_kind={}",
+            target_lang, started.elapsed().as_millis() as u64,
+            error_kind(&AiError::ParseError(e.to_string()))
+        );
+        AiError::ParseError(e.to_string())
+    })?;
 
-    data.choices
+    let out = data.choices
         .into_iter()
         .next()
         .map(|c| c.message.content.trim().to_string())
-        .ok_or_else(|| AiError::ParseError("chat response: no choices".to_string()))
+        .ok_or_else(|| AiError::ParseError("chat response: no choices".to_string()));
+    match &out {
+        Ok(text) => log::info!(
+            target: "vt_voice::ai::translate",
+            "Chat translate completed: target_lang={}, duration_ms={}, output_len={}",
+            target_lang, started.elapsed().as_millis() as u64, text.len()
+        ),
+        Err(e) => log::warn!(
+            target: "vt_voice::ai::translate",
+            "Chat translate failed: target_lang={}, duration_ms={}, error_kind={}",
+            target_lang, started.elapsed().as_millis() as u64, error_kind(e)
+        ),
+    }
+    out
 }
 #[derive(Deserialize)]
 struct ChatMessage {
