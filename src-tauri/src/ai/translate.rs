@@ -13,7 +13,7 @@ pub struct TranslationResult {
 }
 
 const DEFAULT_CHAT_BASE_URL: &str = "https://api.groq.com/openai/v1";
-
+pub const TRANSLATE_TIMEOUT_SECS: u64 = 60;
 /// Translate text to Vietnamese via the free Google Translate RPC endpoint (backward compatible).
 pub async fn translate_google(http: &AiHttpClient, text: &str) -> Result<String, AiError> {
     translate_google_with_langs(http, text, "auto", "vi")
@@ -58,12 +58,12 @@ pub async fn translate_google_with_langs(
     let res = http
         .client
         .get(&url)
-        .timeout(Duration::from_secs(3))
+        .timeout(Duration::from_secs(TRANSLATE_TIMEOUT_SECS))
         .send()
         .await
         .map_err(|e| {
             if e.is_timeout() {
-                AiError::Timeout(3)
+                AiError::Timeout(TRANSLATE_TIMEOUT_SECS)
             } else {
                 AiError::Network(e)
             }
@@ -223,16 +223,22 @@ Preserve code identifiers, variables, keywords, and technical terms verbatim. Ou
         "temperature": 0.1,
     });
 
+    let timeout = if http.timeout < Duration::from_secs(TRANSLATE_TIMEOUT_SECS) {
+        Duration::from_secs(TRANSLATE_TIMEOUT_SECS)
+    } else {
+        http.timeout
+    };
+
     let res = http
         .client
         .post(&url)
         .bearer_auth(key)
-        .timeout(http.timeout)
+        .timeout(timeout)
         .json(&request_body)
         .send()
         .await
         .map_err(|e| {
-            let err = if e.is_timeout() { AiError::Timeout(http.timeout.as_secs()) } else { AiError::Network(e) };
+            let err = if e.is_timeout() { AiError::Timeout(timeout.as_secs()) } else { AiError::Network(e) };
             log::warn!(
                 target: "vt_voice::ai::translate",
                 "Chat translate failed: target_lang={}, duration_ms={}, error_kind={}",

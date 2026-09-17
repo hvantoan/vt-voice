@@ -130,7 +130,7 @@ Defined in `src-tauri/tauri.conf.json`:
    - Extracts selected text and immediately restores previous clipboard content.
 3. `TranslateOverlayController::show_at_cursor()` opens `translate-overlay` window without stealing focus.
 4. Backend emits `translate:payload` event with source text to frontend.
-5. `ai::translate::translate_text()` translates text via Google Translate RPC (primary, 2s timeout) with OpenAI chat completions as fallback.
+5. `ai::translate::translate_text()` translates text via Google Translate RPC (primary, 60s timeout) with OpenAI chat completions as fallback.
 6. Backend emits `translate:result` with translated text and detected language.
 
 ---
