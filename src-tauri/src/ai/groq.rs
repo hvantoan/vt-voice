@@ -154,9 +154,10 @@ pub async fn run_pipeline(
     let polished_text = match polish_grammar(http, api_key, &raw_text, system_prompt).await {
         Ok(polished) => polished,
         Err(err) => {
-            eprintln!(
-                "[AI Pipeline] LLM polish failed ({}), falling back to local heuristics: {}",
-                err, raw_text
+            log::warn!(
+                target: "vt_voice::ai::polish",
+                "Polish failed via Groq pipeline, falling back to local: error_kind={}",
+                crate::ai::provider::error_kind(&err)
             );
             LocalPolisher::polish(&raw_text)
         }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Key, Mouse } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 export interface KeyBinding {
   code: number;
@@ -11,55 +12,56 @@ export interface KeyBinding {
   win: boolean;
 }
 
-interface HotkeyRecorderProps {
+export interface HotkeyRecorderProps {
   value: KeyBinding;
   onChange: (binding: KeyBinding) => void;
+  hasError?: boolean;
+  allowSingleModifier?: boolean;
+}
+export const DEFAULT_HOTKEY_BINDING: KeyBinding = {
+  code: 0xa5,
+  name: "Right Alt",
+  ctrl: false,
+  alt: false,
+  shift: false,
+  win: false,
+};
+
+export const DEFAULT_TRANSLATE_BINDING: KeyBinding = {
+  code: 0x54,
+  name: "T",
+  ctrl: false,
+  alt: true,
+  shift: false,
+  win: false,
+};
+
+export const isSameBinding = (a: KeyBinding, b: KeyBinding): boolean => {
+  return (
+    a.code === b.code &&
+    !!a.ctrl === !!b.ctrl &&
+    !!a.alt === !!b.alt &&
+    !!a.shift === !!b.shift &&
+    !!a.win === !!b.win
+  );
+};
+
+function getCleanKeyName(name: string): string {
+  if (!name) return "";
+  if (name.includes("+")) {
+    const parts = name.split("+").map((p) => p.trim());
+    return parts[parts.length - 1] || name;
+  }
+  return name;
 }
 
-export interface PresetBinding {
-  key: string;
-  defaultLabel: string;
-  binding: KeyBinding;
-}
-
-export const PRESET_BINDINGS: PresetBinding[] = [
-  {
-    key: "hotkey.presets.right_alt",
-    defaultLabel: "Right Alt",
-    binding: { code: 0xa5, name: "Right Alt", ctrl: false, alt: false, shift: false, win: false },
-  },
-  {
-    key: "hotkey.presets.mouse_4",
-    defaultLabel: "Mouse 4",
-    binding: { code: 0x05, name: "Mouse 4", ctrl: false, alt: false, shift: false, win: false },
-  },
-  {
-    key: "hotkey.presets.mouse_5",
-    defaultLabel: "Mouse 5",
-    binding: { code: 0x06, name: "Mouse 5", ctrl: false, alt: false, shift: false, win: false },
-  },
-  {
-    key: "hotkey.presets.middle_mouse",
-    defaultLabel: "Mouse 3",
-    binding: { code: 0x04, name: "Mouse 3", ctrl: false, alt: false, shift: false, win: false },
-  },
-  {
-    key: "hotkey.presets.ctrl_space",
-    defaultLabel: "Ctrl + Space",
-    binding: { code: 0x20, name: "Space", ctrl: true, alt: false, shift: false, win: false },
-  },
-  {
-    key: "hotkey.presets.f7",
-    defaultLabel: "F7",
-    binding: { code: 0x76, name: "F7", ctrl: false, alt: false, shift: false, win: false },
-  },
-];
 
 const MODIFIER_CODES: Record<string, true> = {
   ControlLeft: true,
   ControlRight: true,
   AltLeft: true,
   AltRight: true,
+  AltGraph: true,
   ShiftLeft: true,
   ShiftRight: true,
   MetaLeft: true,
@@ -69,6 +71,7 @@ const MODIFIER_CODES: Record<string, true> = {
 const STANDALONE_MODIFIERS: Record<string, { code: number; name: string }> = {
   AltRight: { code: 0xa5, name: "Right Alt" },
   AltLeft: { code: 0xa4, name: "Left Alt" },
+  AltGraph: { code: 0xa5, name: "Right Alt" },
   ControlRight: { code: 0xa3, name: "Right Ctrl" },
   ControlLeft: { code: 0xa2, name: "Left Ctrl" },
   ShiftRight: { code: 0xa1, name: "Right Shift" },
@@ -93,6 +96,11 @@ const SPECIAL_KEYS: Record<string, { code: number; name: string }> = {
   ScrollLock: { code: 0x91, name: "Scroll Lock" },
   Pause: { code: 0x13, name: "Pause" },
   NumLock: { code: 0x90, name: "Num Lock" },
+  NumpadMultiply: { code: 0x6a, name: "Num *" },
+  NumpadAdd: { code: 0x6b, name: "Num +" },
+  NumpadSubtract: { code: 0x6d, name: "Num -" },
+  NumpadDecimal: { code: 0x6e, name: "Num ." },
+  NumpadDivide: { code: 0x6f, name: "Num /" },
   Backquote: { code: 0xc0, name: "`" },
   Minus: { code: 0xbd, name: "-" },
   Equal: { code: 0xbb, name: "=" },
@@ -110,7 +118,12 @@ const SPECIAL_KEYS: Record<string, { code: number; name: string }> = {
   ArrowRight: { code: 0x27, name: "Right" },
 };
 
-export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange }) => {
+export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({
+  value,
+  onChange,
+  hasError,
+  allowSingleModifier = true,
+}) => {
   const { t } = useI18n();
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [activeModifiers, setActiveModifiers] = useState({
@@ -120,12 +133,26 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
     win: false,
   });
 
+  const heldModifiersRef = useRef({
+    ctrl: false,
+    alt: false,
+    shift: false,
+    win: false,
+  });
+  const maxModifiersCountRef = useRef<number>(0);
   const lastDownCodeRef = useRef<string | null>(null);
   const hadNonModifierRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!isRecording) return;
 
+    heldModifiersRef.current = {
+      ctrl: false,
+      alt: false,
+      shift: false,
+      win: false,
+    };
+    maxModifiersCountRef.current = 0;
     setActiveModifiers({
       ctrl: false,
       alt: false,
@@ -146,12 +173,24 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
 
       lastDownCodeRef.current = e.code;
 
-      const ctrl = e.ctrlKey || e.code === "ControlLeft" || e.code === "ControlRight";
-      const alt = e.altKey || e.code === "AltLeft" || e.code === "AltRight";
-      const shift = e.shiftKey || e.code === "ShiftLeft" || e.code === "ShiftRight";
-      const win = e.metaKey || e.code === "MetaLeft" || e.code === "MetaRight";
+      const isCtrl = e.ctrlKey || e.code === "ControlLeft" || e.code === "ControlRight" || heldModifiersRef.current.ctrl;
+      const isAlt = e.altKey || e.code === "AltLeft" || e.code === "AltRight" || e.code === "AltGraph" || heldModifiersRef.current.alt;
+      const isShift = e.shiftKey || e.code === "ShiftLeft" || e.code === "ShiftRight" || heldModifiersRef.current.shift;
+      const isWin = e.metaKey || e.code === "MetaLeft" || e.code === "MetaRight" || heldModifiersRef.current.win;
 
-      setActiveModifiers({ ctrl, alt, shift, win });
+      heldModifiersRef.current = {
+        ctrl: isCtrl,
+        alt: isAlt,
+        shift: isShift,
+        win: isWin,
+      };
+
+      const countMods = (isCtrl ? 1 : 0) + (isAlt ? 1 : 0) + (isShift ? 1 : 0) + (isWin ? 1 : 0);
+      if (countMods > maxModifiersCountRef.current) {
+        maxModifiersCountRef.current = countMods;
+      }
+
+      setActiveModifiers({ ctrl: isCtrl, alt: isAlt, shift: isShift, win: isWin });
 
       // If it's only a modifier key being pressed down, wait to see if it's followed by another key
       if (MODIFIER_CODES[e.code]) {
@@ -177,16 +216,26 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
         name = e.code;
       }
 
-      // If user is holding modifiers, it's a combination; if not, it's a single key!
+      // Format a clean combo name (e.g. "Alt + T", "Ctrl + Shift + S")
+      let displayName = name;
+      if (isCtrl || isAlt || isShift || isWin) {
+        const parts: string[] = [];
+        if (isCtrl && !name.includes("Ctrl")) parts.push("Ctrl");
+        if (isAlt && !name.includes("Alt")) parts.push("Alt");
+        if (isShift && !name.includes("Shift")) parts.push("Shift");
+        if (isWin && !name.includes("Win")) parts.push("Win");
+        parts.push(name);
+        displayName = parts.join(" + ");
+      }
+
       onChange({
         code,
-        name,
-        ctrl: e.ctrlKey,
-        alt: e.altKey,
-        shift: e.shiftKey,
-        win: e.metaKey,
+        name: displayName,
+        ctrl: isCtrl,
+        alt: isAlt,
+        shift: isShift,
+        win: isWin,
       });
-
       setIsRecording(false);
     };
 
@@ -194,34 +243,61 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
       e.preventDefault();
       e.stopPropagation();
 
-      // If a standalone modifier key was tapped (pressed and released without any other key)
-      if (!hadNonModifierRef.current && lastDownCodeRef.current === e.code) {
-        const standalone = STANDALONE_MODIFIERS[e.code];
-        if (standalone) {
-          onChange({
-            code: standalone.code,
-            name: standalone.name,
-            ctrl: false,
-            alt: false,
-            shift: false,
-            win: false,
-          });
-          setIsRecording(false);
-          return;
+      // If no non-modifier key was pressed during this recording session
+      if (!hadNonModifierRef.current && lastDownCodeRef.current) {
+        const releasedStandalone = STANDALONE_MODIFIERS[e.code];
+        if (releasedStandalone) {
+          // Check if multiple modifiers were held together (e.g. Ctrl + Shift, Alt + Shift)
+          if (maxModifiersCountRef.current > 1) {
+            const isCtrl = heldModifiersRef.current.ctrl && !releasedStandalone.name.includes("Ctrl");
+            const isAlt = heldModifiersRef.current.alt && !releasedStandalone.name.includes("Alt");
+            const isShift = heldModifiersRef.current.shift && !releasedStandalone.name.includes("Shift");
+            const isWin = heldModifiersRef.current.win && !releasedStandalone.name.includes("Win");
+
+            onChange({
+              code: releasedStandalone.code,
+              name: releasedStandalone.name.replace(/^(Left|Right)\s*/, ""),
+              ctrl: isCtrl,
+              alt: isAlt,
+              shift: isShift,
+              win: isWin,
+            });
+            setIsRecording(false);
+            return;
+          }
+
+          // Single standalone modifier (e.g. Right Alt, CapsLock, Left Ctrl)
+          // Only allowed when allowSingleModifier is true (Voice typing)
+          if (allowSingleModifier) {
+            onChange({
+              code: releasedStandalone.code,
+              name: releasedStandalone.name,
+              ctrl: false,
+              alt: false,
+              shift: false,
+              win: false,
+            });
+            setIsRecording(false);
+            return;
+          }
         }
       }
 
       // Update remaining active modifiers
+      const isCtrl = e.ctrlKey && e.code !== "ControlLeft" && e.code !== "ControlRight";
+      const isAlt = e.altKey && e.code !== "AltLeft" && e.code !== "AltRight" && e.code !== "AltGraph";
+      const isShift = e.shiftKey && e.code !== "ShiftLeft" && e.code !== "ShiftRight";
+      const isWin = e.metaKey && e.code !== "MetaLeft" && e.code !== "MetaRight";
       setActiveModifiers({
-        ctrl: e.ctrlKey,
-        alt: e.altKey,
-        shift: e.shiftKey,
-        win: e.metaKey,
+        ctrl: isCtrl,
+        alt: isAlt,
+        shift: isShift,
+        win: isWin,
       });
     };
 
     const handleMouseDown = (e: MouseEvent) => {
-      // Left click is ignored here so user can click "Hủy" or presets
+      // Left click is ignored here so user can click "Hủy" or cancel
       if (e.button === 0) {
         return;
       }
@@ -247,14 +323,19 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
       }
 
       if (code !== 0) {
+        const isCtrl = e.ctrlKey || heldModifiersRef.current.ctrl;
+        const isAlt = e.altKey || heldModifiersRef.current.alt;
+        const isShift = e.shiftKey || heldModifiersRef.current.shift;
+        const isWin = e.metaKey || heldModifiersRef.current.win;
+
         // Single mouse button or combo with modifiers
         onChange({
           code,
           name,
-          ctrl: e.ctrlKey,
-          alt: e.altKey,
-          shift: e.shiftKey,
-          win: e.metaKey,
+          ctrl: isCtrl,
+          alt: isAlt,
+          shift: isShift,
+          win: isWin,
         });
         setIsRecording(false);
       }
@@ -265,16 +346,13 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
       e.stopPropagation();
     };
 
-    const handleBlur = () => {
-      setIsRecording(false);
-    };
-
+      // Do not cancel on blur because pressing Alt in Windows WebView2 causes a transient blur
     window.addEventListener("keydown", handleKeyDown, true);
     window.addEventListener("keyup", handleKeyUp, true);
     window.addEventListener("mousedown", handleMouseDown, true);
     window.addEventListener("auxclick", handleMouseDown, true);
     window.addEventListener("contextmenu", handleContextMenu, true);
-    window.addEventListener("blur", handleBlur);
+
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown, true);
@@ -282,99 +360,93 @@ export const HotkeyRecorder: React.FC<HotkeyRecorderProps> = ({ value, onChange 
       window.removeEventListener("mousedown", handleMouseDown, true);
       window.removeEventListener("auxclick", handleMouseDown, true);
       window.removeEventListener("contextmenu", handleContextMenu, true);
-      window.removeEventListener("blur", handleBlur);
+
     };
   }, [isRecording, onChange]);
 
   const isMouseKey = value.code === 0x04 || value.code === 0x05 || value.code === 0x06;
 
-  const displayString = [
-    value.ctrl ? "Ctrl" : "",
-    value.alt ? "Alt" : "",
-    value.shift ? "Shift" : "",
-    value.win ? "Win" : "",
-    value.name,
-  ]
-    .filter(Boolean)
-    .join(" + ");
+  const cleanName = getCleanKeyName(value.name);
 
-  const activeModifierString = [
+  const keysList: string[] = [];
+  if (value.ctrl && !cleanName.toLowerCase().includes("ctrl")) keysList.push("Ctrl");
+  if (value.alt && !cleanName.toLowerCase().includes("alt")) keysList.push("Alt");
+  if (value.shift && !cleanName.toLowerCase().includes("shift")) keysList.push("Shift");
+  if (value.win && !cleanName.toLowerCase().includes("win")) keysList.push("Win");
+  if (cleanName) keysList.push(cleanName);
+
+  const activeModifierList = [
     activeModifiers.ctrl ? "Ctrl" : "",
     activeModifiers.alt ? "Alt" : "",
     activeModifiers.shift ? "Shift" : "",
     activeModifiers.win ? "Win" : "",
-  ]
-    .filter(Boolean)
-    .join(" + ");
+  ].filter(Boolean);
 
   return (
-    <div className="space-y-2.5">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setIsRecording(true)}
+        className={cn(
+          "group inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums border transition-all cursor-pointer select-none",
+          isRecording
+            ? "bg-rose-500/15 border-rose-500/80 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.15)] animate-pulse"
+            : hasError
+              ? "bg-rose-500/10 border-rose-500/60 text-rose-300 hover:bg-rose-500/20"
+              : "bg-zinc-900/90 border-zinc-700/70 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-500 hover:text-white"
+        )}
+        title={t("hotkey.tooltip")}
+      >
+        {isMouseKey ? (
+          <Mouse className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+        ) : (
+          <Key className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-200 transition-colors shrink-0" />
+        )}
+        {isRecording ? (
+          <span className="font-sans text-xs text-rose-300 flex items-center gap-1">
+            {activeModifierList.length > 0 ? (
+              <>
+                {activeModifierList.map((mod, idx) => (
+                  <React.Fragment key={idx}>
+                    <kbd className="px-1.5 py-0.5 rounded bg-rose-950/60 border border-rose-500/40 text-[10px] font-mono text-rose-200">
+                      {mod}
+                    </kbd>
+                    <span className="text-[10px] text-rose-400 font-mono">+</span>
+                  </React.Fragment>
+                ))}
+                <span className="text-[11px] italic text-rose-300">...</span>
+              </>
+            ) : (
+              <span>{t("hotkey.press_key")}</span>
+            )}
+          </span>
+        ) : (
+          <span className="flex items-center gap-1">
+            {keysList.length > 0 ? (
+              keysList.map((k, idx) => (
+                <React.Fragment key={idx}>
+                  {idx > 0 && <span className="text-[10px] text-zinc-500 font-mono">+</span>}
+                  <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700/80 text-[11px] font-mono font-medium text-zinc-200 shadow-sm group-hover:border-zinc-600 transition-colors">
+                    {k}
+                  </kbd>
+                </React.Fragment>
+              ))
+            ) : (
+              <span className="text-zinc-500">{t("hotkey.unassigned")}</span>
+            )}
+          </span>
+        )}
+      </button>
+
+      {isRecording && (
         <button
           type="button"
-          onClick={() => setIsRecording(true)}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-mono tabular-nums border transition-all ${
-            isRecording
-              ? "bg-rose-500/20 border-rose-500 text-rose-300 animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.2)]"
-              : "bg-zinc-800/80 border-zinc-700 text-zinc-200 hover:bg-zinc-700/80 hover:border-zinc-600 hover:text-white"
-          }`}
-          title={t("hotkey.tooltip")}
+          onClick={() => setIsRecording(false)}
+          className="text-[11px] font-medium text-zinc-400 hover:text-zinc-200 hover:underline cursor-pointer transition-colors px-1"
         >
-          {isMouseKey ? (
-            <Mouse className="w-3.5 h-3.5 text-emerald-400" />
-          ) : (
-            <Key className="w-3.5 h-3.5 text-zinc-400" />
-          )}
-          <span>
-            {isRecording
-              ? activeModifierString
-                ? `${activeModifierString} + ...`
-                : t("hotkey.press_key")
-              : displayString || t("hotkey.unassigned")}
-          </span>
+          {t("hotkey.cancel")}
         </button>
-
-        {isRecording && (
-          <button
-            type="button"
-            onClick={() => setIsRecording(false)}
-            className="text-[11px] text-zinc-400 hover:text-zinc-200 underline cursor-pointer"
-          >
-            {t("hotkey.cancel")}
-          </button>
-        )}
-      </div>
-
-      {/* Quick Presets for Mouse & Common Keys */}
-      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-        <span className="text-[11px] text-zinc-400 mr-1 font-medium">{t("hotkey.presets_label")}</span>
-        {PRESET_BINDINGS.map((preset) => {
-          const isSelected =
-            value.code === preset.binding.code &&
-            value.ctrl === preset.binding.ctrl &&
-            value.alt === preset.binding.alt &&
-            value.shift === preset.binding.shift &&
-            value.win === preset.binding.win;
-
-          return (
-            <button
-              key={preset.defaultLabel}
-              type="button"
-              onClick={() => {
-                onChange(preset.binding);
-                setIsRecording(false);
-              }}
-              className={`px-2 py-1 rounded text-[11px] font-mono tabular-nums border transition-colors cursor-pointer ${
-                isSelected
-                  ? "bg-emerald-500/15 border-emerald-500/60 text-emerald-300 font-semibold"
-                  : "bg-zinc-800/40 border-zinc-700/60 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 hover:bg-zinc-800"
-              }`}
-            >
-              {t(preset.key) || preset.defaultLabel}
-            </button>
-          );
-        })}
-      </div>
+      )}
     </div>
   );
 };

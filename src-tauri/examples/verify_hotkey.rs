@@ -104,6 +104,23 @@ fn main() {
     assert!(ctrl_mouse4.matches_release(0x05));
     assert!(ctrl_mouse4.matches_release(0xA2));
     println!("✓ Combo Ctrl + Mouse 4: PASS");
+    // 5b. Combos (modifier + modifier, e.g. Ctrl + Shift)
+    let ctrl_shift = KeyBinding {
+        code: 0xA0, // VK_LSHIFT
+        name: "Shift".to_string(),
+        ctrl: true,
+        alt: false,
+        shift: false,
+        win: false,
+    };
+    assert!(ctrl_shift.is_combo());
+    // When Shift is pressed while Ctrl is held, Windows reports both ctrl and shift down
+    assert!(ctrl_shift.matches_press(0xA0, true, false, true, false));
+    // Without Ctrl held, it should not match
+    assert!(!ctrl_shift.matches_press(0xA0, false, false, true, false));
+    assert!(ctrl_shift.matches_release(0xA0));
+    assert!(ctrl_shift.matches_release(0xA2));
+    println!("✓ Combo Ctrl + Shift: PASS");
 
     // 6. Verify real should_reset_hotkey_state function (avoids resetting active recording on unrelated autosaves)
     {

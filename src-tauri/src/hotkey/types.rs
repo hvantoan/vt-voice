@@ -59,11 +59,33 @@ impl KeyBinding {
     pub fn matches_press(&self, vk_code: u32, ctrl: bool, alt: bool, shift: bool, win: bool) -> bool {
         if self.is_combo() {
             // Combination mode: main key + required modifiers must match
-            self.code == vk_code
-                && self.ctrl == ctrl
-                && self.alt == alt
-                && self.shift == shift
-                && self.win == win
+            let main_matches = match self.code {
+                0xA5 => vk_code == 0xA5 || vk_code == 0x12,
+                0xA4 => vk_code == 0xA4 || vk_code == 0x12,
+                0x12 => matches!(vk_code, 0x12 | 0xA4 | 0xA5),
+                0xA3 => vk_code == 0xA3 || vk_code == 0x11,
+                0xA2 => vk_code == 0xA2 || vk_code == 0x11,
+                0x11 => matches!(vk_code, 0x11 | 0xA2 | 0xA3),
+                0xA1 => vk_code == 0xA1 || vk_code == 0x10,
+                0xA0 => vk_code == 0xA0 || vk_code == 0x10,
+                0x10 => matches!(vk_code, 0x10 | 0xA0 | 0xA1),
+                0x5B | 0x5C => matches!(vk_code, 0x5B | 0x5C),
+                _ => self.code == vk_code,
+            };
+
+            if !main_matches {
+                return false;
+            }
+
+            let is_main_ctrl = matches!(self.code, 0x11 | 0xA2 | 0xA3);
+            let is_main_alt = matches!(self.code, 0x12 | 0xA4 | 0xA5);
+            let is_main_shift = matches!(self.code, 0x10 | 0xA0 | 0xA1);
+            let is_main_win = matches!(self.code, 0x5B | 0x5C);
+
+            (is_main_ctrl || self.ctrl == ctrl)
+                && (is_main_alt || self.alt == alt)
+                && (is_main_shift || self.shift == shift)
+                && (is_main_win || self.win == win)
         } else {
             // Single key mode (ANY key on keyboard or mouse)
             match self.code {
@@ -102,7 +124,14 @@ impl KeyBinding {
             }
         } else {
             // Combination mode: releasing main key OR any required modifier releases the hotkey
-            if self.code == vk_code {
+            let is_main_release = match self.code {
+                0xA5 | 0xA4 | 0x12 => matches!(vk_code, 0x12 | 0xA4 | 0xA5),
+                0xA3 | 0xA2 | 0x11 => matches!(vk_code, 0x11 | 0xA2 | 0xA3),
+                0xA1 | 0xA0 | 0x10 => matches!(vk_code, 0x10 | 0xA0 | 0xA1),
+                0x5B | 0x5C => matches!(vk_code, 0x5B | 0x5C),
+                _ => self.code == vk_code,
+            };
+            if is_main_release {
                 return true;
             }
             if self.ctrl && matches!(vk_code, 0x11 | 0xA2 | 0xA3) {

@@ -3,16 +3,16 @@ use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use crossbeam_channel::Sender;
 use parking_lot::Mutex;
-use windows_sys::Win32::Foundation::{HMODULE, LPARAM, LRESULT, RECT, WPARAM};
+use windows_sys::Win32::Foundation::{HMODULE, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::System::Threading::GetCurrentThreadId;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, VK_CONTROL, VK_LCONTROL, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU,
     VK_RCONTROL, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_SHIFT,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CallNextHookEx, DispatchMessageW, GetMessageW, GetWindowRect, PostThreadMessageW,
-    SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx, HHOOK, MSG, WH_KEYBOARD_LL,
-    WH_MOUSE_LL, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_QUIT,
+    CallNextHookEx, DispatchMessageW, GetForegroundWindow, GetMessageW, GetWindowThreadProcessId,
+    PostThreadMessageW, SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx, HHOOK, MSG,
+    WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN, WM_KEYUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_QUIT,
     WM_SYSKEYDOWN, WM_SYSKEYUP, WM_USER, WM_XBUTTONDOWN, WM_XBUTTONUP,
 };
 
@@ -200,6 +200,18 @@ unsafe extern "system" fn low_level_keyboard_proc(
         let is_down = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN;
         let is_up = msg == WM_KEYUP || msg == WM_SYSKEYUP;
 
+            // If foreground window belongs to our own process (e.g. Settings window),
+            // bypass hotkey capture & swallowing so the user can freely record hotkeys
+            // or type in Settings without triggers or swallowed keystrokes.
+            let foreground = GetForegroundWindow();
+            if !foreground.is_null() {
+                let mut pid: u32 = 0;
+                GetWindowThreadProcessId(foreground, &mut pid);
+                if pid == std::process::id() {
+                    return CallNextHookEx(0 as HHOOK, code, wparam, lparam);
+                }
+            }
+
         if is_down || is_up {
             let mut vk = kbd.vk_code;
             let is_extended = (kbd.flags & 0x01) != 0;
@@ -296,34 +308,6 @@ unsafe extern "system" fn low_level_mouse_proc(
     if code >= 0 && lparam != 0 {
         let msg = wparam as u32;
 
-        // When the translate popover is visible, a left-click outside its rect dismisses it
-        // (the overlay is WS_EX_NOACTIVATE, so it never gets DOM blur — the hook handles dismiss).
-        if TRANSLATE_VISIBLE.load(Ordering::SeqCst)
-            && (msg == WM_LBUTTONDOWN || msg == WM_MBUTTONDOWN || msg == WM_XBUTTONDOWN)
-        {
-            let ms = *(lparam as *const MsLlHookStruct);
-            let popover_hwnd = TRANSLATE_OVERLAY_HWND.load(Ordering::SeqCst) as isize;
-            if popover_hwnd != 0 && ms.pt_x != 0 {
-                let mut rect: RECT = std::mem::zeroed();
-                if GetWindowRect(popover_hwnd as _, &mut rect) != 0 {
-                    let inside = ms.pt_x >= rect.left
-                        && ms.pt_x <= rect.right
-                        && ms.pt_y >= rect.top
-                        && ms.pt_y <= rect.bottom;
-                    if !inside {
-                        let hook_thread = HOOK_THREAD_ID.load(Ordering::SeqCst);
-                        if hook_thread != 0 {
-                            PostThreadMessageW(
-                                hook_thread,
-                                WM_HOTKEY_EVENT,
-                                WM_HOTKEY_TRANSLATE_HIDE,
-                                0,
-                            );
-                        }
-                    }
-                }
-            }
-        }
 
         let (is_down, is_up, vk) = match msg {
             WM_XBUTTONDOWN => {
@@ -342,6 +326,15 @@ unsafe extern "system" fn low_level_mouse_proc(
             WM_MBUTTONUP => (false, true, 0x04),
             _ => (false, false, 0),
         };
+
+            let foreground = GetForegroundWindow();
+            if !foreground.is_null() {
+                let mut pid: u32 = 0;
+                GetWindowThreadProcessId(foreground, &mut pid);
+                if pid == std::process::id() {
+                    return CallNextHookEx(0 as HHOOK, code, wparam, lparam);
+                }
+            }
 
         if vk != 0 {
             let ctrl = (GetAsyncKeyState(VK_CONTROL as i32) as u16 & 0x8000) != 0

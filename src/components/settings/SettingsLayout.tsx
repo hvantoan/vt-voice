@@ -22,7 +22,7 @@ import { ModelsTab } from "./ModelsTab";
 import { ProvidersTab } from "./ProvidersTab";
 import { ProviderConfig } from "./providers/ProviderDialog";
 import { HistoryTab, HistoryItem } from "./HistoryTab";
-import { KeyBinding } from "./HotkeyRecorder";
+import { KeyBinding, DEFAULT_TRANSLATE_BINDING } from "./HotkeyRecorder";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -83,7 +83,7 @@ function hasConfigChanges(
     if (val === undefined) continue;
 
     const cur = current[key];
-    if (key === "hotkey_binding") {
+    if (key === "hotkey_binding" || key === "translate_binding") {
       const curB = cur as KeyBinding | undefined;
       const valB = val as KeyBinding | undefined;
       if (
@@ -127,6 +127,14 @@ export const SettingsLayout: React.FC = () => {
     name: "Right Alt",
     ctrl: false,
     alt: false,
+    shift: false,
+    win: false,
+  });
+  const [translateBinding, setTranslateBinding] = useState<KeyBinding>({
+    code: 0x54,
+    name: "Alt+T",
+    ctrl: false,
+    alt: true,
     shift: false,
     win: false,
   });
@@ -201,6 +209,8 @@ export const SettingsLayout: React.FC = () => {
       if (patch.hotkey_mode !== undefined) setHotkeyMode(patch.hotkey_mode);
       if (patch.hotkey_binding !== undefined)
         setHotkeyBinding(patch.hotkey_binding);
+      if (patch.translate_binding !== undefined)
+        setTranslateBinding(patch.translate_binding);
       if (patch.audio_device_name !== undefined)
         setSelectedDevice(patch.audio_device_name);
       if (patch.autostart !== undefined) setAutostart(patch.autostart);
@@ -262,6 +272,13 @@ export const SettingsLayout: React.FC = () => {
     },
     [saveConfigPatch],
   );
+  const handleTranslateBindingChange = useCallback(
+    (binding: KeyBinding) => {
+      saveConfigPatch({ translate_binding: binding });
+    },
+    [saveConfigPatch],
+  );
+
 
   const handleAutostartChange = useCallback(
     async (val: boolean) => {
@@ -383,14 +400,7 @@ export const SettingsLayout: React.FC = () => {
             locale: (cfg.locale as LocaleOption) || "system",
             translate_endpoint: cfg.translate_endpoint || null,
             translate_model: cfg.translate_model || null,
-            translate_binding: cfg.translate_binding || {
-              code: 0x54,
-              name: "Alt+T",
-              ctrl: false,
-              alt: true,
-              shift: false,
-              win: false,
-            },
+            translate_binding: cfg.translate_binding || DEFAULT_TRANSLATE_BINDING,
             translate_mode: cfg.translate_mode || "push_to_talk",
           };
           if (cfg.locale) {
@@ -400,6 +410,7 @@ export const SettingsLayout: React.FC = () => {
           setHotkeyMode(fullConfig.hotkey_mode);
           setHotkeyBinding(fullConfig.hotkey_binding);
           setSelectedDevice(fullConfig.audio_device_name);
+          setTranslateBinding(fullConfig.translate_binding);
           setAutostart(fullConfig.autostart);
           setStartMinimized(fullConfig.start_minimized);
           setVadTimeout(fullConfig.vad_timeout_ms);
@@ -705,6 +716,8 @@ export const SettingsLayout: React.FC = () => {
               setHotkeyMode={handleHotkeyModeChange}
               hotkeyBinding={hotkeyBinding}
               setHotkeyBinding={handleHotkeyBindingChange}
+              translateBinding={translateBinding}
+              setTranslateBinding={handleTranslateBindingChange}
               autostart={autostart}
               setAutostart={handleAutostartChange}
               startMinimized={startMinimized}

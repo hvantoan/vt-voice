@@ -40,7 +40,7 @@ fn get_transcription_history(state: State<'_, AppState>) -> Result<Vec<HistoryIt
 fn clear_transcription_history(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     let mut h = state.history.lock();
     storage::clear_history().map_err(|e| {
-        eprintln!("[vt-voice] Failed to clear transcription history: {}", e);
+        log::error!("Failed to clear transcription history: {}", e);
         e.to_string()
     })?;
     h.clear();
@@ -60,6 +60,23 @@ fn export_transcription_history_json(
     std::fs::write(&path, json).map_err(|e| e.to_string())?;
     let _ = tauri_plugin_opener::reveal_item_in_dir(&path);
     Ok(path.to_string_lossy().into_owned())
+}
+
+/// Base file name of the application log, shared by the plugin builder and
+/// `open_logs_dir` so the revealed file is always the active one.
+const LOG_FILE_STEM: &str = "vt-voice";
+
+/// Opens the application log directory, creating it and an initial log file
+/// when absent so the folder is never empty on first use.
+#[tauri::command]
+fn open_logs_dir(app: AppHandle) -> Result<(), String> {
+    let dir = app.path().app_log_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let log_file = dir.join(format!("{LOG_FILE_STEM}.log"));
+    if !log_file.exists() {
+        std::fs::write(&log_file, "").map_err(|e| e.to_string())?;
+    }
+    tauri_plugin_opener::reveal_item_in_dir(&log_file).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -558,7 +575,14 @@ async fn transcribe_and_polish(
             .await
             {
                 Ok(p) => p,
-                Err(_) => ai::LocalPolisher::polish(&raw_text),
+                Err(err) => {
+                    log::warn!(
+                        target: "vt_voice::ai::polish",
+                        "Polish failed, using local fallback: error_kind={}",
+                        ai::provider::error_kind(&err)
+                    );
+                    ai::LocalPolisher::polish(&raw_text)
+                }
             }
         } else {
             ai::LocalPolisher::polish(&raw_text)
@@ -583,7 +607,7 @@ async fn transcribe_and_polish(
         h.clone()
     };
     if let Err(e) = storage::save_history(&history_snapshot) {
-        eprintln!("[vt-voice] Failed to persist transcription history: {}", e);
+        log::error!("Failed to persist transcription history: {}", e);
     } else {
         let _ = app.emit("history-updated", &history_item);
     }
@@ -631,8 +655,26 @@ pub fn run() {
         config: Arc::clone(&config),
         history: Arc::clone(&history),
     };
+
+    // Structured logging: tauri-plugin-log with 5MB x 3-file rotation to app log dir.
+    // Zero-PII: only metadata (provider, model, duration, status, lengths) is logged.
+    let log_plugin = tauri_plugin_log::Builder::new()
+        .targets([
+            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                file_name: Some(LOG_FILE_STEM.into()),
+            }),
+        ])
+        .max_file_size(5 * 1024 * 1024)
+        .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(3))
+        .level(log::LevelFilter::Info)
+        .level_for("reqwest", log::LevelFilter::Warn)
+        .level_for("tracing", log::LevelFilter::Warn)
+        .build();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(log_plugin)
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
@@ -685,8 +727,21 @@ pub fn run() {
                                     set_translate_visible(false);
                                     return;
                                 }
+                                // 2. Hiển thị popup ngay lập tức tại vị trí con trỏ chuột (< 50ms)
+                                tl.show_at_cursor(&ap);
+                                set_translate_visible(true);
+                                tl.emit_payload(
+                                    &ap,
+                                    &daemon::TranslatePayload {
+                                        source_text: String::new(),
+                                        source_lang: "auto".into(),
+                                        target_lang: "vi".into(),
+                                        is_loading: true,
+                                        error: None,
+                                    },
+                                );
 
-                                // Capture the current selection (guarded Ctrl+C).
+                                // 3. Đọc vùng chọn qua clipboard chạy ngầm (guarded Ctrl+C)
                                 let selection = match capture_selected_text(Arc::clone(&cb)).await {
                                     Ok(result) => result,
                                     Err(err) => {
@@ -700,18 +755,100 @@ pub fn run() {
                                                 error: Some(format!("Không đọc được vùng chọn: {}", err)),
                                             },
                                         );
-                                        tl.show_at_cursor(&ap);
-                                        set_translate_visible(true);
-                                        // Auto-hide after the error is shown.
-                                        tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
-                                        tl.hide(&ap);
-                                        set_translate_visible(false);
                                         return;
                                     }
                                 };
 
-                                let text = match selection {
-                                    SelectionResult::Captured { text } => text,
+                                match selection {
+                                    SelectionResult::Captured { text } => {
+                                        tl.emit_payload(
+                                            &ap,
+                                            &daemon::TranslatePayload {
+                                                source_text: text.clone(),
+                                                source_lang: "auto".into(),
+                                                target_lang: "vi".into(),
+                                                is_loading: true,
+                                                error: None,
+                                            },
+                                        );
+
+                                        // Điều phối theo feature_profiles["translate"]
+                                        let translate_profile = {
+                                            let cfg = cf.lock();
+                                            cfg.feature_profiles
+                                                .get("translate")
+                                                .cloned()
+                                                .unwrap_or_else(|| storage::FeatureProfile {
+                                                    provider_id: "google_free".to_string(),
+                                                    model_id: None,
+                                                })
+                                        };
+
+                                        let translation = if translate_profile.provider_id == "google_free" {
+                                            ai::translate_google_with_langs(&hp, &text, "auto", "vi").await
+                                        } else if let Some(provider) = storage::get_provider(&translate_profile.provider_id) {
+                                            if let Some(api_key) = storage::get_provider_key(&translate_profile.provider_id).unwrap_or(None) {
+                                                let model = translate_profile.model_id.as_deref().unwrap_or("llama-3.3-70b-versatile");
+                                                ai::translate_chat_with_lang(
+                                                    &hp,
+                                                    Some(&provider.base_url),
+                                                    &api_key,
+                                                    model,
+                                                    &text,
+                                                    "vi",
+                                                )
+                                                .await
+                                                .map(|t| ai::TranslationResult {
+                                                    translated_text: t,
+                                                    detected_lang: None,
+                                                })
+                                            } else {
+                                                Err(ai::AiError::MissingApiKey)
+                                            }
+                                        } else {
+                                            ai::translate_google_with_langs(&hp, &text, "auto", "vi").await
+                                        };
+
+                                        match translation {
+                                            Ok(res) => {
+                                                set_translate_last_result(&res.translated_text);
+                                                tl.emit_result(
+                                                    &ap,
+                                                    &daemon::TranslateResult {
+                                                        translated_text: res.translated_text.clone(),
+                                                        is_loading: false,
+                                                        detected_lang: res.detected_lang,
+                                                        target_lang: Some("vi".to_string()),
+                                                    },
+                                                );
+                                            }
+                                            Err(err) => {
+                                                tl.emit_payload(
+                                                    &ap,
+                                                    &daemon::TranslatePayload {
+                                                        source_text: text,
+                                                        source_lang: "auto".into(),
+                                                        target_lang: "vi".into(),
+                                                        is_loading: false,
+                                                        error: Some(err.to_string()),
+                                                    },
+                                                );
+                                            }
+                                        }
+                                    }
+                                    SelectionResult::EmptySelection => {
+                                        // Không có text bôi đen: thông báo frontend mở ô gõ thủ công
+                                        tl.emit_payload(
+                                            &ap,
+                                            &daemon::TranslatePayload {
+                                                source_text: String::new(),
+                                                source_lang: "auto".into(),
+                                                target_lang: "vi".into(),
+                                                is_loading: false,
+                                                error: None,
+                                            },
+                                        );
+                                    }
                                     SelectionResult::TargetElevated => {
                                         tl.emit_payload(
                                             &ap,
@@ -720,100 +857,9 @@ pub fn run() {
                                                 source_lang: "auto".into(),
                                                 target_lang: "vi".into(),
                                                 is_loading: false,
-                                                error: Some("Không thể sao chép: cửa sổ đang chạy với quyền quản trị viên".into()),
+                                                error: Some("Không thể tự động sao chép: cửa sổ đang chạy với quyền Administrator. Bạn có thể dán thủ công vào đây.".into()),
                                             },
                                         );
-                                        tl.show_at_cursor(&ap);
-                                        set_translate_visible(true);
-                                        tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
-                                        tl.hide(&ap);
-                                        set_translate_visible(false);
-                                        return;
-                                    }
-                                    SelectionResult::EmptySelection => return, // nothing selected → do nothing
-                                };
-
-                                // Show "loading…" popover at the cursor, then translate in the background.
-                                tl.emit_payload(
-                                    &ap,
-                                    &daemon::TranslatePayload {
-                                        source_text: text.clone(),
-                                        source_lang: "auto".into(),
-                                        target_lang: "vi".into(),
-                                        is_loading: true,
-                                        error: None,
-                                    },
-                                );
-                                tl.show_at_cursor(&ap);
-                                set_translate_visible(true);
-
-                                // Điều phối theo feature_profiles["translate"]
-                                let translate_profile = {
-                                    let cfg = cf.lock();
-                                    cfg.feature_profiles
-                                        .get("translate")
-                                        .cloned()
-                                        .unwrap_or_else(|| storage::FeatureProfile {
-                                            provider_id: "google_free".to_string(),
-                                            model_id: None,
-                                        })
-                                };
-
-                                let translation = if translate_profile.provider_id == "google_free" {
-                                    ai::translate_google_with_langs(&hp, &text, "auto", "vi").await
-                                } else if let Some(provider) = storage::get_provider(&translate_profile.provider_id) {
-                                    if let Some(api_key) = storage::get_provider_key(&translate_profile.provider_id).unwrap_or(None) {
-                                        let model = translate_profile.model_id.as_deref().unwrap_or("llama-3.3-70b-versatile");
-                                        ai::translate_chat_with_lang(
-                                            &hp,
-                                            Some(&provider.base_url),
-                                            &api_key,
-                                            model,
-                                            &text,
-                                            "vi",
-                                        )
-                                        .await
-                                        .map(|t| ai::TranslationResult {
-                                            translated_text: t,
-                                            detected_lang: None,
-                                        })
-                                    } else {
-                                        Err(ai::AiError::MissingApiKey)
-                                    }
-                                } else {
-                                    ai::translate_google_with_langs(&hp, &text, "auto", "vi").await
-                                };
-
-                                match translation {
-                                    Ok(res) => {
-                                        set_translate_last_result(&res.translated_text);
-                                        tl.emit_result(
-                                            &ap,
-                                            &daemon::TranslateResult {
-                                                translated_text: res.translated_text.clone(),
-                                                is_loading: false,
-                                                detected_lang: res.detected_lang,
-                                                target_lang: Some("vi".to_string()),
-                                            },
-                                        );
-                                        // Clipboard is written only on explicit Copy (button/Enter) —
-                                        // auto-copying here would clobber the clipboard selection capture restored.
-                                    }
-                                    Err(err) => {
-                                        tl.emit_payload(
-                                            &ap,
-                                            &daemon::TranslatePayload {
-                                                source_text: text,
-                                                source_lang: "auto".into(),
-                                                target_lang: "vi".into(),
-                                                is_loading: false,
-                                                error: Some(err.to_string()),
-                                            },
-                                        );
-                                        // Auto-hide after error.
-                                        tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
-                                        tl.hide(&ap);
-                                        set_translate_visible(false);
                                     }
                                 }
                             });
@@ -985,7 +1031,14 @@ pub fn run() {
                                         .await
                                         {
                                             Ok(p) => p,
-                                            Err(_) => ai::LocalPolisher::polish(&raw_text),
+                                            Err(err) => {
+                                                log::warn!(
+                                                    target: "vt_voice::ai::polish",
+                                                    "Polish failed, using local fallback: error_kind={}",
+                                                    ai::provider::error_kind(&err)
+                                                );
+                                                ai::LocalPolisher::polish(&raw_text)
+                                            }
                                         }
                                     } else {
                                         ai::LocalPolisher::polish(&raw_text)
@@ -1039,7 +1092,7 @@ pub fn run() {
                                     h.clone()
                                 };
                                 if let Err(e) = storage::save_history(&history_snapshot) {
-                                    eprintln!("[vt-voice] Failed to persist transcription history: {}", e);
+                                    log::error!("Failed to persist transcription history: {}", e);
                                 } else {
                                     let _ = app_async.emit("history-updated", &history_item);
                                 }
@@ -1101,6 +1154,7 @@ pub fn run() {
             test_provider_endpoint_cmd,
             get_feature_profiles,
             set_feature_profile,
+            open_logs_dir,
         ])
         .run(tauri::generate_context!())
         .expect("error while running vt-voice daemon");
