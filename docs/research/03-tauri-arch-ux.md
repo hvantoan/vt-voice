@@ -94,3 +94,10 @@ let groq_key = Entry::new("vt-voice", "groq_api_key")?.get_password()?;
 - **Multi-Monitor DPI**: Win32 window positioning must account for Per-Monitor DPI scaling (`GetDpiForMonitor`) to prevent pill blur or misplacement on mixed-scaling setups.
 - **Direct Caret Tracking**: Floating pill at current caret position vs screen bottom-center: Caret tracking via `GetGUIThreadInfo` / Windows UI Automation is notoriously unstable across Chromium/Electron/WPF. Recommendation: Stick to bottom-center fixed overlay.
 - **Unresolved Question**: Should the floating overlay pill be optional via user preference in Settings, allowing power users to rely solely on the system tray icon for visual feedback?
+
+## 9. Evolution: Embedded SQLite (`rusqlite`) for Language Learning
+- **Context (Feature #6: Vocab & Language Learning Tab)**: The application evolved from a pure voice typing utility into an active language learning companion. Relational requirements (sentence queue, tokenized vocabulary notebook, and multi-part grammar attempt history with cascade deletion) required structured relational storage.
+- **Architecture**:
+  - Embedded SQLite database located at `%APPDATA%/.vt-voice/learn.db` initialized at startup inside `AppState` (`Arc<Mutex<LearnDb>>`).
+  - 3 relational tables: `study_sentences`, `study_attempts`, `saved_vocab` with indexed queries and `ON DELETE CASCADE`.
+  - Cross-window interaction: Fast, non-blocking writes (<2ms) allowing `TranslateOverlay` (`Alt+T`) to quickly bookmark sentences directly into the study queue without opening the main Settings window.
