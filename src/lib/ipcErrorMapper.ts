@@ -71,7 +71,7 @@ export function translateIpcError(
   }
 
   // API key missing for specific provider
-  const apiKeyMatch = trimmed.match(/^(?:Chưa cài đặt API key cho|api_key_missing:?)\s*(.+)$/);
+  const apiKeyMatch = trimmed.match(/^(?:Chưa (?:cài đặt|cấu hình) API [Kk]ey cho|api_key_missing:?)\s*(.+)$/i);
   if (apiKeyMatch) {
     return t("errors.api_key_missing_provider", { provider: apiKeyMatch[1].trim() });
   }

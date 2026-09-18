@@ -29,6 +29,7 @@ pub struct AppState {
     pub http_client: Arc<AiHttpClient>,
     pub config: Arc<Mutex<AppConfig>>,
     pub history: Arc<Mutex<Vec<HistoryItem>>>,
+    pub learn_db: Arc<Mutex<storage::LearnDb>>,
 }
 
 #[tauri::command]
@@ -203,6 +204,274 @@ fn copy_translation(app: AppHandle, state: State<'_, AppState>) -> Result<(), St
     set_translate_visible(false);
     Ok(())
 }
+#[tauri::command]
+async fn save_sentence_from_overlay(
+    state: State<'_, AppState>,
+    source_text: String,
+    translated_text: String,
+    source_lang: Option<String>,
+    target_lang: Option<String>,
+) -> Result<storage::StudySentence, String> {
+    let trimmed_source = source_text.trim();
+    if trimmed_source.is_empty() {
+        return Err("Source text cannot be empty".into());
+    }
+    let target = target_lang.unwrap_or_else(|| "vi".to_string());
+    let source = source_lang.unwrap_or_else(|| "auto".to_string());
+    let db = state.learn_db.lock();
+    if let Ok(Some(existing)) = db.find_latest_by_source_and_target(trimmed_source, &target) {
+        return Ok(existing);
+    }
+    db.add_sentence(storage::NewSentence {
+        source_lang: source,
+        target_lang: target,
+        source_text: trimmed_source.to_string(),
+        reference_translation: Some(translated_text.trim().to_string()),
+        difficulty_level: None,
+        category: Some("Overlay".to_string()),
+        origin: "overlay".to_string(),
+    })
+    .map_err(|e| e.to_string())
+}
+fn resolve_ai_chat_credentials(
+    state: &AppState,
+    feature: &str,
+) -> Result<(String, String, String), String> {
+    let cfg = state.config.lock();
+    let profile = cfg
+        .feature_profiles
+        .get(feature)
+        .or_else(|| cfg.feature_profiles.get("polish"))
+        .cloned()
+        .unwrap_or_else(|| storage::FeatureProfile {
+            provider_id: cfg.active_provider.clone(),
+            model_id: Some(cfg.polish_model.clone()),
+        });
+
+    let provider = storage::get_provider(&profile.provider_id)
+        .ok_or_else(|| format!("Nhà cung cấp '{}' không tồn tại", profile.provider_id))?;
+
+    let api_key = storage::get_provider_key(&profile.provider_id)
+        .map_err(|e| e.to_string())?
+        .unwrap_or_default();
+
+    if api_key.trim().is_empty() {
+        return Err(format!("Chưa cấu hình API Key cho {}", provider.name));
+    }
+
+    let model = profile
+        .model_id
+        .filter(|m| !m.trim().is_empty())
+        .unwrap_or_else(|| "llama-3.3-70b-versatile".to_string());
+
+    Ok((provider.base_url, api_key, model))
+}
+
+#[tauri::command]
+async fn submit_study_attempt(
+    state: State<'_, AppState>,
+    sentence_id: Option<String>,
+    source_text: String,
+    user_translation: String,
+    source_lang: Option<String>,
+    target_lang: Option<String>,
+    noted_words: Vec<String>,
+) -> Result<ai::StudyFeedbackResult, String> {
+    let trimmed_source = source_text.trim();
+    let trimmed_trans = user_translation.trim();
+
+    if trimmed_source.is_empty() {
+        return Err("Câu nguồn không được để trống".into());
+    }
+    if trimmed_trans.is_empty() {
+        return Err("Bản dịch của bạn không được để trống".into());
+    }
+
+    let (base_url, api_key, model) = resolve_ai_chat_credentials(&state, "learn")?;
+    let sl = source_lang.as_deref().unwrap_or("en");
+    let tl = target_lang.as_deref().unwrap_or("vi");
+
+    let feedback = ai::evaluate_translation_attempt(
+        &state.http_client,
+        &base_url,
+        &api_key,
+        &model,
+        trimmed_source,
+        trimmed_trans,
+        sl,
+        tl,
+        &noted_words,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    {
+        let db = state.learn_db.lock();
+        let feedback_to_store = serde_json::to_string(&feedback)
+            .unwrap_or_else(|_| feedback.feedback_text.clone());
+
+        db.add_attempt(storage::NewAttempt {
+            sentence_id: sentence_id.clone(),
+            user_translation: trimmed_trans.to_string(),
+            grammar_score: Some(feedback.grammar_score),
+            feedback_text: feedback_to_store,
+            improved_version: Some(feedback.improved_version.clone()),
+        })
+        .map_err(|e| {
+            log::error!("vt_voice::learn: Failed to save study attempt: {e}");
+            format!("Không thể lưu bài làm vào CSDL: {e}")
+        })?;
+
+        for item in &feedback.noted_words_explanation {
+            if let Err(e) = db.add_vocab(storage::NewVocab {
+                word_or_phrase: item.word_or_phrase.clone(),
+                source_context: Some(trimmed_source.to_string()),
+                translation: Some(item.translation.clone()),
+                notes: Some(item.explanation.clone()),
+            }) {
+                log::error!("vt_voice::learn: Failed to save noted vocab: {e}");
+            }
+        }
+    }
+
+    Ok(feedback)
+}
+
+#[tauri::command]
+async fn generate_study_sentences(
+    state: State<'_, AppState>,
+    topic: String,
+    level: String,
+    source_lang: Option<String>,
+    target_lang: Option<String>,
+    count: Option<usize>,
+) -> Result<Vec<storage::StudySentence>, String> {
+    let (base_url, api_key, model) = resolve_ai_chat_credentials(&state, "learn")?;
+    let sl = source_lang.as_deref().unwrap_or("en");
+    let tl = target_lang.as_deref().unwrap_or("vi");
+    let cnt = count.unwrap_or(3).max(1).min(10);
+
+    let items = ai::generate_sentences(
+        &state.http_client,
+        &base_url,
+        &api_key,
+        &model,
+        &topic,
+        &level,
+        sl,
+        tl,
+        cnt,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let mut saved_sentences = Vec::new();
+    {
+        let db = state.learn_db.lock();
+        for item in items {
+            match db.add_sentence(storage::NewSentence {
+                source_lang: sl.to_string(),
+                target_lang: tl.to_string(),
+                source_text: item.source_text,
+                reference_translation: item.reference_translation,
+                difficulty_level: item.difficulty_level.or_else(|| Some(level.clone())),
+                category: item.category.or_else(|| Some(topic.clone())),
+                origin: "ai_generated".to_string(),
+            }) {
+                Ok(saved) => saved_sentences.push(saved),
+                Err(e) => log::error!("vt_voice::learn: Failed to persist generated sentence: {e}"),
+            }
+        }
+    }
+
+    if saved_sentences.is_empty() {
+        return Err("Không thể lưu câu được tạo vào CSDL".into());
+    }
+
+    Ok(saved_sentences)
+}
+
+#[tauri::command]
+fn save_pasted_sentences(
+    state: State<'_, AppState>,
+    text: String,
+    source_lang: Option<String>,
+    target_lang: Option<String>,
+    category: Option<String>,
+) -> Result<Vec<storage::StudySentence>, String> {
+    let sentences = ai::split_pasted_text(&text);
+    if sentences.is_empty() {
+        return Err("Không tìm thấy câu hợp lệ trong đoạn văn".into());
+    }
+
+    let sl = source_lang.unwrap_or_else(|| "en".to_string());
+    let tl = target_lang.unwrap_or_else(|| "vi".to_string());
+    let cat = category.unwrap_or_else(|| "Custom".to_string());
+
+    let mut saved_sentences = Vec::new();
+    let db = state.learn_db.lock();
+    for s in sentences {
+        match db.add_sentence(storage::NewSentence {
+            source_lang: sl.clone(),
+            target_lang: tl.clone(),
+            source_text: s,
+            reference_translation: None,
+            difficulty_level: None,
+            category: Some(cat.clone()),
+            origin: "pasted".to_string(),
+        }) {
+            Ok(saved) => saved_sentences.push(saved),
+            Err(e) => log::error!("vt_voice::learn: Failed to persist pasted sentence: {e}"),
+        }
+    }
+
+    if saved_sentences.is_empty() {
+        return Err("Không thể lưu các câu đã phân tách vào CSDL".into());
+    }
+
+    Ok(saved_sentences)
+}
+
+#[tauri::command]
+fn get_study_sentences(
+    state: State<'_, AppState>,
+    limit: Option<usize>,
+) -> Result<Vec<storage::StudySentence>, String> {
+    let db = state.learn_db.lock();
+    db.list_sentences(limit.unwrap_or(50))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_study_sentence(state: State<'_, AppState>, id: String) -> Result<bool, String> {
+    let db = state.learn_db.lock();
+    db.delete_sentence(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_saved_vocab(state: State<'_, AppState>, limit: Option<usize>) -> Result<Vec<storage::SavedVocab>, String> {
+    let db = state.learn_db.lock();
+    db.list_vocab(limit).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_saved_vocab(state: State<'_, AppState>, id: String) -> Result<bool, String> {
+    let db = state.learn_db.lock();
+    db.delete_vocab(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_study_history(
+    state: State<'_, AppState>,
+    sentence_id: Option<String>,
+    limit: Option<usize>,
+) -> Result<Vec<storage::StudyAttempt>, String> {
+    let db = state.learn_db.lock();
+    db.list_attempts(sentence_id.as_deref(), limit.unwrap_or(50))
+        .map_err(|e| e.to_string())
+}
+
+
 
 #[tauri::command]
 async fn translate_text(
@@ -631,6 +900,21 @@ pub fn run() {
     let http_client = Arc::new(AiHttpClient::new());
     let config = Arc::new(Mutex::new(initial_config.clone()));
     let history = Arc::new(Mutex::new(initial_history));
+    let db_path = match storage::get_app_dir() {
+        Ok(dir) => dir.join("learn.db"),
+        Err(e) => {
+            log::error!("Failed to resolve app dir for learn.db, falling back to local: {}", e);
+            std::path::PathBuf::from("learn.db")
+        }
+    };
+    let learn_db = match storage::LearnDb::init(&db_path) {
+        Ok(db) => db,
+        Err(e) => {
+            log::error!("Failed to open SQLite database at {:?}: {}, falling back to in-memory", db_path, e);
+            storage::LearnDb::init_in_memory().expect("in-memory db must succeed")
+        }
+    };
+    let learn_db = Arc::new(Mutex::new(learn_db));
 
     let (hotkey_tx, hotkey_rx) = unbounded::<HotkeyEvent>();
 
@@ -654,6 +938,7 @@ pub fn run() {
         http_client: Arc::clone(&http_client),
         config: Arc::clone(&config),
         history: Arc::clone(&history),
+        learn_db: Arc::clone(&learn_db),
     };
 
     // Structured logging: tauri-plugin-log with 5MB x 3-file rotation to app log dir.
@@ -1155,6 +1440,15 @@ pub fn run() {
             get_feature_profiles,
             set_feature_profile,
             open_logs_dir,
+            save_sentence_from_overlay,
+            submit_study_attempt,
+            generate_study_sentences,
+            save_pasted_sentences,
+            get_study_sentences,
+            delete_study_sentence,
+            get_saved_vocab,
+            delete_saved_vocab,
+            get_study_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running vt-voice daemon");

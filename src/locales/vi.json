@@ -23,14 +23,16 @@
     "title": "Cài đặt",
     "groups": {
       "voice": "Giọng nói",
-      "settings": "Cài đặt"
+      "settings": "Cài đặt",
+      "learning": "Học tập"
     },
     "tabs": {
       "general": "Chung",
       "audio": "Âm thanh",
       "models": "Models",
       "providers": "Providers",
-      "history": "Lịch sử"
+      "history": "Lịch sử",
+      "vocab": "Học ngoại ngữ"
     },
     "unsaved_warning": "Bạn có thay đổi chưa lưu",
     "save_changes": "Lưu thay đổi",
@@ -310,7 +312,9 @@
     "listening": "Đang nghe...",
     "processing": "Đang xử lý AI...",
     "pasted": "Đã chèn văn bản!",
-    "error": "Đã xảy ra lỗi"
+    "error": "Đã xảy ra lỗi",
+    "save_to_study": "Lưu vào bài học",
+    "saved_to_study": "Đã lưu!"
   },
   "tray": {
     "settings": "Cài đặt",
@@ -350,5 +354,64 @@
     "provider_error": "Lỗi {provider}: {error}",
     "paste_error": "Lỗi dán: {error}",
     "api_key_not_configured": "Chưa cấu hình API key cho nhà cung cấp này"
+  },
+  "tabs": {
+    "vocab": "Từ vựng"
+  },
+  "vocab": {
+    "mode_practice": "Luyện dịch",
+    "mode_notebook": "Sổ tay & Lịch sử",
+    "action_paste": "Dán đoạn văn",
+    "action_generate": "AI sinh câu",
+    "prev_sentence": "Câu trước",
+    "next_sentence": "Câu sau",
+    "delete_sentence": "Xóa câu",
+    "empty_sentences_title": "Chưa có câu luyện tập nào",
+    "empty_sentences_desc": "Lưu câu từ cửa sổ Dịch nhanh (Alt+T), dán một đoạn văn hoặc để AI sinh câu mới.",
+    "noted_words": "Từ/cụm từ cần giải nghĩa",
+    "click_hint": "Click để chọn 1 từ, Ctrl+Click để chọn nhiều từ",
+    "no_tokens_noted": "Chưa chọn từ nào",
+    "input_placeholder": "Nhập bản dịch của bạn vào đây...",
+    "submit_button": "Nộp bài & Chấm điểm",
+    "submitting": "Đang chấm bài...",
+    "shortcut_submit": "Ctrl + Enter để nộp bài",
+    "feedback_title": "Kết quả đánh giá",
+    "score_label": "Điểm ngữ pháp",
+    "strengths_title": "Điểm làm tốt",
+    "weaknesses_title": "Cần cải thiện",
+    "suggestions_title": "Đề xuất diễn đạt",
+    "no_weaknesses": "Tuyệt vời! Không phát hiện lỗi sai ngữ pháp đáng kể.",
+    "legacy_feedback_title": "Nhận xét chi tiết",
+    "improved_title": "Gợi ý tự nhiên hơn",
+    "noted_words_title": "Giải nghĩa từ vựng đã note",
+    "word_col": "Từ / Cụm từ",
+    "translation_col": "Nghĩa",
+    "explanation_col": "Giải thích & Ngữ cảnh",
+    "tab_saved_vocab": "Từ vựng đã lưu",
+    "tab_attempts": "Lịch sử làm bài",
+    "empty_vocab": "Chưa có từ vựng nào trong sổ tay",
+    "empty_history": "Chưa có lịch sử làm bài nào",
+    "delete_vocab_confirm": "Xóa từ này khỏi sổ tay?",
+    "vocab_count": "{count} từ vựng",
+    "attempt_count": "{count} bài nộp",
+    "paste_modal_title": "Dán đoạn văn để luyện tập",
+    "paste_modal_desc": "Ứng dụng sẽ tự động phân tách đoạn văn thành các câu riêng biệt.",
+    "paste_placeholder": "Dán đoạn văn bản tiếng Anh hoặc tiếng Việt vào đây...",
+    "paste_submit": "Tách câu & Bắt đầu học",
+    "generate_modal_title": "AI sinh câu luyện tập",
+    "generate_modal_desc": "Chọn chủ đề và trình độ để AI tạo câu luyện tập song ngữ.",
+    "topic_label": "Chủ đề",
+    "level_label": "Trình độ (CEFR)",
+    "count_label": "Số lượng câu",
+    "generate_submit": "Sinh câu",
+    "generating": "Đang sinh câu...",
+    "topic_daily": "Đời sống hàng ngày",
+    "topic_business": "Công sở & Kinh doanh",
+    "topic_technology": "Công nghệ & Phần mềm",
+    "topic_travel": "Du lịch & Ẩm thực",
+    "topic_academic": "Học thuật & Khoa học",
+    "direction_label": "Chiều luyện tập",
+    "direction_en_vi": "Tiếng Anh → Tiếng Việt",
+    "direction_vi_en": "Tiếng Việt → Tiếng Anh"
   }
 }

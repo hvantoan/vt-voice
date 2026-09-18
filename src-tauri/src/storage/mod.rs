@@ -2,6 +2,7 @@ pub mod config;
 pub mod history;
 pub mod keyring;
 pub mod models_store;
+pub mod learn_db;
 
 pub use config::{
     ensure_app_dir_migrated, get_app_dir, load_config, save_config, AppConfig, ConfigError,
@@ -19,4 +20,8 @@ pub use history::{
 pub use keyring::{
     delete_api_key, delete_provider_key, get_api_key, get_provider_key, has_provider_key,
     mask_key, set_api_key, set_provider_key, KeyringError,
+};
+pub use learn_db::{
+    LearnDb, LearnDbError, NewAttempt, NewSentence, NewVocab, SavedVocab, StudyAttempt,
+    StudySentence,
 };

@@ -5,6 +5,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   AlertCircle,
   ArrowLeftRight,
+  BookmarkCheck,
+  BookmarkPlus,
   Check,
   Copy,
   Languages,
@@ -70,6 +72,9 @@ export const TranslateOverlay: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isSaved, setIsSaved] = useState<boolean>(false);
+  const saveTimerRef = useRef<number | undefined>(undefined);
   const [latency, setLatency] = useState<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const sourceTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -186,6 +191,27 @@ export const TranslateOverlay: React.FC = () => {
     setCopied(true);
     clearTimeout(copyTimer);
     copyTimer = window.setTimeout(() => setCopied(false), 1500);
+  };
+  const handleSaveToStudy = async () => {
+    const trimmedSource = source.trim();
+    if (!trimmedSource || isSaving) return;
+    setIsSaving(true);
+    try {
+      await invoke("save_sentence_from_overlay", {
+        sourceText: trimmedSource,
+        translatedText: translated.trim(),
+        sourceLang: detectedLang || (sourceLang !== "auto" ? sourceLang : "auto"),
+        targetLang,
+      });
+      setIsSaved(true);
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = window.setTimeout(() => setIsSaved(false), 1500);
+    } catch (err: unknown) {
+      const message = translateIpcError(err, t);
+      setError(message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSelectTargetLang = async (newTarget: string) => {
@@ -426,29 +452,57 @@ export const TranslateOverlay: React.FC = () => {
           {t("translate.shortcut_hint")}
         </span>
 
-        <button
-          onClick={handleCopy}
-          disabled={!translated || loading}
-          aria-label={t("common.copy")}
-          title={t("common.copy")}
-          className="flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-zinc-700/60 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="text-emerald-400 text-xs">
-                {t("common.copied")}
-              </span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-              <span className="text-xs text-zinc-300">
-                {t("common.copy")}
-              </span>
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handleSaveToStudy}
+            disabled={!source.trim() || loading || isSaving}
+            aria-label={t("overlay.save_to_study")}
+            title={t("overlay.save_to_study")}
+            className="flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-zinc-700/60 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+          >
+            {isSaving ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400 shrink-0" />
+            ) : isSaved ? (
+              <>
+                <BookmarkCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="text-emerald-400 text-xs">
+                  {t("overlay.saved_to_study")}
+                </span>
+              </>
+            ) : (
+              <>
+                <BookmarkPlus className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <span className="text-xs text-zinc-300">
+                  {t("overlay.save_to_study")}
+                </span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={handleCopy}
+            disabled={!translated || loading}
+            aria-label={t("common.copy")}
+            title={t("common.copy")}
+            className="flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-zinc-700/60 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="text-emerald-400 text-xs">
+                  {t("common.copied")}
+                </span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <span className="text-xs text-zinc-300">
+                  {t("common.copy")}
+                </span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Window Resize Grips for Frameless Window */}

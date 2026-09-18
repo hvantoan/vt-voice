@@ -23,14 +23,16 @@
     "title": "Settings",
     "groups": {
       "voice": "Voice",
-      "settings": "Settings"
+      "settings": "Settings",
+      "learning": "Learning"
     },
     "tabs": {
       "general": "General",
       "audio": "Audio",
       "models": "Models",
       "providers": "Providers",
-      "history": "History"
+      "history": "History",
+      "vocab": "Learn Vocab"
     },
     "unsaved_warning": "You have unsaved changes",
     "save_changes": "Save Changes",
@@ -310,7 +312,9 @@
     "listening": "Listening...",
     "processing": "Processing AI...",
     "pasted": "Text pasted!",
-    "error": "An error occurred"
+    "error": "An error occurred",
+    "save_to_study": "Save to study",
+    "saved_to_study": "Saved!"
   },
   "tray": {
     "settings": "Settings",
@@ -350,5 +354,64 @@
     "provider_error": "{provider} error: {error}",
     "paste_error": "Paste error: {error}",
     "api_key_not_configured": "API key not configured for this provider"
+  },
+  "tabs": {
+    "vocab": "Vocab"
+  },
+  "vocab": {
+    "mode_practice": "Practice",
+    "mode_notebook": "Notebook & History",
+    "action_paste": "Paste text",
+    "action_generate": "AI Generate",
+    "prev_sentence": "Previous",
+    "next_sentence": "Next",
+    "delete_sentence": "Delete sentence",
+    "empty_sentences_title": "No practice sentences yet",
+    "empty_sentences_desc": "Save sentences from Quick Translate (Alt+T), paste a paragraph, or generate with AI.",
+    "noted_words": "Words to explain",
+    "click_hint": "Click to select a word, Ctrl+Click to select multiple words",
+    "no_tokens_noted": "No words selected",
+    "input_placeholder": "Type your translation here...",
+    "submit_button": "Submit & Grade",
+    "submitting": "Grading...",
+    "shortcut_submit": "Ctrl + Enter to submit",
+    "feedback_title": "Evaluation Result",
+    "score_label": "Grammar Score",
+    "strengths_title": "Strengths",
+    "weaknesses_title": "Areas to Improve",
+    "suggestions_title": "Suggestions",
+    "no_weaknesses": "Great job! No notable grammar errors detected.",
+    "legacy_feedback_title": "Detailed Feedback",
+    "improved_title": "Natural Suggestion",
+    "noted_words_title": "Noted Vocabulary Breakdown",
+    "word_col": "Word / Phrase",
+    "translation_col": "Translation",
+    "explanation_col": "Explanation & Context",
+    "tab_saved_vocab": "Saved Vocabulary",
+    "tab_attempts": "Attempt History",
+    "empty_vocab": "No vocabulary saved yet",
+    "empty_history": "No attempt history yet",
+    "delete_vocab_confirm": "Delete this word from notebook?",
+    "vocab_count": "{count} words",
+    "attempt_count": "{count} attempts",
+    "paste_modal_title": "Paste Text for Practice",
+    "paste_modal_desc": "Text will be automatically split into individual practice sentences.",
+    "paste_placeholder": "Paste your English or Vietnamese text here...",
+    "paste_submit": "Split & Start Study",
+    "generate_modal_title": "AI Sentence Generator",
+    "generate_modal_desc": "Choose a topic and CEFR level for AI to generate bilingual practice sentences.",
+    "topic_label": "Topic",
+    "level_label": "Level (CEFR)",
+    "count_label": "Number of sentences",
+    "generate_submit": "Generate",
+    "generating": "Generating...",
+    "topic_daily": "Daily Life",
+    "topic_business": "Business & Workplace",
+    "topic_technology": "Technology & Software",
+    "topic_travel": "Travel & Food",
+    "topic_academic": "Academic & Science",
+    "direction_label": "Practice Direction",
+    "direction_en_vi": "English → Vietnamese",
+    "direction_vi_en": "Vietnamese → English"
   }
 }
