@@ -3,6 +3,14 @@
 All notable changes to **vt-voice** will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [v0.1.1](https://github.com/hvantoan/vt-voice/compare/v0.1.0...v0.1.1) — 2026-09-19
+
+### ⚙️ CI/CD
+- **release**: support dynamic tag resolution in manual workflow dispatch ([5589584](https://github.com/hvantoan/vt-voice/commit/5589584))
+- **release**: setup auto release, changelog generator, and GitHub Actions workflows ([375355e](https://github.com/hvantoan/vt-voice/commit/375355e))
+
+---
+
 ## [v0.1.0](https://github.com/hvantoan/vt-voice/releases/tag/v0.1.0) — 2026-09-19
 
 ### ✨ Features
