@@ -6,6 +6,11 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
+      tag:
+        description: 'Tag name (leave empty to use git tag or package.json version e.g. v0.1.1)'
+        required: false
+        type: string
+        default: ''
       draft:
         description: 'Create release as draft'
         required: false
@@ -16,7 +21,6 @@ on:
         required: false
         type: boolean
         default: false
-
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -39,6 +43,22 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: Determine Release Tag
+        id: release-tag
+        shell: bash
+        run: |
+          INPUT_TAG="${{ inputs.tag }}"
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            VERSION=$(bun -e "console.log(require('./package.json').version)")
+            TAG="v$VERSION"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Determined release tag: $TAG"
 
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
@@ -67,8 +87,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tauriScript: bun run tauri
-          tagName: ${{ github.ref_name }}
-          releaseName: 'vt-voice ${{ github.ref_name }}'
+          tagName: ${{ steps.release-tag.outputs.tag }}
+          releaseName: 'vt-voice ${{ steps.release-tag.outputs.tag }}'
           releaseBody: ${{ steps.git-cliff.outputs.content }}
           releaseDraft: ${{ inputs.draft || false }}
           prerelease: ${{ inputs.prerelease || false }}
@@ -84,7 +104,7 @@ jobs:
             find . -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.zip" \) -exec sha256sum {} + > SHA256SUMS.txt
             echo "--- SHA256SUMS.txt ---"
             cat SHA256SUMS.txt
-            gh release upload "${{ github.ref_name }}" SHA256SUMS.txt --clobber
+            gh release upload "${{ steps.release-tag.outputs.tag }}" SHA256SUMS.txt --clobber
           else
             echo "Bundle directory not found: $BUNDLE_DIR"
           fi
@@ -100,7 +120,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add CHANGELOG.md
-            git commit -m "docs(changelog): update CHANGELOG.md for ${{ github.ref_name }} [skip ci]"
+            git commit -m "docs(changelog): update CHANGELOG.md for ${{ steps.release-tag.outputs.tag }} [skip ci]"
             git push origin HEAD:main || echo "Failed to push CHANGELOG.md update, continuing."
           else
             echo "CHANGELOG.md is already up to date."
