@@ -556,7 +556,7 @@ export const SettingsLayout: React.FC = () => {
           <span className="text-xs font-semibold text-zinc-300 tracking-tight">
             vt-voice {t("settings.title")}
           </span>
-          <span className="text-[11px] text-zinc-500 font-mono tabular-nums">v0.1.0</span>
+          <span className="text-[11px] text-zinc-500 font-mono tabular-nums">v{__APP_VERSION__}</span>
         </div>
 
         <div className="flex items-center gap-0.5">

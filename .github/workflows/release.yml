@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      draft:
+        description: 'Create release as draft'
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: 'Mark release as prerelease'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Release Windows (x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-msvc
+          cache: true
+
+      - name: Generate Changelog for Release
+        id: git-cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --verbose --latest --strip header
+        env:
+          OUTPUT: CHANGELOG_LATEST.md
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Build Tauri and Publish Release
+        uses: tauri-apps/tauri-action@v0
+        id: tauri-build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: bun run tauri
+          tagName: ${{ github.ref_name }}
+          releaseName: 'vt-voice ${{ github.ref_name }}'
+          releaseBody: ${{ steps.git-cliff.outputs.content }}
+          releaseDraft: ${{ inputs.draft || false }}
+          prerelease: ${{ inputs.prerelease || false }}
+          uploadPlainBinary: true
+
+      - name: Generate and Upload SHA-256 Checksums
+        shell: bash
+        run: |
+          echo "Calculating SHA-256 checksums for release bundles..."
+          BUNDLE_DIR="src-tauri/target/release/bundle"
+          if [ -d "$BUNDLE_DIR" ]; then
+            cd "$BUNDLE_DIR"
+            find . -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.zip" \) -exec sha256sum {} + > SHA256SUMS.txt
+            echo "--- SHA256SUMS.txt ---"
+            cat SHA256SUMS.txt
+            gh release upload "${{ github.ref_name }}" SHA256SUMS.txt --clobber
+          else
+            echo "Bundle directory not found: $BUNDLE_DIR"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update CHANGELOG.md in repository
+        shell: bash
+        run: |
+          echo "Updating full CHANGELOG.md on main branch..."
+          bun scripts/changelog.ts
+          if [[ -n $(git status --porcelain CHANGELOG.md) ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add CHANGELOG.md
+            git commit -m "docs(changelog): update CHANGELOG.md for ${{ github.ref_name }} [skip ci]"
+            git push origin HEAD:main || echo "Failed to push CHANGELOG.md update, continuing."
+          else
+            echo "CHANGELOG.md is already up to date."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

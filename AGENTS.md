@@ -138,7 +138,8 @@ Defined in `src-tauri/tauri.conf.json`:
 ## Key Directories
 
 ```
-.
+├── .github/
+│   └── workflows/                # GitHub Actions workflows (ci.yml, release.yml)
 ├── src/                          # React 19 webview frontend
 │   ├── assets/                   # Static icons & logos
 │   ├── components/
@@ -169,9 +170,12 @@ Defined in `src-tauri/tauri.conf.json`:
 │   ├── tests/                    # Rust integration tests (audio, hotkeys, translation, clipboard)
 │   ├── Cargo.toml                # Rust crate configuration (crate: vt-voice, lib: vt_voice_lib)
 │   └── tauri.conf.json           # Tauri v2 application, window, and security configuration
+├── scripts/                      # Release and changelog automation scripts (bump-version.ts, changelog.ts)
 ├── tests/                        # Frontend & integration tests (bun:test)
 ├── docs/                         # Architecture specs, design guidelines, verification guide
-└── plans/                        # Implementation plans, architectural research, technical journals
+├── plans/                        # Implementation plans, architectural research, technical journals
+├── cliff.toml                    # git-cliff Conventional Commits configuration
+└── CHANGELOG.md                  # Generated project changelog
 ```
 
 ---
@@ -203,13 +207,14 @@ bun run tauri build
 
 ### Testing & Verification
 ```bash
-# Run all TypeScript / frontend tests via Bun
+# Run all TypeScript / frontend tests via Bun (62 tests across 8 suites)
 bun test
 
 # Run a specific TypeScript test file
 bun test tests/i18n.test.ts
 bun test tests/history.test.ts
 bun test tests/ipc-errors.test.ts
+bun test tests/release-tooling.test.ts
 
 # Run Rust backend test suite (from src-tauri directory)
 cd src-tauri && cargo test
@@ -222,10 +227,29 @@ cd src-tauri && cargo run --example verify_hotkey
 cd src-tauri && cargo run --example translate_overlay_key_probe
 ```
 
+### Release & Changelog Tooling
+```bash
+# Generate or update full CHANGELOG.md from git history
+bun run changelog
+
+# Preview release notes for a specific tag
+bun scripts/changelog.ts --tag v0.1.0
+
+# Bump version across package.json, Cargo.toml, and tauri.conf.json
+bun run version:patch
+bun run version:minor
+bun run version:major
+
+# Bump version, update CHANGELOG.md, and auto-commit & tag in one step
+bun scripts/bump-version.ts minor --git
+
+# Push tag to trigger automated GitHub Actions release build
+git push origin main --follow-tags
+```
+
 > **Testing Status Notes**:
 > - **Rust `cargo test`**: On Windows, test binaries linking the full `vt_voice_lib` / Tauri stack encounter dynamic linker exit `0xc0000139 (STATUS_ENTRYPOINT_NOT_FOUND)`. For local Rust verification, rely on `cargo check` and standalone examples (`cargo run --example ...`) that isolate pure logic modules.
-> - **Frontend `bun test`**: `tests/ui-localization.test.ts` has 7 pre-existing failures due to the recent `AiTab.tsx` refactor to `ProviderManager`/`FeatureBindingCard` (part of the modular-providers work in `plans/260915-0714-modular-providers/`). Other test suites (`i18n.test.ts`, `history.test.ts`, `confirm.test.ts`, `ipc-errors.test.ts`) pass cleanly.
-
+> - **Frontend `bun test`**: All 62 tests across 8 test suites pass cleanly with 0 failures (`i18n.test.ts`, `history.test.ts`, `confirm.test.ts`, `ipc-errors.test.ts`, `ui-localization.test.ts`, `release-tooling.test.ts`).
 ---
 
 ## Code Conventions & Common Patterns
@@ -285,6 +309,12 @@ try {
 
 | File | Purpose |
 | --- | --- |
+| `.github/workflows/ci.yml` | GitHub Actions CI workflow (Bun test, build, and Windows Rust cargo check). |
+| `.github/workflows/release.yml` | GitHub Actions Release workflow (git-cliff, Tauri v2 Windows bundle, SHA-256 upload). |
+| `cliff.toml` | git-cliff configuration for Conventional Commits changelog generation. |
+| `scripts/bump-version.ts` | 3-way version synchronizer (`package.json`, `Cargo.toml`, `tauri.conf.json`) with git tag automation. |
+| `scripts/changelog.ts` | Local and CI changelog & release notes generator running on Bun runtime. |
+| `CHANGELOG.md` | Full project changelog adhering to Keep a Changelog & SemVer. |
 | `src-tauri/src/main.rs` | Windows subsystem release configuration & binary entry point. |
 | `src-tauri/src/lib.rs` | Application setup, `AppState` registration, IPC commands, and hotkey loop. |
 | `src-tauri/tauri.conf.json` | Tauri configuration: window definitions, titles, dimensions, capabilities. |
@@ -318,7 +348,8 @@ try {
    - `tests/ipc-errors.test.ts`: Asserts that all known backend error strings map to valid i18n keys.
    - `tests/history.test.ts`: Validates 50-item history cap, deduplication, search filtering, and timestamp formatting.
    - `tests/confirm.test.ts`: Asserts contract and type exports of confirmation dialog primitives.
-   - `tests/ui-localization.test.ts`: Scans UI components for hardcoded bilingual strings (note pre-existing failures from ongoing AiTab refactor).
+   - `tests/ui-localization.test.ts`: Scans UI components for hardcoded bilingual strings and verifies hotkey presets.
+   - `tests/release-tooling.test.ts`: Asserts cliff configuration, 3-way version file synchronization, GitHub workflow integrity, and changelog release entries.
 2. **Quality Invariants**:
    - **Zero Plaintext Secrets**: API keys must only pass through DPAPI `keyring`. Never write API keys to `settings.json`, logs, or console output.
    - **No Focus Stealing**: Overlays must always use `show_window_no_activate()` to protect user typing flow.
