@@ -145,11 +145,12 @@ describe("UI Localization & Migration - Phase 3 (TDD)", () => {
       expect(content).toContain("translateIpcError");
     });
 
-    test("HotkeyRecorder defines default bindings without reserved Alt+Space", () => {
+    test("HotkeyRecorder presets do not assign Windows reserved Alt+Space", () => {
       const hotkeyRecorderPath = path.join(componentsDir, "settings/HotkeyRecorder.tsx");
       const content = fs.readFileSync(hotkeyRecorderPath, "utf-8");
 
       expect(content).toContain("DEFAULT_HOTKEY_BINDING");
+      expect(content).toContain("0xa5");
       expect(content).not.toContain("hotkey.presets.alt_space");
     });
 
