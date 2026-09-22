@@ -14,6 +14,8 @@ pub enum LearnDbError {
     NotFound(String),
 }
 
+pub use crate::ai::learn::TargetVocabItem;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StudySentence {
@@ -26,6 +28,10 @@ pub struct StudySentence {
     pub category: Option<String>,
     pub origin: String,
     pub created_at: i64,
+    pub acceptable_alternatives: Option<Vec<String>>,
+    pub target_vocab: Option<Vec<TargetVocabItem>>,
+    pub grammar_focus: Option<String>,
+    pub common_mistakes: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,6 +44,10 @@ pub struct NewSentence {
     pub difficulty_level: Option<String>,
     pub category: Option<String>,
     pub origin: String,
+    pub acceptable_alternatives: Option<Vec<String>>,
+    pub target_vocab: Option<Vec<TargetVocabItem>>,
+    pub grammar_focus: Option<String>,
+    pub common_mistakes: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,6 +156,27 @@ impl LearnDb {
              CREATE INDEX IF NOT EXISTS idx_attempts_created ON study_attempts(created_at DESC);
              CREATE INDEX IF NOT EXISTS idx_vocab_created ON saved_vocab(created_at DESC);",
         )?;
+
+        // Migration: Thêm các cột cho Gói bài tập tự trị nếu chưa tồn tại
+        let mut stmt = self.conn.prepare("PRAGMA table_info(study_sentences)")?;
+        let existing_columns: Vec<String> = stmt
+            .query_map([], |row| row.get::<_, String>(1))?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        if !existing_columns.iter().any(|c| c == "acceptable_alternatives") {
+            let _ = self.conn.execute("ALTER TABLE study_sentences ADD COLUMN acceptable_alternatives TEXT", []);
+        }
+        if !existing_columns.iter().any(|c| c == "target_vocab") {
+            let _ = self.conn.execute("ALTER TABLE study_sentences ADD COLUMN target_vocab TEXT", []);
+        }
+        if !existing_columns.iter().any(|c| c == "grammar_focus") {
+            let _ = self.conn.execute("ALTER TABLE study_sentences ADD COLUMN grammar_focus TEXT", []);
+        }
+        if !existing_columns.iter().any(|c| c == "common_mistakes") {
+            let _ = self.conn.execute("ALTER TABLE study_sentences ADD COLUMN common_mistakes TEXT", []);
+        }
+
         Ok(())
     }
 
@@ -153,9 +184,25 @@ impl LearnDb {
         let id = Uuid::new_v4().to_string();
         let created_at = Utc::now().timestamp_millis();
 
+        let acceptable_alternatives_json = sentence
+            .acceptable_alternatives
+            .as_ref()
+            .and_then(|v| serde_json::to_string(v).ok());
+        let target_vocab_json = sentence
+            .target_vocab
+            .as_ref()
+            .and_then(|v| serde_json::to_string(v).ok());
+        let common_mistakes_json = sentence
+            .common_mistakes
+            .as_ref()
+            .and_then(|v| serde_json::to_string(v).ok());
+
         self.conn.execute(
-            "INSERT INTO study_sentences (id, source_lang, target_lang, source_text, reference_translation, difficulty_level, category, origin, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT INTO study_sentences (
+                id, source_lang, target_lang, source_text, reference_translation,
+                difficulty_level, category, origin, created_at,
+                acceptable_alternatives, target_vocab, grammar_focus, common_mistakes
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
             params![
                 id,
                 sentence.source_lang,
@@ -166,6 +213,10 @@ impl LearnDb {
                 sentence.category,
                 sentence.origin,
                 created_at,
+                acceptable_alternatives_json,
+                target_vocab_json,
+                sentence.grammar_focus,
+                common_mistakes_json,
             ],
         )?;
 
@@ -179,18 +230,28 @@ impl LearnDb {
             category: sentence.category,
             origin: sentence.origin,
             created_at,
+            acceptable_alternatives: sentence.acceptable_alternatives,
+            target_vocab: sentence.target_vocab,
+            grammar_focus: sentence.grammar_focus,
+            common_mistakes: sentence.common_mistakes,
         })
     }
 
     pub fn list_sentences(&self, limit: usize) -> Result<Vec<StudySentence>, LearnDbError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, source_lang, target_lang, source_text, reference_translation, difficulty_level, category, origin, created_at
+            "SELECT id, source_lang, target_lang, source_text, reference_translation,
+                    difficulty_level, category, origin, created_at,
+                    acceptable_alternatives, target_vocab, grammar_focus, common_mistakes
              FROM study_sentences
              ORDER BY created_at DESC
              LIMIT ?1",
         )?;
 
         let rows = stmt.query_map(params![limit as i64], |row| {
+            let alt_str: Option<String> = row.get(9)?;
+            let vocab_str: Option<String> = row.get(10)?;
+            let mistakes_str: Option<String> = row.get(12)?;
+
             Ok(StudySentence {
                 id: row.get(0)?,
                 source_lang: row.get(1)?,
@@ -201,6 +262,10 @@ impl LearnDb {
                 category: row.get(6)?,
                 origin: row.get(7)?,
                 created_at: row.get(8)?,
+                acceptable_alternatives: alt_str.and_then(|s| serde_json::from_str(&s).ok()),
+                target_vocab: vocab_str.and_then(|s| serde_json::from_str(&s).ok()),
+                grammar_focus: row.get(11)?,
+                common_mistakes: mistakes_str.and_then(|s| serde_json::from_str(&s).ok()),
             })
         })?;
 
@@ -213,12 +278,18 @@ impl LearnDb {
 
     pub fn get_sentence(&self, id: &str) -> Result<Option<StudySentence>, LearnDbError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, source_lang, target_lang, source_text, reference_translation, difficulty_level, category, origin, created_at
+            "SELECT id, source_lang, target_lang, source_text, reference_translation,
+                    difficulty_level, category, origin, created_at,
+                    acceptable_alternatives, target_vocab, grammar_focus, common_mistakes
              FROM study_sentences
              WHERE id = ?1",
         )?;
 
         let mut rows = stmt.query_map(params![id], |row| {
+            let alt_str: Option<String> = row.get(9)?;
+            let vocab_str: Option<String> = row.get(10)?;
+            let mistakes_str: Option<String> = row.get(12)?;
+
             Ok(StudySentence {
                 id: row.get(0)?,
                 source_lang: row.get(1)?,
@@ -229,6 +300,10 @@ impl LearnDb {
                 category: row.get(6)?,
                 origin: row.get(7)?,
                 created_at: row.get(8)?,
+                acceptable_alternatives: alt_str.and_then(|s| serde_json::from_str(&s).ok()),
+                target_vocab: vocab_str.and_then(|s| serde_json::from_str(&s).ok()),
+                grammar_focus: row.get(11)?,
+                common_mistakes: mistakes_str.and_then(|s| serde_json::from_str(&s).ok()),
             })
         })?;
 
@@ -238,13 +313,16 @@ impl LearnDb {
             Ok(None)
         }
     }
+
     pub fn find_latest_by_source_and_target(
         &self,
         text: &str,
         target_lang: &str,
     ) -> Result<Option<StudySentence>, LearnDbError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, source_lang, target_lang, source_text, reference_translation, difficulty_level, category, origin, created_at
+            "SELECT id, source_lang, target_lang, source_text, reference_translation,
+                    difficulty_level, category, origin, created_at,
+                    acceptable_alternatives, target_vocab, grammar_focus, common_mistakes
              FROM study_sentences
              WHERE source_text = ?1 AND target_lang = ?2
              ORDER BY created_at DESC
@@ -252,6 +330,10 @@ impl LearnDb {
         )?;
 
         let mut rows = stmt.query_map(params![text, target_lang], |row| {
+            let alt_str: Option<String> = row.get(9)?;
+            let vocab_str: Option<String> = row.get(10)?;
+            let mistakes_str: Option<String> = row.get(12)?;
+
             Ok(StudySentence {
                 id: row.get(0)?,
                 source_lang: row.get(1)?,
@@ -262,6 +344,10 @@ impl LearnDb {
                 category: row.get(6)?,
                 origin: row.get(7)?,
                 created_at: row.get(8)?,
+                acceptable_alternatives: alt_str.and_then(|s| serde_json::from_str(&s).ok()),
+                target_vocab: vocab_str.and_then(|s| serde_json::from_str(&s).ok()),
+                grammar_focus: row.get(11)?,
+                common_mistakes: mistakes_str.and_then(|s| serde_json::from_str(&s).ok()),
             })
         })?;
 
@@ -271,7 +357,6 @@ impl LearnDb {
             Ok(None)
         }
     }
-
 
     pub fn delete_sentence(&self, id: &str) -> Result<bool, LearnDbError> {
         // Xóa các bài tập liên quan để đảm bảo không còn orphan records
@@ -484,8 +569,19 @@ mod tests {
                 difficulty_level: Some("A1".to_string()),
                 category: Some("Daily".to_string()),
                 origin: "overlay".to_string(),
+                acceptable_alternatives: Some(vec!["Chào thế giới".to_string()]),
+                target_vocab: Some(vec![TargetVocabItem {
+                    word: "world".to_string(),
+                    word_type: Some("noun".to_string()),
+                    meaning: "thế giới".to_string(),
+                }]),
+                grammar_focus: Some("Câu chào hỏi thông dụng".to_string()),
+                common_mistakes: Some(vec!["Quên dịch chữ world".to_string()]),
             })
             .expect("failed to add sentence");
+        assert_eq!(sentence.acceptable_alternatives.as_ref().unwrap().len(), 1);
+        assert_eq!(sentence.target_vocab.as_ref().unwrap().len(), 1);
+        assert_eq!(sentence.grammar_focus.as_deref(), Some("Câu chào hỏi thông dụng"));
 
         assert_eq!(sentence.source_text, "Hello world");
         let list = db.list_sentences(10).expect("failed to list");

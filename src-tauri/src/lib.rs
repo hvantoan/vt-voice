@@ -230,6 +230,10 @@ async fn save_sentence_from_overlay(
         difficulty_level: None,
         category: Some("Overlay".to_string()),
         origin: "overlay".to_string(),
+        acceptable_alternatives: None,
+        target_vocab: None,
+        grammar_focus: None,
+        common_mistakes: None,
     })
     .map_err(|e| e.to_string())
 }
@@ -336,6 +340,26 @@ async fn submit_study_attempt(
 
     Ok(feedback)
 }
+#[tauri::command]
+fn save_local_study_attempt(
+    state: State<'_, AppState>,
+    sentence_id: Option<String>,
+    user_translation: String,
+    grammar_score: Option<i32>,
+    feedback_text: String,
+    improved_version: Option<String>,
+) -> Result<storage::StudyAttempt, String> {
+    let db = state.learn_db.lock();
+    db.add_attempt(storage::NewAttempt {
+        sentence_id,
+        user_translation,
+        grammar_score,
+        feedback_text,
+        improved_version,
+    })
+    .map_err(|e| e.to_string())
+}
+
 
 #[tauri::command]
 async fn generate_study_sentences(
@@ -377,6 +401,10 @@ async fn generate_study_sentences(
                 difficulty_level: item.difficulty_level.or_else(|| Some(level.clone())),
                 category: item.category.or_else(|| Some(topic.clone())),
                 origin: "ai_generated".to_string(),
+                acceptable_alternatives: item.acceptable_alternatives,
+                target_vocab: item.target_vocab,
+                grammar_focus: item.grammar_focus,
+                common_mistakes: item.common_mistakes,
             }) {
                 Ok(saved) => saved_sentences.push(saved),
                 Err(e) => log::error!("vt_voice::learn: Failed to persist generated sentence: {e}"),
@@ -419,6 +447,10 @@ fn save_pasted_sentences(
             difficulty_level: None,
             category: Some(cat.clone()),
             origin: "pasted".to_string(),
+            acceptable_alternatives: None,
+            target_vocab: None,
+            grammar_focus: None,
+            common_mistakes: None,
         }) {
             Ok(saved) => saved_sentences.push(saved),
             Err(e) => log::error!("vt_voice::learn: Failed to persist pasted sentence: {e}"),
@@ -1449,6 +1481,7 @@ pub fn run() {
             get_saved_vocab,
             delete_saved_vocab,
             get_study_history,
+            save_local_study_attempt,
         ])
         .run(tauri::generate_context!())
         .expect("error while running vt-voice daemon");

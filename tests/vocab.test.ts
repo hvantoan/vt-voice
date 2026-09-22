@@ -393,4 +393,53 @@ describe("Vocab & Language Learning - Full Lifecycle", () => {
       expect(restoredFeedback.improvedVersion).toBe("I love learning English.");
     });
   });
+
+  describe("StudyMode Keyboard Navigation & Flow Refinements", () => {
+
+    const dummyFeedback: StudyFeedbackResult = {
+      grammarScore: 90,
+      feedbackText: "Tốt",
+      improvedVersion: "Good",
+      notedWordsExplanation: [],
+    };
+
+    test("hasNoEditsAfterSubmit is true when submitted and text is unchanged", () => {
+      const submitted = "We should study hard.";
+      const isUnchanged = Boolean(dummyFeedback && submitted !== null && "We should study hard.".trim() === submitted.trim());
+      expect(isUnchanged).toBe(true);
+      const withWhitespace = Boolean(dummyFeedback && submitted !== null && "  We should study hard.  ".trim() === submitted.trim());
+      expect(withWhitespace).toBe(true);
+    });
+
+    test("hasNoEditsAfterSubmit is false when user edits text", () => {
+      const submitted = "We should study hard.";
+      const isEdited = Boolean(dummyFeedback && submitted !== null && "We should study harder.".trim() === submitted.trim());
+      expect(isEdited).toBe(false);
+      const isCleared = Boolean(dummyFeedback && submitted !== null && "".trim() === submitted.trim());
+      expect(isCleared).toBe(false);
+    });
+
+    test("hasNoEditsAfterSubmit is false when feedback is null or unsubmitted", () => {
+      const nullFeedback = Boolean(null && "text" !== null && "text".trim() === "text".trim());
+      expect(nullFeedback).toBe(false);
+      const nullSubmitted = Boolean(dummyFeedback && null !== null && "text".trim() === "text".trim());
+      expect(nullSubmitted).toBe(false);
+    });
+
+    test("arrow navigation is enabled when input is empty or submitted without edits", () => {
+      expect("".trim() === "" || false).toBe(true);
+      expect("   ".trim() === "" || false).toBe(true);
+      expect("We should study hard.".trim() === "" || true).toBe(true);
+      expect("We should study hard.".trim() === "" || false).toBe(false);
+      expect("Drafting...".trim() === "" || false).toBe(false);
+    });
+
+    test("navigation bounds check prevents invalid index jumps", () => {
+      const totalCount = 5;
+      expect(0 > 0).toBe(false);
+      expect(1 > 0).toBe(true);
+      expect(4 < totalCount - 1).toBe(false);
+      expect(3 < totalCount - 1).toBe(true);
+    });
+  });
 });

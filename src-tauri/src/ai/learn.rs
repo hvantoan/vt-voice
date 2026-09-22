@@ -6,6 +6,16 @@ use super::provider::normalize_base_url;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct TargetVocabItem {
+    pub word: String,
+    #[serde(default, alias = "type", alias = "part_of_speech")]
+    pub word_type: Option<String>,
+    #[serde(alias = "meaning", alias = "translation")]
+    pub meaning: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct NotedWordExplanation {
     #[serde(alias = "word_or_phrase", alias = "word")]
     pub word_or_phrase: String,
@@ -41,6 +51,14 @@ pub struct GeneratedSentenceItem {
     pub source_text: String,
     #[serde(alias = "reference_translation", alias = "translation")]
     pub reference_translation: Option<String>,
+    #[serde(default, alias = "acceptable_alternatives", alias = "alternatives")]
+    pub acceptable_alternatives: Option<Vec<String>>,
+    #[serde(default, alias = "target_vocab", alias = "vocab")]
+    pub target_vocab: Option<Vec<TargetVocabItem>>,
+    #[serde(default, alias = "grammar_focus", alias = "grammar")]
+    pub grammar_focus: Option<String>,
+    #[serde(default, alias = "common_mistakes", alias = "mistakes")]
+    pub common_mistakes: Option<Vec<String>>,
     #[serde(alias = "difficulty_level", alias = "level")]
     pub difficulty_level: Option<String>,
     #[serde(alias = "category", alias = "topic")]
@@ -280,7 +298,7 @@ pub async fn generate_sentences(
     let url = format!("{}/chat/completions", clean_base);
 
     let system_prompt = format!(
-        "You are an expert language teacher creating bilingual practice sentences. \
+        "You are an expert language teacher creating bilingual practice sentences and self-contained exercise packets. \
 Generate {count} distinct, natural, practical practice sentences for learners. \
 Topic: {topic} \
 CEFR Level: {level} (A1=Beginner, A2=Elementary, B1=Intermediate, B2=Upper-Intermediate, C1=Advanced, C2=Mastery) \
@@ -290,9 +308,17 @@ You MUST respond with a single valid JSON array strictly matching this schema, w
 [
   {{
     \"sourceText\": \"<sentence in source language>\",
-    \"referenceTranslation\": \"<accurate natural translation in target language>\",
-    \"difficultyLevel\": \"{level}\",
-    \"category\": \"{topic}\"
+    \"referenceTranslation\": \"<canonical accurate natural translation in target language>\",
+    \"acceptableAlternatives\": [\"<alternative valid translation 1>\", \"<alternative valid translation 2>\"],
+    \"targetVocab\": [
+      {{
+        \"word\": \"<key word or phrase in source language>\",
+        \"type\": \"<part of speech e.g. verb, noun, adj, idiom>\",
+        \"meaning\": \"<meaning/definition in target language>\"
+      }}
+    ],
+    \"grammarFocus\": \"<concise explanation in target language of key grammar rule or pattern used>\",
+    \"commonMistakes\": [\"<common pitfall or error learners make with this sentence>\"]
   }}
 ]"
     );
@@ -303,7 +329,7 @@ You MUST respond with a single valid JSON array strictly matching this schema, w
             { "role": "system", "content": system_prompt },
             { "role": "user", "content": format!("Generate {count} sentences for topic '{topic}' at level '{level}'.") }
         ],
-        "temperature": 0.7,
+        "temperature": 0.3,
     });
 
     let timeout = if http.timeout < Duration::from_secs(60) {
@@ -408,6 +434,30 @@ mod tests {
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].source_text, "Sentence 1");
     }
+    #[test]
+    fn test_extract_json_payload_enriched_packet() {
+        let input = r#"[
+            {
+                "sourceText": "They postponed the meeting until Friday.",
+                "referenceTranslation": "Họ đã hoãn cuộc họp đến thứ Sáu.",
+                "acceptableAlternatives": ["Họ dời cuộc họp sang thứ Sáu."],
+                "targetVocab": [
+                    {"word": "postpone", "type": "verb", "meaning": "hoãn lại, trì hoãn"}
+                ],
+                "grammarFocus": "Thì quá khứ đơn (past simple) và giới từ until.",
+                "commonMistakes": ["Dùng nhầm giới từ to thay vì until."]
+            }
+        ]"#;
+        let items: Vec<GeneratedSentenceItem> = serde_json::from_str(input).expect("parse enriched items");
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].source_text, "They postponed the meeting until Friday.");
+        assert_eq!(items[0].acceptable_alternatives.as_ref().unwrap().len(), 1);
+        assert_eq!(items[0].target_vocab.as_ref().unwrap().len(), 1);
+        assert_eq!(items[0].target_vocab.as_ref().unwrap()[0].word, "postpone");
+        assert_eq!(items[0].grammar_focus.as_deref(), Some("Thì quá khứ đơn (past simple) và giới từ until."));
+        assert_eq!(items[0].common_mistakes.as_ref().unwrap().len(), 1);
+    }
+
 
     #[test]
     fn test_split_pasted_text() {

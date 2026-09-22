@@ -1,6 +1,19 @@
 //! Kiểm tra hoạt động của module LearnDb với SQLite
 #![allow(dead_code)]
 
+mod ai {
+    pub mod learn {
+        use serde::{Deserialize, Serialize};
+        #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+        #[serde(rename_all = "camelCase")]
+        pub struct TargetVocabItem {
+            pub word: String,
+            pub word_type: Option<String>,
+            pub meaning: String,
+        }
+    }
+}
+
 #[path = "../src/storage/learn_db.rs"]
 mod learn_db;
 
@@ -20,6 +33,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         difficulty_level: Some("B1".to_string()),
         category: Some("Daily".to_string()),
         origin: "overlay".to_string(),
+        acceptable_alternatives: Some(vec!["Con cáo màu nâu lướt qua chú chó lười.".to_string()]),
+        target_vocab: None,
+        grammar_focus: Some("Thì hiện tại đơn".to_string()),
+        common_mistakes: None,
     })?;
 
     println!("✓ Thêm câu học thành công: id={}", sentence.id);

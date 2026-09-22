@@ -1,3 +1,9 @@
+export interface TargetVocabItem {
+  word: string;
+  type?: string;
+  meaning: string;
+}
+
 export interface StudySentence {
   id: string;
   sourceLang: string;
@@ -8,6 +14,10 @@ export interface StudySentence {
   category?: string | null;
   origin: string;
   createdAt: number;
+  acceptableAlternatives?: string[] | null;
+  targetVocab?: TargetVocabItem[] | null;
+  grammarFocus?: string | null;
+  commonMistakes?: string[] | null;
 }
 
 export interface StudyAttempt {
@@ -54,6 +64,28 @@ export interface DecodedFeedback {
   notedWordsExplanation: NotedWordExplanation[];
   rawText: string;
   isLegacy: boolean;
+}
+
+export type DiffTokenStatus = "correct" | "typo" | "replaced" | "extraneous" | "missing";
+
+export interface DiffToken {
+  text: string;
+  expected?: string;
+  status: DiffTokenStatus;
+  startIndex?: number;
+  endIndex?: number;
+}
+
+export interface LocalEvaluationResult {
+  score: number;
+  isExactMatch: boolean;
+  hasTypo: boolean;
+  diffTokens: DiffToken[];
+  bestReference: string;
+  matchedAlternative?: string;
+  grammarFocus?: string | null;
+  commonMistakes?: string[] | null;
+  targetVocab?: TargetVocabItem[] | null;
 }
 
 /**

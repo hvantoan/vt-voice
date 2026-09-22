@@ -23,5 +23,5 @@ pub use keyring::{
 };
 pub use learn_db::{
     LearnDb, LearnDbError, NewAttempt, NewSentence, NewVocab, SavedVocab, StudyAttempt,
-    StudySentence,
+    StudySentence, TargetVocabItem,
 };
