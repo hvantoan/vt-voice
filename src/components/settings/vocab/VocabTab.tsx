@@ -63,7 +63,7 @@ export const VocabTab: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-3">
       {/* 1. Header Toolbar */}
-      <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80 shrink-0">
+      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-zinc-800/80 shrink-0">
         {/* Chuyển đổi giữa Chế độ Luyện dịch và Sổ tay từ vựng */}
         <div className="flex items-center gap-1 bg-zinc-900/80 p-0.5 rounded-lg border border-zinc-800">
           <button

@@ -8,7 +8,7 @@ import type {
   StudyFeedbackResult,
   DecodedFeedback,
 } from "../src/components/settings/vocab/types";
-import { decodeFeedbackPayload } from "../src/components/settings/vocab/types";
+import { decodeFeedbackPayload, parseVocabNotes } from "../src/components/settings/vocab/types";
 import { tokenizeSentence } from "../src/components/settings/vocab/TokenizedSentence";
 
 describe("Vocab & Language Learning - Full Lifecycle", () => {
@@ -440,6 +440,58 @@ describe("Vocab & Language Learning - Full Lifecycle", () => {
       expect(1 > 0).toBe(true);
       expect(4 < totalCount - 1).toBe(false);
       expect(3 < totalCount - 1).toBe(true);
+    });
+  });
+
+  describe("Structured Vocab Notes Parsing (parseVocabNotes)", () => {
+    test("extracts all enriched fields from AI JSON payload", () => {
+      const notes = JSON.stringify({
+        phonetic: "/pəʊstˈpəʊn/",
+        partOfSpeech: "verb",
+        explanation: "Dời một sự kiện sang thời điểm muộn hơn.",
+        example: "We had to postpone the meeting.",
+        exampleTranslation: "Chúng tôi đã phải hoãn cuộc họp.",
+        source: "ai",
+        version: 1,
+      });
+      const parsed = parseVocabNotes(notes);
+      expect(parsed.phonetic).toBe("/pəʊstˈpəʊn/");
+      expect(parsed.partOfSpeech).toBe("verb");
+      expect(parsed.explanation).toBe("Dời một sự kiện sang thời điểm muộn hơn.");
+      expect(parsed.example).toBe("We had to postpone the meeting.");
+      expect(parsed.exampleTranslation).toBe("Chúng tôi đã phải hoãn cuộc họp.");
+      expect(parsed.source).toBe("ai");
+      expect(parsed.rawText).toBe(notes);
+    });
+
+    test("handles JSON payload with missing optional fields", () => {
+      const notes = JSON.stringify({ translation: "chạy", source: "fallback", version: 1 });
+      const parsed = parseVocabNotes(notes);
+      expect(parsed.phonetic).toBeUndefined();
+      expect(parsed.partOfSpeech).toBeUndefined();
+      expect(parsed.example).toBeUndefined();
+      expect(parsed.source).toBe("fallback");
+    });
+
+    test("falls back to rawText and explanation for legacy plain text notes", () => {
+      const parsed = parseVocabNotes("Danh từ chỉ phương tiện công cộng");
+      expect(parsed.rawText).toBe("Danh từ chỉ phương tiện công cộng");
+      expect(parsed.explanation).toBe("Danh từ chỉ phương tiện công cộng");
+      expect(parsed.phonetic).toBeUndefined();
+      expect(parsed.example).toBeUndefined();
+    });
+
+    test("returns safe empty object for null, undefined and empty string", () => {
+      expect(parseVocabNotes(null)).toEqual({ rawText: "" });
+      expect(parseVocabNotes(undefined)).toEqual({ rawText: "" });
+      expect(parseVocabNotes("")).toEqual({ rawText: "" });
+      expect(parseVocabNotes("   ")).toEqual({ rawText: "" });
+    });
+
+    test("treats malformed JSON-like text as legacy notes without crashing", () => {
+      const parsed = parseVocabNotes("{broken json: [}");
+      expect(parsed.rawText).toBe("{broken json: [}");
+      expect(parsed.explanation).toBe("{broken json: [}");
     });
   });
 });

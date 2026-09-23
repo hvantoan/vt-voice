@@ -722,7 +722,7 @@ export const SettingsLayout: React.FC = () => {
         </aside>
 
         {/* Content Pane */}
-        <main className="flex-1 overflow-y-auto p-5">
+        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-5">
           <TabsContent
             value="general"
             className="m-0 focus-visible:outline-none"

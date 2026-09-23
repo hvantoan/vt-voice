@@ -369,7 +369,7 @@
     "empty_sentences_title": "Chưa có câu luyện tập nào",
     "empty_sentences_desc": "Lưu câu từ cửa sổ Dịch nhanh (Alt+T), dán một đoạn văn hoặc để AI sinh câu mới.",
     "noted_words": "Từ/cụm từ cần giải nghĩa",
-    "click_hint": "Click để chọn 1 từ, Ctrl+Click để chọn nhiều từ",
+    "click_hint": "Click để tra nghĩa, Ctrl+Click để đánh dấu từ",
     "no_tokens_noted": "Chưa chọn từ nào",
     "input_placeholder": "Nhập bản dịch của bạn vào đây...",
     "submit_button": "Nộp bài & Chấm điểm",
@@ -431,6 +431,17 @@
     "click_word_to_fix": "Click vào từ để sửa lỗi nhanh",
     "canonical_translation": "Đáp án chuẩn:",
     "check_button": "Chấm điểm tức thì",
-    "recheck_button": "Chấm lại"
+    "recheck_button": "Chấm lại",
+    "enrich_with_ai": "Thêm vào sổ tay bằng AI",
+    "enriching": "Đang phân tích...",
+    "saved_to_notebook": "Đã lưu vào sổ tay",
+    "tag_word": "Đánh dấu trong câu",
+    "untag_word": "Bỏ đánh dấu",
+    "quick_translation": "Nghĩa nhanh",
+    "example_sentence": "Ví dụ",
+    "phonetic": "Phiên âm",
+    "quick_save": "Lưu nhanh",
+    "enrich_error": "Không thể phân tích từ vựng",
+    "retry": "Thử lại"
   }
 }

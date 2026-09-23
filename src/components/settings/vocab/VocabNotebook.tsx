@@ -12,7 +12,7 @@ import {
   AlertCircle,
   Lightbulb,
 } from "lucide-react";
-import { SavedVocab, StudyAttempt, decodeFeedbackPayload } from "./types";
+import { SavedVocab, StudyAttempt, decodeFeedbackPayload, parseVocabNotes } from "./types";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -117,53 +117,82 @@ export const VocabNotebook: React.FC<VocabNotebookProps> = ({
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {vocabList.map((item) => (
-              <div
-                key={item.id}
-                className="flex flex-col gap-1.5 p-3 rounded-lg bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-semibold text-emerald-400 font-mono">
-                      {item.wordOrPhrase}
-                    </span>
-                    {item.translation && (
-                      <span className="text-xs text-zinc-200 font-medium">
-                        : {item.translation}
+            {vocabList.map((item) => {
+              const parsed = parseVocabNotes(item.notes);
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col gap-1.5 p-3 rounded-lg bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-baseline gap-2 flex-wrap min-w-0">
+                      <span className="text-sm font-semibold text-emerald-400 font-mono">
+                        {item.wordOrPhrase}
                       </span>
-                    )}
+                      {parsed.phonetic && (
+                        <span className="text-[11px] text-violet-300/90 font-mono">
+                          {parsed.phonetic}
+                        </span>
+                      )}
+                      {parsed.partOfSpeech && (
+                        <Badge
+                          variant="outline"
+                          className="text-[9px] px-1 py-0 border-zinc-700 bg-zinc-900/80 text-zinc-400"
+                        >
+                          {parsed.partOfSpeech}
+                        </Badge>
+                      )}
+                      {item.translation && (
+                        <span className="text-xs text-zinc-200 font-medium">
+                          : {item.translation}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] text-zinc-500 font-mono flex items-center gap-1">
+                        <Calendar className="w-2.5 h-2.5" />
+                        {formatDate(item.createdAt)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteVocab(item.id)}
+                        className="text-zinc-500 hover:text-rose-400 cursor-pointer p-0.5 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-zinc-500 font-mono flex items-center gap-1">
-                      <Calendar className="w-2.5 h-2.5" />
-                      {formatDate(item.createdAt)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteVocab(item.id)}
-                      className="text-zinc-500 hover:text-rose-400 cursor-pointer p-0.5 transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  {parsed.explanation && (
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      {parsed.explanation}
+                    </p>
+                  )}
+
+                  {parsed.example && (
+                    <div className="flex flex-col gap-0.5 text-[11px] bg-zinc-950/40 p-1.5 rounded border border-zinc-900">
+                      <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-amber-400/80 font-medium">
+                        <Lightbulb className="w-3 h-3 shrink-0" />
+                        {t("vocab.example_sentence")}
+                      </span>
+                      <p className="italic text-zinc-300">“{parsed.example}”</p>
+                      {parsed.exampleTranslation && (
+                        <p className="text-zinc-500">→ {parsed.exampleTranslation}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {item.sourceContext && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 italic bg-zinc-950/40 p-1.5 rounded border border-zinc-900">
+                      <Quote className="w-3 h-3 text-zinc-600 shrink-0" />
+                      <span className="truncate">{item.sourceContext}</span>
+                    </div>
+                  )}
                 </div>
-
-                {item.notes && (
-                  <p className="text-xs text-zinc-400 leading-relaxed">
-                    {item.notes}
-                  </p>
-                )}
-
-                {item.sourceContext && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 italic bg-zinc-950/40 p-1.5 rounded border border-zinc-900">
-                    <Quote className="w-3 h-3 text-zinc-600 shrink-0" />
-                    <span className="truncate">{item.sourceContext}</span>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )
       ) : historyList.length === 0 ? (

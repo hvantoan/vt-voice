@@ -21,6 +21,7 @@ status: complete
 - Mọi chuỗi giao diện hiển thị trong `InstantFeedbackPanel` phải được quốc tế hóa qua `useI18n()` và có đầy đủ bản dịch trong cả `vi.json` lẫn `en.json`.
 - Các bài kiểm tra unit test cho thuật toán Damerau-Levenshtein và Myers Diff phải bao quát tất cả các ca biên (chuỗi rỗng, một từ, câu dài, nhiều từ thừa/thiếu liên tiếp).
 
+<!-- Updated: Validation Session 1 - Test assertions for strict <= 3 chars typo rule and starter pack seed -->
 ## Requirements
 ### Functional Requirements
 - [ ] Tạo file test `tests/local-evaluation.test.ts`:
@@ -44,6 +45,9 @@ status: complete
     - Khớp với một trong các `acceptableAlternatives` $\to$ score = 100.
     - Khớp có lỗi typo nhẹ $\to$ score = 90 - 95.
     - Câu dịch sai nhiều $\to$ score thấp tương ứng tỷ lệ từ đúng.
+  - **Nhóm 5: Short Word Typo Boundary & Transposition Tests**:
+    - Các từ $\le 2$ ký tự (`he` vs `me`, `in` vs `on`) và các cặp từ 3 ký tự có nghĩa khác nhau (`cat` vs `car`) bắt buộc không được coi là `typo` (phân loại là `replaced`).
+    - Lỗi đảo chữ 3 ký tự non-word (`teh` vs `the`) và các từ $\ge 4$ ký tự (`bookk` vs `book`, `recieved` vs `received`) vẫn nhận diện `typo` chính xác.
 - [ ] Đồng bộ từ điển i18n (`vi.json` & `en.json`):
   - `vocab.instant_feedback_title`: "Kết quả tức thì" / "Instant Result"
   - `vocab.score_perfect`: "Hoàn hảo!" / "Perfect!"
@@ -89,13 +93,16 @@ status: complete
 | TS-P5-03 | Rust Check | Critical | Chạy `cargo check` trong `src-tauri` | Biên dịch không lỗi |
 | TS-P5-04 | Performance Benchmark | High | Chạy 1000 lượt `evaluateLocalAttempt` liên tục | Thời gian trung bình $< 2\text{ms}$/lượt |
 | TS-P5-05 | Full Suite Integration | High | Chạy `bun test` toàn bộ repository | Tất cả các suite đều pass |
+| TS-P5-06 | Short Word Strict Tests | Critical | Chạy unit tests cho các cặp từ $\le 2$ ký tự (`he`/`me`, `in`/`on`) và cặp 3 ký tự (`cat`/`car`) | Trả về `replaced`, không trả về `typo` |
+| TS-P5-07 | 3-char Transposition Test | Critical | Chạy unit test cho `teh` so với `the` | Trả về `typo` (khoảng cách Damerau-Levenshtein = 1) |
+| TS-P5-08 | Starter Pack DB Seed Test | High | Chạy kiểm tra khởi tạo CSDL SQLite rỗng | 15–20 câu mẫu được nạp sẵn thành công |
 
 ## Todo List
-- [ ] Viết bộ test `tests/local-evaluation.test.ts` đầy đủ các nhóm kiểm thử
-- [ ] Bổ sung tất cả các key i18n vào `src/locales/vi.json` và `src/locales/en.json`
-- [ ] Chạy `bun test tests/i18n.test.ts` xác nhận tính đối xứng
-- [ ] Chạy `cd src-tauri && cargo check` kiểm tra mã nguồn Rust
-- [ ] Đo đạc benchmark hiệu năng thực tế
+- [x] Viết bộ test `tests/local-evaluation.test.ts` đầy đủ các nhóm kiểm thử
+- [x] Bổ sung tất cả các key i18n vào `src/locales/vi.json` và `src/locales/en.json`
+- [x] Chạy `bun test tests/i18n.test.ts` xác nhận tính đối xứng
+- [x] Chạy `cd src-tauri && cargo check` kiểm tra mã nguồn Rust
+- [x] Đo đạc benchmark hiệu năng thực tế
 
 ## Success Criteria
 - [ ] `bun test tests/local-evaluation.test.ts` pass 100%.

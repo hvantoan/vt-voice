@@ -22,6 +22,7 @@ status: complete
 - Bằng cách bổ sung 4 trường dạng JSON text (`acceptable_alternatives`, `target_vocab`, `grammar_focus`, `common_mistakes`), toàn bộ dữ liệu kiểm tra đã sẵn sàng ngay từ khi câu hỏi được tạo ra.
 - Migration phải an toàn tuyệt đối với CSDL hiện có (`ALTER TABLE ... ADD COLUMN` nếu chưa tồn tại), đảm bảo dữ liệu cũ không bị ảnh hưởng.
 
+<!-- Updated: Validation Session 1 - Seed Starter Pack when DB is empty -->
 ## Requirements
 ### Functional Requirements
 - [ ] SQLite schema nâng cấp thêm 4 cột mới:
@@ -33,6 +34,7 @@ status: complete
 - [ ] Cập nhật prompt và schema của `generate_sentences` trong `src-tauri/src/ai/learn.rs` để LLM sinh đủ các trường mới với `temperature: 0.3`.
 - [ ] Cập nhật Tauri IPC command `generate_study_sentences` trong `src-tauri/src/lib.rs` để lưu các trường mới vào SQLite.
 - [ ] Cập nhật TypeScript interface `StudySentence` và `TargetVocabItem` trong `src/components/settings/vocab/types.ts`.
+- [ ] Khởi tạo gói câu hỏi mẫu mặc định (Starter Pack) gồm 15–20 câu đa dạng cấp độ kèm đầy đủ cấu trúc packet khi `study_sentences` rỗng trong `learn_db.rs`.
 
 ### Non-functional Requirements
 - Tương thích ngược 100% với các câu hỏi cũ đã có trong SQLite (các cột mới có giá trị `NULL` hoặc mảng rỗng `[]`).
@@ -114,12 +116,13 @@ sequenceDiagram
 5. **Cập nhật Frontend Types (`types.ts`)**:
    - Định nghĩa `TargetVocabItem`:
      ```typescript
-     export interface TargetVocabItem {
-       word: string;
-       type?: string;
-       meaning: string;
-     }
-     ```
+    export interface TargetVocabItem {
+      word: string;
+      wordType?: string;
+      type?: string;
+      meaning: string;
+    }
+    ```
    - Cập nhật `StudySentence`:
      ```typescript
      export interface StudySentence {
@@ -142,12 +145,13 @@ sequenceDiagram
 | TS-P1-05 | Backward Compat | High | Đọc các câu cũ có giá trị `NULL` ở 4 trường mới | Deserialize ra `None` / `undefined`, không crash |
 
 ## Todo List
-- [ ] Viết migration mở rộng bảng `study_sentences` trong `learn_db.rs`
-- [ ] Cập nhật `StudySentence` và `NewSentence` structs cùng các hàm query trong `learn_db.rs`
-- [ ] Cập nhật `GeneratedSentenceItem` và `generate_sentences` prompt trong `ai/learn.rs`
-- [ ] Cập nhật command `generate_study_sentences` trong `lib.rs`
-- [ ] Cập nhật `types.ts` trên frontend với `TargetVocabItem` và các trường mở rộng
-- [ ] Kiểm tra biên dịch `cargo check` và typecheck `bun run build`
+- [x] Viết migration mở rộng bảng `study_sentences` trong `learn_db.rs`
+- [x] Cập nhật `StudySentence` và `NewSentence` structs cùng các hàm query trong `learn_db.rs`
+- [x] Cập nhật `GeneratedSentenceItem` và `generate_sentences` prompt trong `ai/learn.rs`
+- [x] Cập nhật command `generate_study_sentences` trong `lib.rs`
+- [x] Cập nhật `types.ts` trên frontend với `TargetVocabItem` và các trường mở rộng
+- [x] Kiểm tra biên dịch `cargo check` và typecheck `bun run build`
+- [x] Bổ sung logic seed Starter Pack và test case xác thực trong `learn_db.rs`
 
 ## Success Criteria
 - [ ] Chạy `cargo check` biên dịch sạch sẽ không có cảnh báo nghiêm trọng.

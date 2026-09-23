@@ -1,5 +1,6 @@
 export interface TargetVocabItem {
   word: string;
+  wordType?: string;
   type?: string;
   meaning: string;
 }
@@ -37,6 +38,71 @@ export interface SavedVocab {
   translation?: string | null;
   notes?: string | null;
   createdAt: number;
+}
+
+/**
+ * Kết quả làm giàu từ vựng bằng AI từ IPC `enrich_vocab_with_ai`.
+ * `source` phân biệt dữ liệu sinh bởi LLM ("ai") hay dịch nhanh dự phòng ("fallback").
+ */
+export interface EnrichedVocabResult {
+  word: string;
+  partOfSpeech?: string | null;
+  phonetic?: string | null;
+  translation: string;
+  explanation: string;
+  example?: string | null;
+  exampleTranslation?: string | null;
+  source?: string;
+}
+
+/**
+ * Cấu trúc ghi chú từ vựng đã parse từ cột `saved_vocab.notes`.
+ * `rawText` luôn chứa chuỗi gốc để fallback hiển thị an toàn.
+ */
+export interface ParsedVocabNotes {
+  phonetic?: string;
+  partOfSpeech?: string;
+  explanation?: string;
+  example?: string;
+  exampleTranslation?: string;
+  source?: string;
+  rawText: string;
+}
+
+/**
+ * Parse cột `saved_vocab.notes`: nhận diện JSON do AI làm giàu (hợp đồng version=1)
+ * hoặc fallback an toàn về văn bản thuần cũ (legacy notes từ submit_study_attempt).
+ */
+export function parseVocabNotes(notes?: string | null): ParsedVocabNotes {
+  if (!notes || !notes.trim()) {
+    return { rawText: "" };
+  }
+
+  const trimmed = notes.trim();
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const pick = (key: string): string | undefined =>
+          typeof parsed[key] === "string" && (parsed[key] as string).trim()
+            ? (parsed[key] as string)
+            : undefined;
+        return {
+          phonetic: pick("phonetic"),
+          partOfSpeech: pick("partOfSpeech"),
+          explanation: pick("explanation"),
+          example: pick("example"),
+          exampleTranslation: pick("exampleTranslation"),
+          source: pick("source"),
+          rawText: trimmed,
+        };
+      }
+    } catch {
+      // Không phải JSON hợp lệ → rơi xuống nhánh legacy bên dưới.
+    }
+  }
+
+  return { rawText: trimmed, explanation: trimmed };
 }
 
 export interface NotedWordExplanation {

@@ -109,8 +109,9 @@ export const StudyMode: React.FC<StudyModeProps> = ({
           setLocalResult(evalResult);
 
           const decoded = decodeFeedbackPayload(latest.feedbackText, latest.grammarScore, latest.improvedVersion);
+          let restoredFeedback: StudyFeedbackResult | null = null;
           if (decoded.strengths.length > 0 || decoded.weaknesses.length > 0 || decoded.suggestions.length > 0 || decoded.rawText) {
-            const restoredFeedback: StudyFeedbackResult = {
+            restoredFeedback = {
               grammarScore: decoded.grammarScore,
               strengths: decoded.strengths,
               weaknesses: decoded.weaknesses,
@@ -119,10 +120,8 @@ export const StudyMode: React.FC<StudyModeProps> = ({
               improvedVersion: decoded.improvedVersion,
               notedWordsExplanation: decoded.notedWordsExplanation,
             };
-            setDeepAiFeedback(restoredFeedback);
-          } else {
-            setDeepAiFeedback(null);
           }
+          setDeepAiFeedback(restoredFeedback);
           setFeedback(null);
 
           cacheRef.current[sid] = {
@@ -130,7 +129,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
             notedWords: [],
             feedback: null,
             localResult: evalResult,
-            deepAiFeedback: null,
+            deepAiFeedback: restoredFeedback,
             lastSubmittedText: latest.userTranslation,
           };
         } else {
@@ -364,8 +363,10 @@ export const StudyMode: React.FC<StudyModeProps> = ({
   // Lắng nghe phím tắt toàn cục: ArrowLeft/ArrowRight và Enter khi focus ngoài input
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // Bỏ qua nếu đang mở modal/dialog
-      if (document.querySelector('[role="dialog"]')) {
+      // Bỏ qua nếu đang mở modal/dialog. Radix Dialog và Popover đều đặt
+      // role="dialog" (không có aria-modal), nên loại trừ popover tra từ
+      // bằng data-attribute để phím ←/→/Enter vẫn điều hướng khi popover mở.
+      if (document.querySelector('[role="dialog"]:not([data-vocab-popover])')) {
         return;
       }
 
@@ -422,7 +423,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
   return (
     <div className="flex flex-col gap-3.5 pb-4">
       {/* 1. Header & Navigation Controls */}
-      <div className="flex items-center justify-between bg-zinc-900/60 border border-zinc-800/80 rounded-lg px-3 py-1.5">
+      <div className="flex items-center justify-between flex-wrap gap-2 bg-zinc-900/60 border border-zinc-800/80 rounded-lg px-3 py-1.5">
         <div className="flex items-center gap-1.5">
           {sentence.difficultyLevel && (
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono bg-zinc-800 text-emerald-400 border-emerald-500/30">
@@ -492,6 +493,10 @@ export const StudyMode: React.FC<StudyModeProps> = ({
         onToggleWord={handleToggleWord}
         onRemoveWord={handleRemoveWord}
         onClearAll={() => updateWordsAndCache(() => [])}
+        targetVocab={sentence.targetVocab}
+        sourceLang={sentence.sourceLang}
+        targetLang={sentence.targetLang}
+        onVocabSaved={onAttemptSaved}
       />
 
       {/* 3. Ô nhập liệu bài dịch & nút Nộp bài */}

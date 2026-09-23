@@ -65,6 +65,43 @@ pub struct GeneratedSentenceItem {
     pub category: Option<String>,
 }
 
+/// Kết quả làm giàu từ vựng bằng AI (phiên âm, từ loại, giải thích, ví dụ).
+/// `source` phân biệt dữ liệu sinh bởi LLM ("ai") hay dịch nhanh dự phòng ("fallback").
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct EnrichedVocabResult {
+    pub word: String,
+    #[serde(default, alias = "word_type", alias = "type")]
+    pub part_of_speech: Option<String>,
+    #[serde(default, alias = "ipa")]
+    pub phonetic: Option<String>,
+    pub translation: String,
+    #[serde(default)]
+    pub explanation: String,
+    pub example: Option<String>,
+    #[serde(default, alias = "example_meaning")]
+    pub example_translation: Option<String>,
+    #[serde(default)]
+    pub source: String,
+}
+
+impl EnrichedVocabResult {
+    /// Serialize thành chuỗi JSON chuẩn lưu vào cột `saved_vocab.notes`.
+    /// Hợp đồng: {"phonetic","partOfSpeech","explanation","example","exampleTranslation","source","version":1}
+    pub fn to_notes_json(&self) -> String {
+        serde_json::json!({
+            "phonetic": self.phonetic,
+            "partOfSpeech": self.part_of_speech,
+            "explanation": self.explanation,
+            "example": self.example,
+            "exampleTranslation": self.example_translation,
+            "source": if self.source.is_empty() { "ai" } else { self.source.as_str() },
+            "version": 1,
+        })
+        .to_string()
+    }
+}
+
 /// Trích xuất chuỗi JSON từ phản hồi LLM an toàn, bất kể LLM bọc trong codeblock markdown hay kèm lời thoại.
 pub fn extract_json_payload(raw: &str) -> &str {
     let trimmed = raw.trim();
@@ -381,6 +418,134 @@ You MUST respond with a single valid JSON array strictly matching this schema, w
     Ok(items)
 }
 
+/// Làm giàu một từ vựng trong ngữ cảnh câu bằng LLM: phiên âm IPA, từ loại,
+/// nghĩa chuẩn ngữ cảnh, giải thích chi tiết và câu ví dụ kèm bản dịch.
+pub async fn enrich_vocab(
+    http: &AiHttpClient,
+    base_url: &str,
+    api_key: &str,
+    model: &str,
+    word: &str,
+    sentence_context: &str,
+    source_lang: &str,
+    target_lang: &str,
+) -> Result<EnrichedVocabResult, AiError> {
+    let key = api_key.trim();
+    if key.is_empty() {
+        return Err(AiError::MissingApiKey);
+    }
+
+    let clean_base = normalize_base_url(base_url);
+    let url = format!("{}/chat/completions", clean_base);
+
+    let system_prompt = "You are an expert bilingual English-Vietnamese lexicographer and language tutor. \
+Analyze the given word or phrase AS USED in the provided sentence context (not its generic meaning). \
+Respond in the target language for translation/explanation fields. \
+You MUST respond with ONLY a single valid JSON object strictly matching this schema, with NO markdown codeblocks, NO preamble, and NO extra text: \
+{ \
+  \"word\": \"<the exact word or phrase being analyzed>\", \
+  \"partOfSpeech\": \"<part of speech e.g. verb, noun, adjective, phrasal verb, idiom>\", \
+  \"phonetic\": \"<IPA phonetic transcription e.g. /pəʊstˈpəʊn/, or null if not applicable>\", \
+  \"translation\": \"<concise meaning in target language as used in this context>\", \
+  \"explanation\": \"<1-2 sentence detailed explanation in target language covering nuance, register, and usage in this context>\", \
+  \"example\": \"<one NEW natural example sentence in source language using the word, different from the context>\", \
+  \"exampleTranslation\": \"<translation of the example sentence in target language>\" \
+}";
+
+    let user_content = format!(
+        "Word/phrase: \"{word}\"\n\
+Sentence context ({source_lang}): \"{sentence_context}\"\n\
+Target language: {target_lang}"
+    );
+
+    let request_body = serde_json::json!({
+        "model": model,
+        "messages": [
+            { "role": "system", "content": system_prompt },
+            { "role": "user", "content": user_content }
+        ],
+        "temperature": 0.3,
+    });
+
+    // Timeout 15s: tra từ cần phản hồi nhanh, không chặn UI lâu.
+    let timeout = Duration::from_secs(15);
+
+    let res = http
+        .client
+        .post(&url)
+        .bearer_auth(key)
+        .timeout(timeout)
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| {
+            if e.is_timeout() {
+                AiError::Timeout(timeout.as_secs())
+            } else {
+                AiError::Network(e)
+            }
+        })?;
+
+    let status = res.status();
+    let body_text = res.text().await.map_err(AiError::Network)?;
+
+    if !status.is_success() {
+        let clean_msg = super::openrouter::sanitize_error_message(&body_text, key);
+        return Err(AiError::Api {
+            status: status.as_u16(),
+            message: clean_msg,
+        });
+    }
+
+    let parsed_val: serde_json::Value = serde_json::from_str(&body_text)
+        .map_err(|e| AiError::ParseError(format!("Invalid response JSON: {e}")))?;
+
+    let raw_content = parsed_val["choices"][0]["message"]["content"]
+        .as_str()
+        .ok_or_else(|| AiError::ParseError("Missing choices[0].message.content".to_string()))?;
+
+    let json_str = extract_json_payload(raw_content);
+    let mut result: EnrichedVocabResult = serde_json::from_str(json_str).map_err(|e| {
+        log::warn!("vt_voice::ai::learn: Failed to parse enriched vocab JSON: {e}, raw content: {raw_content}");
+        AiError::ParseError(format!("Failed to parse enriched vocab: {e}"))
+    })?;
+
+    // Đảm bảo word khớp với từ người dùng tra (LLM đôi khi trả về biến thể khác).
+    if result.word.trim().is_empty() {
+        result.word = word.trim().to_string();
+    }
+    result.source = "ai".to_string();
+
+    Ok(result)
+}
+
+/// Dự phòng khi không có API key hoặc LLM lỗi: dịch nhanh qua Google Translate RPC
+/// với timeout ngắn (10s), trả về EnrichedVocabResult tối thiểu gắn cờ "fallback".
+pub async fn enrich_vocab_fallback(
+    http: &AiHttpClient,
+    word: &str,
+    source_lang: &str,
+    target_lang: &str,
+) -> Result<EnrichedVocabResult, AiError> {
+    let translate_future =
+        super::translate::translate_google_with_langs(http, word, source_lang, target_lang);
+
+    let res = tokio::time::timeout(Duration::from_secs(10), translate_future)
+        .await
+        .map_err(|_| AiError::Timeout(10))??;
+
+    Ok(EnrichedVocabResult {
+        word: word.trim().to_string(),
+        part_of_speech: None,
+        phonetic: None,
+        translation: res.translated_text,
+        explanation: String::new(),
+        example: None,
+        example_translation: None,
+        source: "fallback".to_string(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -466,5 +631,59 @@ mod tests {
         assert!(sentences.len() >= 4);
         assert_eq!(sentences[0], "Hello world.");
         assert_eq!(sentences[1], "How are you doing?");
+    }
+
+    #[test]
+    fn test_enriched_vocab_result_parse_full() {
+        let input = r#"{
+            "word": "postpone",
+            "partOfSpeech": "verb",
+            "phonetic": "/pəʊstˈpəʊn/",
+            "translation": "hoãn lại, trì hoãn",
+            "explanation": "Động từ chỉ việc dời một sự kiện sang thời điểm muộn hơn.",
+            "example": "We had to postpone the meeting due to bad weather.",
+            "exampleTranslation": "Chúng tôi đã phải hoãn cuộc họp do thời tiết xấu."
+        }"#;
+        let parsed: EnrichedVocabResult = serde_json::from_str(input).expect("parse enriched vocab");
+        assert_eq!(parsed.word, "postpone");
+        assert_eq!(parsed.part_of_speech.as_deref(), Some("verb"));
+        assert_eq!(parsed.phonetic.as_deref(), Some("/pəʊstˈpəʊn/"));
+        assert_eq!(parsed.translation, "hoãn lại, trì hoãn");
+        assert!(parsed.example.is_some());
+        assert!(parsed.example_translation.is_some());
+    }
+
+    #[test]
+    fn test_enriched_vocab_result_parse_aliases_and_missing_fields() {
+        // LLM đôi khi trả snake_case hoặc thiếu trường tùy chọn.
+        let input = r#"{"word": "run", "word_type": "verb", "ipa": "/rʌn/", "translation": "chạy", "example_meaning": "Nghĩa ví dụ"}"#;
+        let parsed: EnrichedVocabResult = serde_json::from_str(input).expect("parse aliases");
+        assert_eq!(parsed.part_of_speech.as_deref(), Some("verb"));
+        assert_eq!(parsed.phonetic.as_deref(), Some("/rʌn/"));
+        assert_eq!(parsed.example_translation.as_deref(), Some("Nghĩa ví dụ"));
+        assert_eq!(parsed.explanation, "");
+        assert!(parsed.example.is_none());
+    }
+
+    #[test]
+    fn test_enriched_vocab_notes_json_contract() {
+        let result = EnrichedVocabResult {
+            word: "postpone".to_string(),
+            part_of_speech: Some("verb".to_string()),
+            phonetic: Some("/pəʊstˈpəʊn/".to_string()),
+            translation: "hoãn lại".to_string(),
+            explanation: "Dời sự kiện sang lúc khác.".to_string(),
+            example: Some("They postponed the meeting.".to_string()),
+            example_translation: Some("Họ đã hoãn cuộc họp.".to_string()),
+            source: "ai".to_string(),
+        };
+        let notes = result.to_notes_json();
+        let parsed: serde_json::Value = serde_json::from_str(&notes).expect("notes must be valid JSON");
+        assert_eq!(parsed["version"], 1);
+        assert_eq!(parsed["source"], "ai");
+        assert_eq!(parsed["phonetic"], "/pəʊstˈpəʊn/");
+        assert_eq!(parsed["partOfSpeech"], "verb");
+        assert_eq!(parsed["example"], "They postponed the meeting.");
+        assert_eq!(parsed["exampleTranslation"], "Họ đã hoãn cuộc họp.");
     }
 }

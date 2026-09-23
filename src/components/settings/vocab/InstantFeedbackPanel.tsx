@@ -251,9 +251,9 @@ export const InstantFeedbackPanel: React.FC<InstantFeedbackPanelProps> = ({
                 className="inline-flex items-center gap-1 px-2 py-1 rounded bg-zinc-800/70 border border-zinc-700/60 text-xs text-zinc-200 font-medium"
               >
                 <span className="text-indigo-300 font-semibold">{v.word}</span>
-                {v.type && (
+                {(v.wordType || v.type) && (
                   <span className="text-[10px] text-zinc-400 font-mono italic">
-                    ({v.type})
+                    ({v.wordType || v.type})
                   </span>
                 )}
                 <span className="text-zinc-300">: {v.meaning}</span>

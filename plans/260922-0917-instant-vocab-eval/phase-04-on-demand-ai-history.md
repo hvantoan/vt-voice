@@ -22,6 +22,7 @@ status: complete
 - Cần có một lệnh IPC riêng `save_local_study_attempt` để ghi kết quả đánh giá cục bộ vào SQLite ngay khi hoàn tất chấm điểm, đảm bảo Lịch sử làm bài (Attempt History) luôn đầy đủ.
 - Khi người dùng bấm "Hỏi AI chi tiết", request gọi LLM chạy bất đồng bộ (async), hiển thị spinner cục bộ bên trong nút bấm hoặc drawer, tuyệt đối không khóa ô nhập liệu hay ngăn cản người dùng chuyển câu.
 
+<!-- Updated: Validation Session 1 - Reuse active Polish AI Provider config -->
 ## Requirements
 ### Functional Requirements
 - [ ] Bổ sung Tauri IPC command `save_local_study_attempt`:
@@ -32,6 +33,7 @@ status: complete
   - Khi click: Kích hoạt gọi `submit_study_attempt` bất đồng bộ.
   - Hiển thị trạng thái đang tải (`isAiLoading`) cục bộ trong panel.
   - Khi có kết quả từ AI: Hiển thị thêm khối nhận xét 3 phần của AI (`FeedbackPanel`) ngay bên dưới Token Diff.
+  - Tái sử dụng cấu hình AI provider và model hiện tại của tính năng Polish (`AppState.config.ai`), không phát sinh cài đặt phức tạp riêng biệt cho Vocab.
 - [ ] Lưu và khôi phục trạng thái (Cache & Restore):
   - Khi người dùng quay lại câu đã làm: Khôi phục kết quả chấm điểm tức thì từ cache bộ nhớ (`cacheRef`) hoặc từ bản ghi gần nhất trong SQLite.
 
@@ -126,10 +128,10 @@ sequenceDiagram
 | TS-P4-04 | Deep Feedback Render | High | AI trả lời thành công | Khối nhận xét 3 phần hiển thị mượt mà bên dưới Token Diff |
 
 ## Todo List
-- [ ] Viết command `save_local_study_attempt` và đăng ký trong `src-tauri/src/lib.rs`
-- [ ] Kết nối hàm lưu ngầm vào `StudyMode.tsx` khi có kết quả đánh giá cục bộ
-- [ ] Gắn nút "Hỏi AI chi tiết" trong `InstantFeedbackPanel.tsx`
-- [ ] Kiểm tra lịch sử làm bài trong tab History sau khi làm bài tức thì
+- [x] Viết command `save_local_study_attempt` và đăng ký trong `src-tauri/src/lib.rs`
+- [x] Kết nối hàm lưu ngầm vào `StudyMode.tsx` khi có kết quả đánh giá cục bộ
+- [x] Gắn nút "Hỏi AI chi tiết" trong `InstantFeedbackPanel.tsx`
+- [x] Kiểm tra lịch sử làm bài trong tab History sau khi làm bài tức thì
 
 ## Success Criteria
 - [ ] Lượt làm bài tức thì xuất hiện trong danh mục Lịch sử làm bài (`Attempt History`) với điểm số chính xác.

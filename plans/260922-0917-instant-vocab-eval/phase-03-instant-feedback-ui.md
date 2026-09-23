@@ -25,6 +25,7 @@ status: complete
   - Khi đã có kết quả và không sửa: `Enter` $\to$ Chuyển ngay sang câu tiếp theo.
   - Nhờ đó, người học có thể lướt qua hàng chục câu bài tập với tốc độ cao.
 
+<!-- Updated: Validation Session 1 - Enter navigation threshold confirmed >= 85 -->
 ## Requirements
 ### Functional Requirements
 - [ ] Tạo component `InstantFeedbackPanel.tsx`:
@@ -44,7 +45,7 @@ status: complete
     - Hiển thị câu chuẩn (`canonicalAnswer`).
     - Nếu khớp với biến thể (`matchedAlternative`), hiển thị nhãn: *"Khớp với cách diễn đạt tương đương: ..."*.
   - **Target Vocabulary Pills**:
-    - Hiển thị các từ vựng mục tiêu (`targetVocab`) dưới dạng tag tương tác (click để xem nghĩa/từ loại).
+    - Hiển thị các từ vựng mục tiêu (`targetVocab`) dưới dạng tag tương tác (hiển thị word, huy hiệu từ loại chuẩn hóa qua `v.wordType || v.type`, và nghĩa tiếng Việt).
   - **Diagnostic Hints & Grammar Focus**:
     - Nếu câu có `grammarFocus` hoặc `commonMistakes`, hiển thị khối lưu ý nhỏ gọn có thể thu gọn/mở rộng.
   - **Cơ chế Sửa lỗi & Thay thế Tương tác (Interactive Word Correction & Replace)**:
@@ -66,10 +67,11 @@ status: complete
 - [ ] Tích hợp vào `StudyMode.tsx`:
   - Thêm state `localResult: LocalEvaluationResult | null`.
   - Cập nhật hàm `handleKeyDown` trên `textarea`:
-    - `e.key === "Enter"` (khi không giữ Shift):
+    - `e.key === "Enter"` (khi không giữ Shift, Ctrl, Meta):
       - Nếu `!localResult`: Gọi `evaluateLocalAttempt(sentence, userTranslation)` $\to$ Lưu vào `localResult` $\to$ Hiển thị `InstantFeedbackPanel`.
-      - Nếu `localResult` đã có và người dùng không sửa text: Gọi `handleNextSentence()`.
-  - Khi người dùng gõ phím thay đổi nội dung (`handleTranslationChange`): Reset `localResult` về `null` để người dùng có thể nộp bài lại.
+      - Nếu `localResult` đã có và đạt điểm $\ge 85$ (hoặc không sửa text): Gọi `handleNextSentence()` để chuyển ngay câu tiếp theo.
+      - Nếu `localResult` có điểm $< 85$: Chấm lại câu sau khi người dùng sửa lỗi (muốn bỏ qua thì dùng `Ctrl + ArrowRight`).
+  - Khi người dùng gõ phím thay đổi nội dung (`handleTranslationChange`): Cho phép chấm lại khi nhấn Enter.
 
 ### Non-functional Requirements
 - Tương thích kích thước cửa sổ Settings `720x560` (không bị vỡ layout hoặc tràn màn hình).
@@ -126,11 +128,11 @@ status: complete
 | TS-P3-05 | Responsive 720x560 | High | Hiển thị trong cửa sổ Settings nhỏ | Không xuất hiện thanh cuộn ngang, text không bị cắt dấu |
 
 ## Todo List
-- [ ] Xây dựng component `InstantFeedbackPanel.tsx` với đầy đủ các section
-- [ ] Tích hợp `evaluateLocalAttempt` vào hàm xử lý phím tắt `Enter` trong `StudyMode.tsx`
-- [ ] Thêm các chuỗi bản dịch song ngữ vào `vi.json` và `en.json`
-- [ ] Đảm bảo chuyển đổi mượt mà giữa trạng thái tức thì và trạng thái chỉnh sửa
-- [ ] Kiểm tra hiển thị responsive trên giao diện thực tế
+- [x] Xây dựng component `InstantFeedbackPanel.tsx` với đầy đủ các section
+- [x] Tích hợp `evaluateLocalAttempt` vào hàm xử lý phím tắt `Enter` trong `StudyMode.tsx`
+- [x] Thêm các chuỗi bản dịch song ngữ vào `vi.json` và `en.json`
+- [x] Đảm bảo chuyển đổi mượt mà giữa trạng thái tức thì và trạng thái chỉnh sửa
+- [x] Kiểm tra hiển thị responsive trên giao diện thực tế
 
 ## Success Criteria
 - [ ] Nhấn `Enter` phản hồi ngay lập tức, không có bất kỳ trạng thái loading spinner nào ở luồng chính.

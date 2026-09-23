@@ -503,6 +503,153 @@ fn get_study_history(
         .map_err(|e| e.to_string())
 }
 
+/// Giới hạn độ dài đầu vào cho các lệnh tra từ vựng (chống DoS / tốn token).
+const MAX_VOCAB_WORD_LEN: usize = 100;
+const MAX_VOCAB_CONTEXT_LEN: usize = 2000;
+
+/// Dịch nhanh một từ/cụm từ cho popover tra từ trong StudyMode.
+/// KHÔNG gọi `set_translate_last_result` để tránh ghi đè kết quả của cửa sổ dịch nổi Alt+T.
+#[tauri::command]
+async fn quick_translate_word(
+    state: State<'_, AppState>,
+    word: String,
+    source_lang: Option<String>,
+    target_lang: Option<String>,
+) -> Result<String, String> {
+    let trimmed = word.trim();
+    if trimmed.is_empty() {
+        return Ok(String::new());
+    }
+    if trimmed.chars().count() > MAX_VOCAB_WORD_LEN {
+        return Err("Từ vựng vượt quá 100 ký tự".into());
+    }
+
+    let sl = source_lang.as_deref().unwrap_or("auto");
+    let tl = target_lang.as_deref().unwrap_or("vi");
+
+    ai::translate_google_with_langs(&state.http_client, trimmed, sl, tl)
+        .await
+        .map(|r| r.translated_text)
+        .map_err(|e| e.to_string())
+}
+
+/// Làm giàu từ vựng bằng AI trong ngữ cảnh câu và lưu tự động vào sổ tay.
+/// Fallback sang Google Translate khi chưa cấu hình API key hoặc LLM lỗi.
+#[tauri::command]
+async fn enrich_vocab_with_ai(
+    state: State<'_, AppState>,
+    word: String,
+    sentence_context: Option<String>,
+    source_lang: Option<String>,
+    target_lang: Option<String>,
+) -> Result<ai::EnrichedVocabResult, String> {
+    let trimmed_word = word.trim();
+    if trimmed_word.is_empty() {
+        return Err("Từ vựng không được để trống".into());
+    }
+    if trimmed_word.chars().count() > MAX_VOCAB_WORD_LEN {
+        return Err("Từ vựng vượt quá 100 ký tự".into());
+    }
+
+    let context = sentence_context.unwrap_or_default();
+    let trimmed_context = context.trim();
+    if trimmed_context.chars().count() > MAX_VOCAB_CONTEXT_LEN {
+        return Err("Ngữ cảnh câu vượt quá 2000 ký tự".into());
+    }
+
+    let sl = source_lang.as_deref().unwrap_or("en").to_string();
+    let tl = target_lang.as_deref().unwrap_or("vi").to_string();
+
+    // Ưu tiên LLM qua profile "learn" (fallback "polish"); lỗi credential hoặc
+    // lỗi mạng/parse đều chuyển sang dịch nhanh Google Translate.
+    let enriched = match resolve_ai_chat_credentials(&state, "learn") {
+        Ok((base_url, api_key, model)) => {
+            match ai::enrich_vocab(
+                &state.http_client,
+                &base_url,
+                &api_key,
+                &model,
+                trimmed_word,
+                trimmed_context,
+                &sl,
+                &tl,
+            )
+            .await
+            {
+                Ok(result) => result,
+                Err(e) => {
+                    log::warn!("vt_voice::learn: AI enrich failed ({e}), falling back to Google Translate");
+                    ai::enrich_vocab_fallback(&state.http_client, trimmed_word, &sl, &tl)
+                        .await
+                        .map_err(|fe| fe.to_string())?
+                }
+            }
+        }
+        Err(cred_err) => {
+            log::info!("vt_voice::learn: No AI credentials ({cred_err}), using Google Translate fallback");
+            ai::enrich_vocab_fallback(&state.http_client, trimmed_word, &sl, &tl)
+                .await
+                .map_err(|fe| fe.to_string())?
+        }
+    };
+
+    // Lưu tự động vào sổ tay với notes JSON cấu trúc (hợp đồng version=1).
+    {
+        let db = state.learn_db.lock();
+        db.add_vocab(storage::NewVocab {
+            word_or_phrase: enriched.word.clone(),
+            source_context: if trimmed_context.is_empty() {
+                None
+            } else {
+                Some(trimmed_context.to_string())
+            },
+            translation: Some(enriched.translation.clone()),
+            notes: Some(enriched.to_notes_json()),
+        })
+        .map_err(|e| {
+            log::error!("vt_voice::learn: Failed to save enriched vocab: {e}");
+            format!("Không thể lưu từ vựng vào sổ tay: {e}")
+        })?;
+    }
+
+    Ok(enriched)
+}
+
+/// Lưu trực tiếp một từ vựng vào sổ tay mà không qua AI (nghĩa nhanh/thủ công).
+#[tauri::command]
+fn save_single_vocab(
+    state: State<'_, AppState>,
+    word: String,
+    source_context: Option<String>,
+    translation: Option<String>,
+    notes: Option<String>,
+) -> Result<storage::SavedVocab, String> {
+    let trimmed_word = word.trim();
+    if trimmed_word.is_empty() {
+        return Err("Từ vựng không được để trống".into());
+    }
+    if trimmed_word.chars().count() > MAX_VOCAB_WORD_LEN {
+        return Err("Từ vựng vượt quá 100 ký tự".into());
+    }
+    if let Some(ctx) = &source_context {
+        if ctx.trim().chars().count() > MAX_VOCAB_CONTEXT_LEN {
+            return Err("Ngữ cảnh câu vượt quá 2000 ký tự".into());
+        }
+    }
+
+    let db = state.learn_db.lock();
+    db.add_vocab(storage::NewVocab {
+        word_or_phrase: trimmed_word.to_string(),
+        source_context: source_context.map(|c| c.trim().to_string()).filter(|c| !c.is_empty()),
+        translation: translation.map(|t| t.trim().to_string()).filter(|t| !t.is_empty()),
+        notes: notes.map(|n| n.trim().to_string()).filter(|n| !n.is_empty()),
+    })
+    .map_err(|e| {
+        log::error!("vt_voice::learn: Failed to save single vocab: {e}");
+        format!("Không thể lưu từ vựng vào sổ tay: {e}")
+    })
+}
+
 
 
 #[tauri::command]
@@ -1482,6 +1629,9 @@ pub fn run() {
             delete_saved_vocab,
             get_study_history,
             save_local_study_attempt,
+            quick_translate_word,
+            enrich_vocab_with_ai,
+            save_single_vocab,
         ])
         .run(tauri::generate_context!())
         .expect("error while running vt-voice daemon");

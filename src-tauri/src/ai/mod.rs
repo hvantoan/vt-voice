@@ -25,6 +25,7 @@ pub use translate::{
     TranslationResult,
 };
 pub use learn::{
-    evaluate_translation_attempt, extract_json_payload, generate_sentences, split_pasted_text,
-    GeneratedSentenceItem, NotedWordExplanation, StudyFeedbackResult,
+    enrich_vocab, enrich_vocab_fallback, evaluate_translation_attempt, extract_json_payload,
+    generate_sentences, split_pasted_text, EnrichedVocabResult, GeneratedSentenceItem,
+    NotedWordExplanation, StudyFeedbackResult,
 };

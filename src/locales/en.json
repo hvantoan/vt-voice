@@ -369,7 +369,7 @@
     "empty_sentences_title": "No practice sentences yet",
     "empty_sentences_desc": "Save sentences from Quick Translate (Alt+T), paste a paragraph, or generate with AI.",
     "noted_words": "Words to explain",
-    "click_hint": "Click to select a word, Ctrl+Click to select multiple words",
+    "click_hint": "Click to look up, Ctrl+Click to tag word",
     "no_tokens_noted": "No words selected",
     "input_placeholder": "Type your translation here...",
     "submit_button": "Submit & Grade",
@@ -431,6 +431,17 @@
     "click_word_to_fix": "Click word to quick-fix",
     "canonical_translation": "Canonical translation:",
     "check_button": "Check Instant",
-    "recheck_button": "Recheck"
+    "recheck_button": "Recheck",
+    "enrich_with_ai": "Save to notebook with AI",
+    "enriching": "Enriching with AI...",
+    "saved_to_notebook": "Saved to notebook",
+    "tag_word": "Tag in sentence",
+    "untag_word": "Untag word",
+    "quick_translation": "Quick translation",
+    "example_sentence": "Example",
+    "phonetic": "Phonetic",
+    "quick_save": "Quick save",
+    "enrich_error": "Failed to enrich vocabulary",
+    "retry": "Retry"
   }
 }

@@ -23,6 +23,7 @@ status: complete
 - **Myers Diff / LCS** ở cấp độ từ (token-level) chia câu thành các khối từ: Đúng (`correct`), Lỗi gõ nhẹ (`typo`), Sai/thay thế (`replaced`), Thừa (`extraneous`), Thiếu (`missing`).
 - Hiệu năng: Xử lý 1 câu 10–20 từ bằng Myers Diff chỉ mất dưới `1ms` trên trình duyệt/webview.
 
+<!-- Updated: Validation Session 1 - Strict Typo Rule for short words (<= 3 chars) -->
 ## Requirements
 ### Functional Requirements
 - [ ] Hàm `normalizeText(text: string): string`:
@@ -40,7 +41,7 @@ status: complete
   - Phân tích và căn chỉnh từng token giữa câu người dùng và câu chuẩn.
   - Phân loại trạng thái từng token:
     - `correct`: Trùng khớp hoàn toàn (sau chuẩn hóa) hoặc tương đương.
-    - `typo`: Sai $\le 1$ ký tự với từ ngắn ($\le 5$ ký tự) hoặc $\le 2$ ký tự với từ dài ($> 5$ ký tự).
+    - `typo`: Sai $\le 1$ ký tự với từ trung bình (4–6 ký tự) hoặc $\le 2$ ký tự với từ dài ($> 6$ ký tự). Với từ 3 ký tự: Cho phép lỗi gõ phím / đảo chữ transposition (như `teh` $\to$ `the` là `typo`). Với từ siêu ngắn ($\le 2$ ký tự như `he`/`me`, `in`/`on`, `to`/`at`) hoặc các cặp từ 3 ký tự có nghĩa độc lập trong từ điển (`cat`/`car`): Bắt buộc khoảng cách = 0 (phân loại là `replaced` chứ không phải `typo`).
     - `replaced`: Từ bị thay thế hoặc sai dạng động từ/danh từ (ví dụ `go` thay vì `went`).
     - `extraneous`: Từ thừa mà câu chuẩn không có.
     - `missing`: Từ trong câu chuẩn mà người dùng bỏ sót.
@@ -121,14 +122,16 @@ Final Score: 90/100 ("Tốt! Thiếu mạo từ 'the'").
 | TS-P2-06 | Missing Word | Critical | Thiếu 1 từ mạo từ hoặc giới từ | `status: "missing"`, trừ điểm tỷ lệ |
 | TS-P2-07 | Extra Word | Critical | Người dùng gõ thêm từ thừa | `status: "extraneous"`, gạch đỏ từ thừa |
 | TS-P2-08 | Replaced Word | High | Dùng sai thì: `went` thay vì `go` | `status: "replaced"`, gợi ý từ chuẩn |
+| TS-P2-09 | Short Word Strict (<=2 chars) | Critical | Từ ngắn $\le 2$ ký tự: `he` so với `me`, `in` so với `on` | `status: "replaced"`, không coi là typo (khoảng cách = 0 bắt buộc) |
+| TS-P2-10 | Real Word 3-char Pair | High | Cặp từ 3 ký tự có nghĩa khác nhau: `cat` so với `car` | `status: "replaced"`, không coi là typo |
 
 ## Todo List
-- [ ] Định nghĩa `DiffToken`, `DiffTokenStatus`, `LocalEvaluationResult` trong `types.ts`
-- [ ] Viết hàm `normalizeText` với từ điển contraction phổ biến
-- [ ] Viết hàm `damerauLevenshtein` với tối ưu ma trận $O(\min(N,M))$
-- [ ] Viết hàm `myersTokenDiff` căn chỉnh token
-- [ ] Viết hàm `evaluateLocalAttempt` tổng hợp kết quả và tính điểm
-- [ ] Viết bộ test `tests/local-evaluation.test.ts` và chạy `bun test` đạt 100% pass
+- [x] Định nghĩa `DiffToken`, `DiffTokenStatus`, `LocalEvaluationResult` trong `types.ts`
+- [x] Viết hàm `normalizeText` với từ điển contraction phổ biến
+- [x] Viết hàm `damerauLevenshtein` với tối ưu ma trận $O(\min(N,M))$
+- [x] Viết hàm `myersTokenDiff` căn chỉnh token
+- [x] Viết hàm `evaluateLocalAttempt` tổng hợp kết quả và tính điểm
+- [x] Viết bộ test `tests/local-evaluation.test.ts` và chạy `bun test` đạt 100% pass
 
 ## Success Criteria
 - [ ] Hàm `evaluateLocalAttempt` chạy xong dưới `3ms` cho mọi câu kiểm thử.

@@ -58,6 +58,44 @@ const CONTRACTIONS: Record<string, string> = {
 };
 
 /**
+ * Danh sách các từ 3 ký tự tiếng Anh thông dụng để phân biệt giữa lỗi gõ phím (non-word)
+ * và việc dùng từ khác nghĩa (real words như cat -> car).
+ */
+const COMMON_3_LETTER_WORDS: Record<string, true> = {
+  act: true, add: true, age: true, ago: true, aid: true, aim: true, air: true, all: true,
+  and: true, any: true, arm: true, art: true, ask: true, bad: true, bag: true, bar: true,
+  bat: true, bay: true, bed: true, bee: true, beg: true, bet: true, big: true, bit: true,
+  bob: true, box: true, boy: true, bus: true, but: true, buy: true, can: true, cap: true,
+  car: true, cat: true, cop: true, cow: true, cry: true, cup: true, cut: true, dad: true,
+  day: true, die: true, dig: true, dim: true, dip: true, dna: true, dog: true, dot: true,
+  dry: true, due: true, ear: true, eat: true, egg: true, ego: true, end: true, era: true,
+  eve: true, eye: true, fan: true, far: true, fat: true, fee: true, few: true, fit: true,
+  fix: true, fly: true, fog: true, for: true, fox: true, fun: true, fur: true, gap: true,
+  gas: true, gel: true, get: true, god: true, gun: true, gut: true, guy: true, gym: true,
+  hat: true, her: true, hey: true, hid: true, him: true, hip: true, his: true, hit: true,
+  hot: true, how: true, hub: true, hug: true, ice: true, ill: true, ink: true, inn: true,
+  ion: true, its: true, jam: true, jar: true, jaw: true, jet: true, job: true, jog: true,
+  joy: true, key: true, kid: true, lab: true, lap: true, law: true, lay: true, led: true,
+  leg: true, let: true, lid: true, lie: true, lip: true, lit: true, log: true, lot: true,
+  low: true, mad: true, man: true, map: true, mat: true, may: true, men: true, met: true,
+  mix: true, mom: true, mud: true, mug: true, net: true, new: true, nod: true, nor: true,
+  not: true, now: true, nut: true, oat: true, odd: true, off: true, oil: true, old: true,
+  one: true, our: true, out: true, owe: true, owl: true, own: true, pad: true, pan: true,
+  pat: true, pay: true, pea: true, pen: true, pet: true, pie: true, pig: true, pin: true,
+  pit: true, pop: true, pot: true, pro: true, put: true, rag: true, ram: true, ran: true,
+  raw: true, ray: true, red: true, rib: true, rid: true, rim: true, rip: true, rob: true,
+  rod: true, rot: true, row: true, rub: true, rug: true, run: true, sad: true, sap: true,
+  saw: true, say: true, sea: true, see: true, set: true, sew: true, she: true, shy: true,
+  sin: true, sip: true, sir: true, sit: true, six: true, ski: true, sky: true, son: true,
+  spy: true, sub: true, sue: true, sum: true, sun: true, tag: true, tap: true, tax: true,
+  tea: true, ten: true, the: true, tie: true, tin: true, tip: true, toe: true, ton: true,
+  too: true, top: true, toy: true, try: true, tub: true, two: true, use: true, van: true,
+  vet: true, via: true, war: true, was: true, way: true, web: true, wet: true, who: true,
+  why: true, wig: true, win: true, won: true, yes: true, yet: true, you: true, zip: true,
+  zoo: true,
+};
+
+/**
  * Loại bỏ dấu câu ở đầu và cuối từ (giữ nguyên ký tự bên trong từ như dấu nháy đơn nếu có).
  */
 export function stripPunctuation(word: string): string {
@@ -65,7 +103,7 @@ export function stripPunctuation(word: string): string {
   const normalizedApostrophe = word
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"');
-  return normalizedApostrophe.replace(/^['"\W]+|['"\W]+$/g, "");
+  return normalizedApostrophe.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
 }
 /**
  * Chuẩn hóa một từ đơn lẻ: chuyển chữ thường, bỏ dấu câu viền, mở rộng viết tắt nếu khớp.
@@ -226,14 +264,28 @@ export function isTypo(userNorm: string, refNorm: string): boolean {
   // Nếu độ dài chênh lệch > 1, không coi là lỗi gõ phím đơn thuần
   if (lenDiff > 1) return false;
 
-  // Từ ngắn (<= 4 ký tự): cho phép sai tối đa 1 ký tự
-  if (maxLen <= 4) {
-    return dist === 1;
+  // Từ siêu ngắn (<= 2 ký tự như he/me, in/on, to/at): bắt buộc distance = 0 (không coi là typo)
+  if (maxLen <= 2) {
+    return false;
   }
-  // Từ trung bình (5-6 ký tự): cho phép sai tối đa 1 ký tự
+
+  // Từ 3 ký tự:
+  // - Yêu cầu cùng độ dài (lenDiff === 0) và dist === 1
+  // - Nếu cả 2 đều là từ có nghĩa trong từ điển (như cat -> car): phân loại là replaced (return false)
+  // - Nếu là đảo chữ hoặc non-word (như teh -> the): phân loại là typo (return true)
+  if (maxLen === 3) {
+    if (lenDiff !== 0 || dist !== 1) return false;
+    if (COMMON_3_LETTER_WORDS[userNorm] && COMMON_3_LETTER_WORDS[refNorm]) {
+      return false;
+    }
+    return true;
+  }
+
+  // Từ trung bình (4-6 ký tự): cho phép sai tối đa 1 ký tự
   if (maxLen <= 6) {
     return dist === 1;
   }
+
   // Từ dài (> 6 ký tự): cho phép sai tối đa 2 ký tự (với lenDiff <= 1)
   return dist <= 2;
 }
@@ -242,31 +294,41 @@ export function isTypo(userNorm: string, refNorm: string): boolean {
  * Căn chỉnh hai chuỗi token bằng thuật toán Needleman-Wunsch (Global Sequence Alignment):
  * Tối ưu hóa so khớp từng từ giữa câu người dùng và câu chuẩn.
  */
-export function alignTokens(userTokens: RawToken[], refTokens: RawToken[]): DiffToken[] {
+export interface TokenAlignmentResult {
+  finalAligned: DiffToken[];
+  rawAligned: DiffToken[];
+}
+
+export function alignTokensDetailed(
+  userTokens: RawToken[],
+  refTokens: RawToken[]
+): TokenAlignmentResult {
   const n = userTokens.length;
   const m = refTokens.length;
 
-  if (n === 0 && m === 0) return [];
+  if (n === 0 && m === 0) return { finalAligned: [], rawAligned: [] };
 
   // Nếu người dùng không nhập gì: tất cả ref tokens đều là "missing"
   if (n === 0) {
-    return refTokens.map((r) => ({
+    const missingList = refTokens.map((r) => ({
       text: "",
       expected: r.text,
       status: "missing" as DiffTokenStatus,
       startIndex: 0,
       endIndex: 0,
     }));
+    return { finalAligned: missingList, rawAligned: missingList };
   }
 
   // Nếu câu chuẩn rỗng: tất cả user tokens đều là "extraneous"
   if (m === 0) {
-    return userTokens.map((u) => ({
+    const extraList = userTokens.map((u) => ({
       text: u.text,
       status: "extraneous" as DiffTokenStatus,
       startIndex: u.startIndex,
       endIndex: u.endIndex,
     }));
+    return { finalAligned: extraList, rawAligned: extraList };
   }
 
   // Điểm số căn chỉnh
@@ -454,7 +516,20 @@ export function alignTokens(userTokens: RawToken[], refTokens: RawToken[]): Diff
     }
   }
 
-  return finalAligned;
+  return {
+    finalAligned,
+    rawAligned: rawAligned.map((item) => ({
+      text: item.text,
+      expected: item.expected,
+      status: item.status,
+      startIndex: item.startIndex,
+      endIndex: item.endIndex,
+    })),
+  };
+}
+
+export function alignTokens(userTokens: RawToken[], refTokens: RawToken[]): DiffToken[] {
+  return alignTokensDetailed(userTokens, refTokens).finalAligned;
 }
 /**
  * Đánh giá bài làm của người dùng so với một câu tham chiếu cụ thể.
@@ -486,7 +561,7 @@ export function evaluateAgainstCandidate(
   }
 
   // 2. Chạy căn chỉnh từng token
-  const diffTokens = alignTokens(userTokens, refTokens);
+  const { finalAligned: diffTokens, rawAligned } = alignTokensDetailed(userTokens, refTokens);
 
   let correctCount = 0;
   let typoCount = 0;
@@ -494,7 +569,8 @@ export function evaluateAgainstCandidate(
   let extraneousCount = 0;
   let missingCount = 0;
 
-  for (const token of diffTokens) {
+  // Tính điểm dựa trên căn chỉnh thô trước khi gộp để giữ trọng số chính xác của các sub-token viết tắt
+  for (const token of rawAligned) {
     switch (token.status) {
       case "correct":
         correctCount++;

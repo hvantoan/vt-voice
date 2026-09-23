@@ -21,6 +21,15 @@ describe("localEvaluation Engine", () => {
       expect(stripPunctuation("don't")).toBe("don't");
       expect(stripPunctuation("‘test’")).toBe("test");
     });
+    it("should preserve Vietnamese Unicode characters when stripping punctuation", () => {
+      expect(stripPunctuation("đã,")).toBe("đã");
+      expect(stripPunctuation("ở!")).toBe("ở");
+      expect(stripPunctuation("‘ý’")).toBe("ý");
+      expect(stripPunctuation("...đã...")).toBe("đã");
+      expect(normalizeText("Tôi ý à nhà")).not.toBe(normalizeText("Tôi đã ở nhà"));
+      expect(normalizeText("Tôi ý à nhà")).toBe("tôi ý à nhà");
+      expect(normalizeText("Tôi đã ở nhà")).toBe("tôi đã ở nhà");
+    });
 
     it("should expand common contractions accurately", () => {
       expect(normalizeText("I'm fine, thanks.")).toBe("i am fine thanks");
@@ -56,11 +65,20 @@ describe("localEvaluation Engine", () => {
     });
 
     it("should correctly identify typo based on length rules", () => {
-      // Short words (<= 4 chars): max 1 char distance
+      // Ultra-short words (<= 2 chars): distance = 0 required, never a typo
+      expect(isTypo("he", "me")).toBe(false);
+      expect(isTypo("in", "on")).toBe(false);
+      expect(isTypo("to", "at")).toBe(false);
+
+      // 3-char words:
+      // Real-word pair (cat vs car, bat vs bad): replaced, never a typo
+      expect(isTypo("cat", "car")).toBe(false);
+      expect(isTypo("bat", "bad")).toBe(false);
+      // Non-word typo / transposition (teh vs the): typo
       expect(isTypo("teh", "the")).toBe(true);
       expect(isTypo("ta", "the")).toBe(false);
 
-      // Medium words (5-6 chars): max 1 char distance
+      // Medium words (4-6 chars): max 1 char distance
       expect(isTypo("aple", "apple")).toBe(true);
       expect(isTypo("applle", "apple")).toBe(true);
       // Long words (> 6 chars): max 2 char distance
@@ -150,6 +168,28 @@ describe("localEvaluation Engine", () => {
       expect(replacedToken).toBeDefined();
       expect(replacedToken?.text).toBe("concert");
       expect(replacedToken?.expected).toBe("meeting");
+    });
+
+    it("TS-P5-06: should treat ultra-short word differences (<= 2 chars) and 3-char real-word differences as replaced, not typo", () => {
+      const sShort: StudySentence = {
+        id: "s-short",
+        sourceLang: "vi",
+        targetLang: "en",
+        sourceText: "Anh ấy nhìn thấy con mèo.",
+        referenceTranslation: "He saw the cat.",
+        origin: "test",
+        createdAt: 1,
+      };
+
+      // "Me saw the car." -> "he" replaced by "me", "cat" replaced by "car"
+      const result = evaluateLocalAttempt(sShort, "Me saw the car.");
+      expect(result.hasTypo).toBe(false);
+      const replacedTokens = result.diffTokens.filter((t) => t.status === "replaced");
+      expect(replacedTokens.length).toBe(2);
+      expect(replacedTokens[0].text).toBe("Me");
+      expect(replacedTokens[0].expected).toBe("He");
+      expect(replacedTokens[1].text).toBe("car.");
+      expect(replacedTokens[1].expected).toBe("cat.");
     });
   });
 
@@ -244,6 +284,44 @@ describe("localEvaluation Engine", () => {
       expect(reallyToken?.status).toBe("extraneous");
       const dontToken = resExtraneous.diffTokens.find((t) => t.text === "don't");
       expect(dontToken?.status).toBe("correct");
+    });
+    it("should maintain consistent scoring weights for contractions and expanded forms", () => {
+      const sentence: StudySentence = {
+        id: "s-contractions",
+        sourceLang: "vi",
+        targetLang: "en",
+        sourceText: "Tôi khỏe hôm nay",
+        referenceTranslation: "I am fine today",
+        origin: "manual",
+        createdAt: Date.now(),
+      };
+
+      const resContracted = evaluateLocalAttempt(sentence, "I'm fine now");
+      const resExpanded = evaluateLocalAttempt(sentence, "I am fine now");
+
+      // Both should have identical score (63) and not penalize contraction sub-tokens
+      expect(resContracted.score).toBe(resExpanded.score);
+      expect(resContracted.score).toBe(63);
+    });
+
+    it("should not falsely match completely different Vietnamese sentences with special characters", () => {
+      const sentence: StudySentence = {
+        id: "s-vi-unicode",
+        sourceLang: "en",
+        targetLang: "vi",
+        sourceText: "I was at home",
+        referenceTranslation: "Tôi đã ở nhà",
+        origin: "manual",
+        createdAt: Date.now(),
+      };
+
+      const resWrong = evaluateLocalAttempt(sentence, "Tôi ý à nhà");
+      expect(resWrong.isExactMatch).toBe(false);
+      expect(resWrong.score).toBeLessThan(100);
+
+      const resRight = evaluateLocalAttempt(sentence, "Tôi đã ở nhà");
+      expect(resRight.isExactMatch).toBe(true);
+      expect(resRight.score).toBe(100);
     });
   });
 });
