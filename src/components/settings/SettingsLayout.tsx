@@ -9,6 +9,7 @@ import {
   Sparkles,
   Server,
   Clock,
+  BookOpen,
   Minus,
   Square,
   X,
@@ -22,6 +23,7 @@ import { ModelsTab } from "./ModelsTab";
 import { ProvidersTab } from "./ProvidersTab";
 import { ProviderConfig } from "./providers/ProviderDialog";
 import { HistoryTab, HistoryItem } from "./HistoryTab";
+import { VocabTab } from "./vocab/VocabTab";
 import { KeyBinding, DEFAULT_TRANSLATE_BINDING } from "./HotkeyRecorder";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -29,7 +31,7 @@ import { cn } from "@/lib/utils";
 import { useI18n, LocaleOption } from "@/lib/i18n";
 import { toast } from "@/hooks/use-toast";
 import { translateIpcError } from "@/lib/ipcErrorMapper";
-type TabId = "general" | "audio" | "models" | "providers" | "history";
+type TabId = "general" | "audio" | "models" | "providers" | "history" | "vocab";
 
 export interface AppConfig {
   hotkey_mode: "push_to_talk" | "toggle";
@@ -674,6 +676,22 @@ export const SettingsLayout: React.FC = () => {
                 </TabsTrigger>
               </div>
             </div>
+
+            {/* Nhóm 3: Học tập */}
+            <div className="space-y-1 w-full">
+              <div className="px-2.5 py-1 text-[11px] font-medium tracking-wider text-zinc-500 uppercase select-none">
+                {t("settings.groups.learning")}
+              </div>
+              <div className="space-y-0.5">
+                <TabsTrigger
+                  value="vocab"
+                  className="flex items-center justify-start gap-2.5 w-full px-3 py-2 rounded-md text-xs font-medium text-zinc-400 data-[state=active]:bg-zinc-800/90 data-[state=active]:text-zinc-100 transition-colors hover:text-zinc-200 hover:bg-zinc-800/40 cursor-pointer"
+                >
+                  <BookOpen className="w-4 h-4 text-violet-400 shrink-0" />
+                  <span>{t("settings.tabs.vocab")}</span>
+                </TabsTrigger>
+              </div>
+            </div>
           </TabsList>
 
           {/* Auto-save Status Indicator */}
@@ -704,7 +722,7 @@ export const SettingsLayout: React.FC = () => {
         </aside>
 
         {/* Content Pane */}
-        <main className="flex-1 overflow-y-auto p-5">
+        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-5">
           <TabsContent
             value="general"
             className="m-0 focus-visible:outline-none"
@@ -767,6 +785,13 @@ export const SettingsLayout: React.FC = () => {
               history={history}
               onClearHistory={handleClearHistory}
             />
+          </TabsContent>
+
+          <TabsContent
+            value="vocab"
+            className="m-0 focus-visible:outline-none h-full"
+          >
+            <VocabTab />
           </TabsContent>
         </main>
       </Tabs>

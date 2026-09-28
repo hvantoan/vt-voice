@@ -119,4 +119,9 @@ describe("IPC Error Translation Bridge - Phase 2 (TDD)", () => {
     expect(translateIpcError(raw, mockTranslateVi)).toBe(vi.errors.api_key_not_configured);
     expect(translateIpcError(raw, mockTranslateEn)).toBe(en.errors.api_key_not_configured);
   });
+  test("translates 'Chưa cấu hình API Key cho {provider}' correctly into English and Vietnamese", () => {
+    const raw = "Chưa cấu hình API Key cho Groq";
+    expect(translateIpcError(raw, mockTranslateVi)).toBe("Chưa cài đặt API key cho Groq");
+    expect(translateIpcError(raw, mockTranslateEn)).toBe("API key not configured for Groq");
+  });
 });

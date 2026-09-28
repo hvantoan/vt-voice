@@ -3,6 +3,7 @@ pub mod client;
 pub mod fallback;
 pub mod groq;
 pub mod openrouter;
+pub mod learn;
 pub mod prompts;
 pub mod provider;
 pub mod translate;
@@ -22,4 +23,9 @@ pub use provider::{
 pub use translate::{
     translate_chat, translate_chat_with_lang, translate_google, translate_google_with_langs,
     TranslationResult,
+};
+pub use learn::{
+    enrich_vocab, enrich_vocab_fallback, evaluate_translation_attempt, extract_json_payload,
+    generate_sentences, split_pasted_text, EnrichedVocabResult, GeneratedSentenceItem,
+    NotedWordExplanation, StudyFeedbackResult,
 };

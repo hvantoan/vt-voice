@@ -5,14 +5,18 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   AlertCircle,
   ArrowLeftRight,
+  BookmarkCheck,
+  BookmarkPlus,
   Check,
   Copy,
+  CornerDownLeft,
   Languages,
   Loader2,
   X,
 } from "lucide-react";
 import { useI18n, LocaleOption } from "@/lib/i18n";
 import { translateIpcError } from "@/lib/ipcErrorMapper";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface TranslatePayload {
@@ -70,6 +74,9 @@ export const TranslateOverlay: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isSaved, setIsSaved] = useState<boolean>(false);
+  const saveTimerRef = useRef<number | undefined>(undefined);
   const [latency, setLatency] = useState<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const sourceTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -187,6 +194,28 @@ export const TranslateOverlay: React.FC = () => {
     clearTimeout(copyTimer);
     copyTimer = window.setTimeout(() => setCopied(false), 1500);
   };
+  const handleSaveToStudy = async () => {
+    const trimmedSource = source.trim();
+    const trimmedTranslated = translated.trim();
+    if (!trimmedSource || !trimmedTranslated || loading || isSaving) return;
+    setIsSaving(true);
+    try {
+      await invoke("save_sentence_from_overlay", {
+        sourceText: trimmedSource,
+        translatedText: trimmedTranslated,
+        sourceLang: detectedLang || (sourceLang !== "auto" ? sourceLang : "auto"),
+        targetLang,
+      });
+      setIsSaved(true);
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = window.setTimeout(() => setIsSaved(false), 1500);
+    } catch (err: unknown) {
+      const message = translateIpcError(err, t);
+      setError(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSelectTargetLang = async (newTarget: string) => {
     if (newTarget === targetLang && translated) return;
@@ -280,6 +309,7 @@ export const TranslateOverlay: React.FC = () => {
     : (detectedLang ? detectedLang.toUpperCase() : t("translate.auto_detect"));
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="relative w-full h-full p-0 m-0 select-none overflow-hidden bg-zinc-950 text-zinc-100 flex flex-col justify-between border border-zinc-800 shadow-2xl">
       {/* 1. Header: Draggable Titlebar, Language Switcher, Telemetry, Close */}
       <div
@@ -294,15 +324,23 @@ export const TranslateOverlay: React.FC = () => {
             {detectedDisplay}
           </span>
           {/* Swap button */}
-          <button
-            onClick={() => void handleSwap()}
-            disabled={loading || (!source && !translated)}
-            aria-label={t("translate.swap_languages")}
-            title={t("translate.swap_languages")}
-            className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 active:scale-95 transition-all disabled:opacity-30 shrink-0"
-          >
-            <ArrowLeftRight className="w-3 h-3" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <button
+                  onClick={() => void handleSwap()}
+                  disabled={loading || (!source && !translated)}
+                  aria-label={t("translate.swap_languages")}
+                  className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 active:scale-95 transition-all disabled:opacity-30 shrink-0"
+                >
+                  <ArrowLeftRight className="w-3 h-3" />
+                </button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {t("translate.swap_languages")}
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Target language selector pills */}
@@ -335,14 +373,18 @@ export const TranslateOverlay: React.FC = () => {
               {latency}ms
             </span>
           )}
-          <button
-            onClick={() => void invoke("hide_translate_overlay")}
-            aria-label={t("common.close")}
-            title={t("common.close")}
-            className="p-1 rounded text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 active:scale-95 transition-all shrink-0"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => void invoke("hide_translate_overlay")}
+                aria-label={t("common.close")}
+                className="p-1 rounded text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 active:scale-95 transition-all shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{t("common.close")}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -357,13 +399,21 @@ export const TranslateOverlay: React.FC = () => {
                 {detectedLang || sourceLang}
               </span>
               {source.trim() && !loading && (
-                <button
-                  type="button"
-                  onClick={() => void handleManualTranslate(source)}
-                  className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/40 active:scale-95 transition-all cursor-pointer"
-                >
-                  {t("translate.translate_btn")} ↵
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => void handleManualTranslate(source)}
+                      aria-label={t("translate.translate_btn")}
+                      className="p-1 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/40 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <CornerDownLeft className="w-3 h-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {t("translate.translate_btn")} (Enter)
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
           </div>
@@ -372,7 +422,11 @@ export const TranslateOverlay: React.FC = () => {
             readOnly={loading}
             rows={3}
             value={source}
-            onChange={(e) => setSource(e.target.value)}
+            onChange={(e) => {
+              setSource(e.target.value);
+              setTranslated("");
+              setError("");
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -426,29 +480,57 @@ export const TranslateOverlay: React.FC = () => {
           {t("translate.shortcut_hint")}
         </span>
 
-        <button
-          onClick={handleCopy}
-          disabled={!translated || loading}
-          aria-label={t("common.copy")}
-          title={t("common.copy")}
-          className="flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-zinc-700/60 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="text-emerald-400 text-xs">
-                {t("common.copied")}
+        <div className="flex items-center gap-1.5">
+          {/* Lưu câu vào sổ luyện tập */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <button
+                  onClick={handleSaveToStudy}
+                  disabled={!source.trim() || !translated.trim() || loading || isSaving}
+                  aria-label={
+                    isSaved ? t("overlay.saved_to_study") : t("overlay.save_to_study")
+                  }
+                  className="flex items-center justify-center w-7 h-7 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
+                  ) : isSaved ? (
+                    <BookmarkCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <BookmarkPlus className="w-3.5 h-3.5 text-zinc-300" />
+                  )}
+                </button>
               </span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-              <span className="text-xs text-zinc-300">
-                {t("common.copy")}
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {isSaved ? t("overlay.saved_to_study") : t("overlay.save_to_study")}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Sao chép bản dịch */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <button
+                  onClick={handleCopy}
+                  disabled={!translated || loading}
+                  aria-label={copied ? t("common.copied") : t("common.copy")}
+                  className="flex items-center justify-center w-7 h-7 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                >
+                  {copied ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-zinc-300" />
+                  )}
+                </button>
               </span>
-            </>
-          )}
-        </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {copied ? t("common.copied") : t("common.copy")}
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </div>
 
       {/* Window Resize Grips for Frameless Window */}
@@ -498,6 +580,7 @@ export const TranslateOverlay: React.FC = () => {
         className="absolute top-0 left-0 w-3 h-3 cursor-nw-resize z-50"
       />
     </div>
+    </TooltipProvider>
   );
 };
 

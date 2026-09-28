@@ -8,10 +8,9 @@
 - MUST use tiếng Anh chuẩn cho naming conventions và coding (identifiers, function/method/class names, commit messages, commit nội dung mã).
 
 <!-- gitnexus:start -->
-
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **vt-voice** (1611 symbols, 2767 relationships, 123 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **vt-voice** (1884 symbols, 3743 relationships, 157 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
@@ -32,21 +31,25 @@ This project is indexed by GitNexus as **vt-voice** (1611 symbols, 2767 relation
 - NEVER commit changes without running `detect_changes()` to check affected scope.
 
 ## Resources
-|Resource|Use for|
-|---|---|
-|`gitnexus://repo/vt-voice/context`|Codebase overview, check index freshness|
-|`gitnexus://repo/vt-voice/clusters`|All functional areas|
-|`gitnexus://repo/vt-voice/processes`|All execution flows|
-|`gitnexus://repo/vt-voice/process/{name}`|Step-by-step execution trace|
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/vt-voice/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/vt-voice/clusters` | All functional areas |
+| `gitnexus://repo/vt-voice/processes` | All execution flows |
+| `gitnexus://repo/vt-voice/process/{name}` | Step-by-step execution trace |
+
 ## CLI
-|Task|Read this skill file|
-|---|---|
-|Understand architecture / "How does X work?"|`.claude/skills/gitnexus/gitnexus-exploring/SKILL.md`|
-|Blast radius / "What breaks if I change X?"|`.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md`|
-|Trace bugs / "Why is X failing?"|`.claude/skills/gitnexus/gitnexus-debugging/SKILL.md`|
-|Rename / extract / split / refactor|`.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md`|
-|Tools, resources, schema reference|`.claude/skills/gitnexus/gitnexus-guide/SKILL.md`|
-|Index, status, clean, wiki CLI commands|`.claude/skills/gitnexus/gitnexus-cli/SKILL.md`|
+
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+
 <!-- gitnexus:end -->
 
 ---
