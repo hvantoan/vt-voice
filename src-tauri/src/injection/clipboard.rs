@@ -78,6 +78,44 @@ impl ClipboardManager {
         (result, seq)
     }
 
+    /// Write text permanently to standard Windows clipboard (CF_UNICODETEXT)
+    pub fn set_text(&self, text: &str) -> Result<(), ClipboardError> {
+        if !self.open_clipboard_with_retry() {
+            return Err(ClipboardError::OpenFailed);
+        }
+
+        let utf16: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
+        let bytes_len = utf16.len() * std::mem::size_of::<u16>();
+
+        unsafe {
+            let _ = EmptyClipboard();
+
+            let h_mem = GlobalAlloc(GHND, bytes_len);
+            if h_mem.is_null() {
+                let _ = CloseClipboard();
+                return Err(ClipboardError::AllocFailed);
+            }
+
+            let ptr = GlobalLock(h_mem) as *mut u16;
+            if ptr.is_null() {
+                let _ = CloseClipboard();
+                return Err(ClipboardError::LockFailed);
+            }
+
+            std::ptr::copy_nonoverlapping(utf16.as_ptr(), ptr, utf16.len());
+            let _ = GlobalUnlock(h_mem);
+
+            if SetClipboardData(CF_UNICODETEXT, h_mem as HANDLE).is_null() {
+                let _ = CloseClipboard();
+                return Err(ClipboardError::SetDataFailed);
+            }
+
+            let _ = CloseClipboard();
+        }
+
+        Ok(())
+    }
+
     /// Write text to clipboard, marking it with ExcludeClipboardContentFromMonitorProcessing
     pub fn set_text_transient(&self, text: &str) -> Result<(), ClipboardError> {
         if !self.open_clipboard_with_retry() {
@@ -198,6 +236,24 @@ mod tests {
         }
 
         // Restore original
+        manager.restore_text(orig_text, orig_seq);
+    }
+
+    #[test]
+    fn test_persistent_write_and_snapshot() {
+        let manager = ClipboardManager::new();
+        let test_str = "vt-voice-test-clipboard-persistent";
+
+        let (orig_text, orig_seq) = manager.snapshot_text();
+        let write_res = manager.set_text(test_str);
+        assert!(write_res.is_ok());
+
+        let (new_text, _) = manager.snapshot_text();
+        if let Some(utf16) = new_text {
+            let read_back = String::from_utf16_lossy(&utf16);
+            assert_eq!(read_back, test_str);
+        }
+
         manager.restore_text(orig_text, orig_seq);
     }
 }

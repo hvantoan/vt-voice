@@ -93,10 +93,23 @@ impl AudioRecorder {
 
         let host = cpal::default_host();
         let device = if let Some(target_name) = &device_name {
-            host.input_devices()
-                .map_err(|e| AudioError::ConfigError(e.to_string()))?
-                .find(|d| d.name().map_or(false, |n| &n == target_name))
-                .ok_or_else(|| AudioError::DeviceNotFound(target_name.clone()))?
+            let trimmed = target_name.trim();
+            if trimmed.is_empty() || trimmed == "__system_default__" {
+                host.default_input_device().ok_or(AudioError::NoDevice)?
+            } else {
+                host.input_devices()
+                    .map_err(|e| AudioError::ConfigError(e.to_string()))?
+                    .find(|d| d.name().map_or(false, |n| &n == trimmed))
+                    .or_else(|| {
+                        log::warn!(
+                            target: "vt_voice::audio",
+                            "Configured audio device '{}' not found, falling back to system default",
+                            target_name
+                        );
+                        host.default_input_device()
+                    })
+                    .ok_or(AudioError::NoDevice)?
+            }
         } else {
             host.default_input_device().ok_or(AudioError::NoDevice)?
         };

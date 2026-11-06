@@ -197,7 +197,7 @@ fn copy_translation(app: AppHandle, state: State<'_, AppState>) -> Result<(), St
     if let Some(text) = translate_last_result() {
         state
             .clipboard_manager
-            .set_text_transient(&text)
+            .set_text(&text)
             .map_err(|e| e.to_string())?;
     }
     state.translate_overlay.hide(&app);
@@ -1334,7 +1334,7 @@ pub fn run() {
                         }
                         HotkeyEvent::TranslateCopy => {
                             if let Some(text) = translate_last_result() {
-                                let _ = clipboard_loop.set_text_transient(&text);
+                                let _ = clipboard_loop.set_text(&text);
                             }
                             translate_overlay_loop.hide(&app_loop);
                             set_translate_visible(false);
@@ -1516,20 +1516,9 @@ pub fn run() {
                                     return;
                                 }
 
-                                // 3. Inject text at active Windows cursor
-                                match injection::inject_text_at_cursor(
-                                    clipboard_async,
-                                    &text_to_inject,
-                                )
-                                .await
-                                {
-                                    Ok(injection::InjectionResult::TargetElevated) => {
-                                        overlay_async.set_error(
-                                            &app_async,
-                                            "Cửa sổ Admin: Nhấn Ctrl+V để dán",
-                                        );
-                                    }
-                                    Ok(injection::InjectionResult::Inserted) => {
+                                // 3. Copy text directly to Windows clipboard
+                                match clipboard_async.set_text(&text_to_inject) {
+                                    Ok(()) => {
                                         overlay_async.set_pasted(&app_async);
                                     }
                                     Err(err) => {
@@ -1568,11 +1557,18 @@ pub fn run() {
                 }
             });
 
-            // 4. Check initial start_minimized behavior
-            if !initial_config.start_minimized {
+            // 4. In release mode, hide main window if start_minimized is true
+            #[cfg(not(debug_assertions))]
+            if initial_config.start_minimized {
                 if let Some(main_win) = app_handle.get_webview_window("main") {
-                    let _ = main_win.show();
+                    let _ = main_win.hide();
                 }
+            }
+
+            #[cfg(debug_assertions)]
+            if let Some(main_win) = app_handle.get_webview_window("main") {
+                let _ = main_win.show();
+                let _ = main_win.set_focus();
             }
 
             Ok(())

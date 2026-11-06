@@ -30,6 +30,7 @@ pub enum InjectionError {
 }
 
 /// Check if the current foreground window is running elevated (as Administrator)
+#[allow(dead_code)]
 pub fn is_foreground_elevated() -> bool {
     unsafe {
         let hwnd: HWND = GetForegroundWindow();
@@ -97,6 +98,7 @@ fn make_key_input(vk: u16, is_up: bool) -> INPUT {
 }
 
 /// Send simulated Ctrl+V keyboard paste via SendInput
+#[allow(dead_code)]
 pub fn synthesize_ctrl_v() -> Result<(), InjectionError> {
     unsafe {
         let release_modifiers = [
@@ -134,6 +136,7 @@ pub fn synthesize_ctrl_v() -> Result<(), InjectionError> {
 }
 
 /// High-level text insertion engine
+#[allow(dead_code)]
 pub async fn inject_text_at_cursor(
     clipboard: Arc<ClipboardManager>,
     text: &str,

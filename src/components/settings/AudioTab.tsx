@@ -27,6 +27,8 @@ interface AudioTabProps {
   onVadTimeoutCommit?: (ms: number) => void;
 }
 
+const SYSTEM_DEFAULT_VALUE = "__system_default__";
+
 export const AudioTab: React.FC<AudioTabProps> = ({
   selectedDevice,
   setSelectedDevice,
@@ -51,10 +53,6 @@ export const AudioTab: React.FC<AudioTabProps> = ({
     invoke<AudioDevice[]>("get_audio_devices")
       .then((devs) => {
         setDevices(devs);
-        if (!selectedDeviceRef.current && devs.length > 0) {
-          const defaultDev = devs.find((d) => d.is_default) || devs[0];
-          setSelectedDeviceRef.current(defaultDev.name);
-        }
       })
       .catch((err: unknown) => {
         console.error("Failed to list audio devices:", err);
@@ -123,39 +121,57 @@ export const AudioTab: React.FC<AudioTabProps> = ({
             <label className="block text-xs font-medium text-zinc-300 mb-2">
               {t("audio.input_device_title")}
             </label>
-            <Select
-              value={selectedDevice || ""}
-              onValueChange={(value) => handleDeviceChange(value || null)}
-            >
-              <SelectTrigger className="w-full bg-zinc-950/80 border-zinc-800 text-xs text-zinc-200 h-9 rounded-lg focus:ring-emerald-500/50">
-                <SelectValue placeholder={t("audio.input_device_title")} />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-950/95 backdrop-blur-xl border-zinc-800 text-zinc-200 w-[var(--radix-select-trigger-width)] max-w-[var(--radix-select-trigger-width)]">
-                {devices.length === 0 ? (
-                  <div className="p-2 text-xs text-zinc-500 text-center">
-                    {t("audio.no_devices")}
-                  </div>
-                ) : (
-                  devices.map((d) => (
+            {(() => {
+              const defaultDev = devices.find((d) => d.is_default);
+              return (
+                <Select
+                  value={selectedDevice ?? SYSTEM_DEFAULT_VALUE}
+                  onValueChange={(value) =>
+                    handleDeviceChange(value === SYSTEM_DEFAULT_VALUE ? null : value)
+                  }
+                >
+                  <SelectTrigger className="w-full bg-zinc-950/80 border-zinc-800 text-xs text-zinc-200 h-9 rounded-lg focus:ring-emerald-500/50">
+                    <SelectValue placeholder={t("audio.input_device_title")} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-950/95 backdrop-blur-xl border-zinc-800 text-zinc-200 w-[var(--radix-select-trigger-width)] max-w-[var(--radix-select-trigger-width)]">
+                    {/* System Default Option (follows Windows current default) */}
                     <SelectItem
-                      key={d.id}
-                      value={d.name}
+                      value={SYSTEM_DEFAULT_VALUE}
                       className="text-xs focus:bg-zinc-900 focus:text-zinc-100 cursor-pointer"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <Mic className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                        <span className="truncate">{d.name}</span>
-                        {d.is_default && (
-                          <span className="text-[11px] text-emerald-400 font-medium ml-1.5 shrink-0">
-                            ({t("common.default")})
-                          </span>
-                        )}
+                        <Mic className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span className="truncate font-medium">
+                          {t("audio.system_default")}
+                          {defaultDev ? ` (${defaultDev.name})` : ""}
+                        </span>
+                        <span className="text-[11px] text-emerald-400 font-medium ml-1.5 shrink-0">
+                          ({t("common.default")})
+                        </span>
                       </div>
                     </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+                    {devices.length === 0 ? (
+                      <div className="p-2 text-xs text-zinc-500 text-center">
+                        {t("audio.no_devices")}
+                      </div>
+                    ) : (
+                      devices.map((d) => (
+                        <SelectItem
+                          key={d.id}
+                          value={d.name}
+                          className="text-xs focus:bg-zinc-900 focus:text-zinc-100 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Mic className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                            <span className="truncate">{d.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              );
+            })()}
           </div>
 
           {/* Live Level Meter */}
