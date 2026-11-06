@@ -3,7 +3,7 @@
 All notable changes to **vt-voice** will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
-## [Unreleased](https://github.com/hvantoan/vt-voice/compare/v0.1.1...HEAD) — 2026-11-06
+## [v0.1.2](https://github.com/hvantoan/vt-voice/compare/v0.1.1...v0.1.2) — 2026-11-06
 
 ### ✨ Features
 - **stt**: direct clipboard copy and dynamic system default microphone selection ([adf4837](https://github.com/hvantoan/vt-voice/commit/adf4837))
