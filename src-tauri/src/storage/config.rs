@@ -61,6 +61,10 @@ fn default_locale() -> String {
     "system".to_string()
 }
 
+fn default_auto_check_updates() -> bool {
+    true
+}
+
 fn default_translate_binding() -> KeyBinding {
     // Alt+T (VK_T = 0x54)
     KeyBinding {
@@ -108,6 +112,8 @@ pub struct AppConfig {
     pub vad_timeout_ms: u64,
     #[serde(default = "default_locale")]
     pub locale: String,
+    #[serde(default = "default_auto_check_updates")]
+    pub auto_check_updates: bool,
     #[serde(default)]
     pub feature_profiles: HashMap<String, FeatureProfile>,
 }
@@ -147,6 +153,7 @@ impl Default for AppConfig {
             ],
             vad_timeout_ms: 700,
             locale: "system".to_string(),
+            auto_check_updates: true,
             feature_profiles: default_feature_profiles(),
         }
     }
@@ -460,5 +467,16 @@ mod tests {
         assert_eq!(cfg.feature_profiles.get("stt").unwrap().provider_id, "groq");
         assert_eq!(cfg.feature_profiles.get("polish").unwrap().provider_id, "openrouter");
         assert_eq!(cfg.feature_profiles.get("translate").unwrap().provider_id, "google_free");
+    }
+
+    #[test]
+    fn test_app_config_auto_check_updates_default_and_explicit() {
+        let json_missing = r#"{"hotkey_mode": "push_to_talk", "hotkey_binding": {"code": 165, "name": "Right Alt", "ctrl": false, "alt": false, "shift": false, "win": false}, "audio_device_name": null, "autostart": false, "start_minimized": true, "system_prompt": "p", "custom_vocabulary": [], "vad_timeout_ms": 700}"#;
+        let cfg_default: AppConfig = serde_json::from_str(json_missing).expect("deserialize failed");
+        assert!(cfg_default.auto_check_updates);
+
+        let json_false = r#"{"auto_check_updates": false, "hotkey_mode": "push_to_talk", "hotkey_binding": {"code": 165, "name": "Right Alt", "ctrl": false, "alt": false, "shift": false, "win": false}, "audio_device_name": null, "autostart": false, "start_minimized": true, "system_prompt": "p", "custom_vocabulary": [], "vad_timeout_ms": 700}"#;
+        let cfg_false: AppConfig = serde_json::from_str(json_false).expect("deserialize failed");
+        assert!(!cfg_false.auto_check_updates);
     }
 }

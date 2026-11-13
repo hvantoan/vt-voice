@@ -4,6 +4,7 @@ pub mod daemon;
 pub mod hotkey;
 pub mod injection;
 pub mod storage;
+pub mod updater;
 
 use std::sync::Arc;
 use crossbeam_channel::unbounded;
@@ -1137,20 +1138,37 @@ pub fn run() {
         .build();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(main_win) = app.get_webview_window("main") {
+                let _ = main_win.unminimize();
+                let _ = main_win.show();
+                let _ = main_win.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(log_plugin)
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
         ))
+        .manage(updater::PendingUpdateState::default())
         .manage(state)
         .setup(move |app| {
             let app_handle = app.handle().clone();
 
             // 1. Build System Tray
-            let initial_locale = daemon::tray::TrayStrings::resolve_locale(&config.lock().locale);
+            let (initial_locale, auto_check_updates) = {
+                let cfg = config.lock();
+                (
+                    daemon::tray::TrayStrings::resolve_locale(&cfg.locale),
+                    cfg.auto_check_updates,
+                )
+            };
             let _ = TrayManager::build(&app_handle);
             let _ = TrayManager::update_tray_locale(&app_handle, &initial_locale);
+            updater::spawn_startup_update_check(app_handle.clone(), auto_check_updates);
             // 2. Setup Overlay Window HWND properties
             OverlayController::setup_window(&app_handle);
             TranslateOverlayController::setup_window(&app_handle);
@@ -1615,6 +1633,9 @@ pub fn run() {
             get_feature_profiles,
             set_feature_profile,
             open_logs_dir,
+            updater::get_pending_update,
+            updater::check_for_updates,
+            updater::install_update,
             save_sentence_from_overlay,
             submit_study_attempt,
             generate_study_sentences,

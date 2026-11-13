@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useI18n, LocaleOption } from "@/lib/i18n";
+import { UpdateSection } from "./UpdateSection";
 
 interface GeneralTabProps {
   locale: LocaleOption;
@@ -30,6 +31,8 @@ interface GeneralTabProps {
   setAutostart: (val: boolean) => void;
   startMinimized: boolean;
   setStartMinimized: (val: boolean) => void;
+  autoCheckUpdates: boolean;
+  setAutoCheckUpdates: (val: boolean) => void;
 }
 
 export const GeneralTab: React.FC<GeneralTabProps> = ({
@@ -45,6 +48,8 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
   setAutostart,
   startMinimized,
   setStartMinimized,
+  autoCheckUpdates,
+  setAutoCheckUpdates,
 }) => {
   const { t } = useI18n();
 
@@ -351,6 +356,12 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
           />
         </div>
       </div>
+
+      {/* Application Updates */}
+      <UpdateSection
+        autoCheckUpdates={autoCheckUpdates}
+        setAutoCheckUpdates={setAutoCheckUpdates}
+      />
 
       {/* Logs & Diagnostics */}
       <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-4">

@@ -78,4 +78,25 @@ describe("CI/CD and Release Tooling Suite", () => {
     expect(pkg.scripts["version:minor"]).toContain("bump-version.ts minor");
     expect(pkg.scripts["version:major"]).toContain("bump-version.ts major");
   });
+
+  test("release workflow configures updater signing and latest.json", () => {
+    const workflow = fs.readFileSync(
+      path.join(rootDir, ".github/workflows/release.yml"),
+      "utf-8",
+    );
+    expect(workflow).toContain("TAURI_SIGNING_PRIVATE_KEY");
+    expect(workflow).toContain("includeUpdaterJson: true");
+  });
+
+  test("tauri.conf.json enables updater artifacts and passive windows install", () => {
+    const tauriConf = JSON.parse(
+      fs.readFileSync(path.join(rootDir, "src-tauri/tauri.conf.json"), "utf-8"),
+    ) as {
+      bundle?: { createUpdaterArtifacts?: boolean };
+      plugins?: { updater?: { endpoints?: string[]; windows?: { installMode?: string } } };
+    };
+    expect(tauriConf.bundle?.createUpdaterArtifacts).toBe(true);
+    expect(tauriConf.plugins?.updater?.endpoints?.length).toBeGreaterThan(0);
+    expect(tauriConf.plugins?.updater?.windows?.installMode).toBe("passive");
+  });
 });

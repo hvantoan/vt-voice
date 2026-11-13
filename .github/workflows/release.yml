@@ -85,6 +85,8 @@ jobs:
         id: tauri-build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tauriScript: bun run tauri
           tagName: ${{ steps.release-tag.outputs.tag }}
@@ -93,6 +95,7 @@ jobs:
           releaseDraft: ${{ inputs.draft || false }}
           prerelease: ${{ inputs.prerelease || false }}
           uploadPlainBinary: true
+          includeUpdaterJson: true
 
       - name: Generate and Upload SHA-256 Checksums
         shell: bash
