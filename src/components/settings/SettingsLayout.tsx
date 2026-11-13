@@ -39,6 +39,7 @@ export interface AppConfig {
   audio_device_name: string | null;
   autostart: boolean;
   start_minimized: boolean;
+  auto_check_updates: boolean;
   active_provider: string;
   stt_model: string;
   polish_model: string;
@@ -60,6 +61,7 @@ export interface RawAppConfig {
   audio_device_name?: string | null;
   autostart?: boolean;
   start_minimized?: boolean;
+  auto_check_updates?: boolean;
   active_provider?: string;
   ai_provider?: string;
   stt_model?: string;
@@ -142,6 +144,7 @@ export const SettingsLayout: React.FC = () => {
   });
   const [autostart, setAutostart] = useState<boolean>(false);
   const [startMinimized, setStartMinimized] = useState<boolean>(true);
+  const [autoCheckUpdates, setAutoCheckUpdates] = useState<boolean>(true);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [vadTimeout, setVadTimeout] = useState<number>(700);
 
@@ -218,6 +221,8 @@ export const SettingsLayout: React.FC = () => {
       if (patch.autostart !== undefined) setAutostart(patch.autostart);
       if (patch.start_minimized !== undefined)
         setStartMinimized(patch.start_minimized);
+      if (patch.auto_check_updates !== undefined)
+        setAutoCheckUpdates(patch.auto_check_updates);
       if (patch.active_provider !== undefined) {
         setActiveProvider(patch.active_provider);
         checkAiKey(patch.active_provider);
@@ -301,6 +306,12 @@ export const SettingsLayout: React.FC = () => {
   const handleStartMinimizedChange = useCallback(
     (val: boolean) => {
       saveConfigPatch({ start_minimized: val });
+    },
+    [saveConfigPatch],
+  );
+  const handleAutoCheckUpdatesChange = useCallback(
+    (val: boolean) => {
+      saveConfigPatch({ auto_check_updates: val });
     },
     [saveConfigPatch],
   );
@@ -390,6 +401,10 @@ export const SettingsLayout: React.FC = () => {
             autostart: !!cfg.autostart,
             start_minimized:
               cfg.start_minimized !== undefined ? cfg.start_minimized : true,
+            auto_check_updates:
+              cfg.auto_check_updates !== undefined
+                ? cfg.auto_check_updates
+                : true,
             active_provider: cfg.active_provider || cfg.ai_provider || "groq",
             stt_model: cfg.stt_model || "whisper-large-v3-turbo",
             polish_model: cfg.polish_model || "llama-3.3-70b-versatile",
@@ -415,6 +430,7 @@ export const SettingsLayout: React.FC = () => {
           setTranslateBinding(fullConfig.translate_binding);
           setAutostart(fullConfig.autostart);
           setStartMinimized(fullConfig.start_minimized);
+          setAutoCheckUpdates(fullConfig.auto_check_updates);
           setVadTimeout(fullConfig.vad_timeout_ms);
           setActiveProvider(fullConfig.active_provider);
           setEnablePolish(fullConfig.enable_polish);
@@ -427,6 +443,15 @@ export const SettingsLayout: React.FC = () => {
       })
       .catch(() => {});
   }, []);
+  useEffect(() => {
+    const unlistenPromise = listen("updater:open-settings", () => {
+      setActiveTab("general");
+    });
+    return () => {
+      unlistenPromise.then((fn) => fn()).catch(() => {});
+    };
+  }, []);
+
   // Merge a fresh snapshot with live-updated items so events that arrived
   // while the snapshot was in flight are not overwritten. Newer (prepended)
   // live items win; the snapshot fills in the rest.
@@ -740,6 +765,8 @@ export const SettingsLayout: React.FC = () => {
               setAutostart={handleAutostartChange}
               startMinimized={startMinimized}
               setStartMinimized={handleStartMinimizedChange}
+              autoCheckUpdates={autoCheckUpdates}
+              setAutoCheckUpdates={handleAutoCheckUpdatesChange}
             />
           </TabsContent>
 

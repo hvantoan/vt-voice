@@ -1,12 +1,13 @@
 use parking_lot::Mutex;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 pub const TRAY_ID: &str = "main-tray";
 
 static CURRENT_LOCALE: Mutex<String> = Mutex::new(String::new());
 static CURRENT_STATE: Mutex<String> = Mutex::new(String::new());
+static PENDING_UPDATE_VERSION: Mutex<Option<String>> = Mutex::new(None);
 static TRAY_UPDATE_LOCK: Mutex<()> = Mutex::new(());
 
 pub struct TrayStrings {
@@ -16,6 +17,8 @@ pub struct TrayStrings {
     pub tooltip_recording: &'static str,
     pub tooltip_processing: &'static str,
     pub tooltip_error_prefix: &'static str,
+    pub update_available_prefix: &'static str,
+    pub update_available_suffix: &'static str,
 }
 
 impl TrayStrings {
@@ -58,6 +61,8 @@ impl TrayStrings {
                 tooltip_recording: "vt-voice: Recording...",
                 tooltip_processing: "vt-voice: Processing AI...",
                 tooltip_error_prefix: "vt-voice: Error - ",
+                update_available_prefix: "Update available: v",
+                update_available_suffix: "!",
             },
             _ => Self {
                 settings: "Cài đặt",
@@ -66,8 +71,18 @@ impl TrayStrings {
                 tooltip_recording: "vt-voice: Đang ghi âm...",
                 tooltip_processing: "vt-voice: Đang xử lý AI...",
                 tooltip_error_prefix: "vt-voice: Lỗi - ",
+                update_available_prefix: "Có bản cập nhật v",
+                update_available_suffix: "!",
             },
         }
+    }
+
+    pub fn format_update_available(&self, version: &str) -> String {
+        let clean = version.trim().trim_start_matches('v');
+        format!(
+            "{}{}{}",
+            self.update_available_prefix, clean, self.update_available_suffix
+        )
     }
 }
 
@@ -112,7 +127,14 @@ impl TrayManager {
     fn create_menu(app: &AppHandle, strings: &TrayStrings) -> Result<Menu<tauri::Wry>, tauri::Error> {
         let settings_i = MenuItem::with_id(app, "settings", strings.settings, true, None::<&str>)?;
         let quit_i = MenuItem::with_id(app, "quit", strings.quit, true, None::<&str>)?;
-        Menu::with_items(app, &[&settings_i, &quit_i])
+        let pending_ver = PENDING_UPDATE_VERSION.lock().clone();
+        if let Some(version) = pending_ver {
+            let label = strings.format_update_available(&version);
+            let update_i = MenuItem::with_id(app, "update_available", label, true, None::<&str>)?;
+            Menu::with_items(app, &[&settings_i, &update_i, &quit_i])
+        } else {
+            Menu::with_items(app, &[&settings_i, &quit_i])
+        }
     }
 
     pub fn build(app: &AppHandle) -> Result<TrayIcon, tauri::Error> {
@@ -134,9 +156,19 @@ impl TrayManager {
             .on_menu_event(|app, event| match event.id.as_ref() {
                 "settings" => {
                     if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.unminimize();
                         let _ = window.show();
                         let _ = window.set_focus();
                     }
+                }
+                "update_available" => {
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.unminimize();
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                    // Chuyển sang thẻ Chung để người dùng thấy ngay nút cài đặt bản cập nhật
+                    let _ = app.emit("updater:open-settings", ());
                 }
                 "quit" => {
                     app.exit(0);
@@ -165,10 +197,10 @@ impl TrayManager {
     pub fn update_tray_locale(app: &AppHandle, locale: &str) -> Result<(), tauri::Error> {
         let effective = TrayStrings::resolve_locale(locale);
         let strings = TrayStrings::for_locale(&effective);
-        let menu = Self::create_menu(app, &strings)?;
 
         let _guard = TRAY_UPDATE_LOCK.lock();
         *CURRENT_LOCALE.lock() = effective.clone();
+        let menu = Self::create_menu(app, &strings)?;
         let current_state = CURRENT_STATE.lock().clone();
 
         if let Some(tray) = app.tray_by_id(TRAY_ID) {
@@ -230,6 +262,18 @@ impl TrayManager {
             let _ = tray.set_tooltip(Some(format!("{}{}", strings.tooltip_error_prefix, localized_msg)));
         }
     }
+
+    pub fn set_update_available(app: &AppHandle, version: Option<&str>) {
+        let _guard = TRAY_UPDATE_LOCK.lock();
+        *PENDING_UPDATE_VERSION.lock() = version.map(|v| v.to_string());
+        let locale = CURRENT_LOCALE.lock().clone();
+        let strings = TrayStrings::for_locale(&locale);
+        if let Ok(menu) = Self::create_menu(app, &strings) {
+            if let Some(tray) = app.tray_by_id(TRAY_ID) {
+                let _ = tray.set_menu(Some(menu));
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -278,5 +322,16 @@ mod tests {
 
         let raw_admin = "Cửa sổ Admin: Nhấn Ctrl+V để dán";
         assert_eq!(TrayManager::localize_error_msg(raw_admin, "en"), "Admin window: Press Ctrl+V to paste");
+    }
+
+    #[test]
+    fn test_tray_update_available_formatting() {
+        let en = TrayStrings::for_locale("en");
+        assert_eq!(en.format_update_available("0.1.3"), "Update available: v0.1.3!");
+        assert_eq!(en.format_update_available("v0.2.0"), "Update available: v0.2.0!");
+
+        let vi = TrayStrings::for_locale("vi");
+        assert_eq!(vi.format_update_available("0.1.3"), "Có bản cập nhật v0.1.3!");
+        assert_eq!(vi.format_update_available("v0.2.0"), "Có bản cập nhật v0.2.0!");
     }
 }

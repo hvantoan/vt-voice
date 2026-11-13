@@ -79,7 +79,22 @@
     "logs_desc": "Nhật ký ứng dụng ghi lại yêu cầu AI, trạng thái và số liệu — không bao giờ chứa văn bản hoặc khóa của bạn",
     "logs_folder_label": "Tệp nhật ký",
     "open_logs_folder": "Mở thư mục nhật ký",
-    "logs_folder_opened": "Đã mở thư mục nhật ký"
+    "logs_folder_opened": "Đã mở thư mục nhật ký",
+    "updates_title": "Cập nhật ứng dụng",
+    "current_version": "Phiên bản hiện tại: {version}",
+    "auto_check_updates_label": "Tự động kiểm tra khi khởi động",
+    "auto_check_updates_desc": "Kiểm tra ngầm bản phát hành mới từ GitHub Releases mà không làm phiền",
+    "check_updates_btn": "Kiểm tra cập nhật",
+    "checking_updates": "Đang kiểm tra...",
+    "up_to_date": "Bạn đang dùng phiên bản mới nhất",
+    "update_available_title": "Đã có phiên bản mới: {version}",
+    "update_no_notes": "Không có ghi chú phát hành.",
+    "update_now_btn": "Cập nhật ngay",
+    "update_later_btn": "Để sau",
+    "downloading_update": "Đang tải bản cập nhật...",
+    "installing_update": "Đang cài đặt và khởi động lại...",
+    "update_check_failed": "Không thể kiểm tra cập nhật: {message}",
+    "update_install_failed": "Không thể cài đặt bản cập nhật: {message}"
   },
   "audio": {
     "input_device_title": "Thiết bị ghi âm",

@@ -79,7 +79,22 @@
     "logs_desc": "Application logs capture AI requests, statuses and metrics — never your text or keys",
     "logs_folder_label": "Log Files",
     "open_logs_folder": "Open Logs Folder",
-    "logs_folder_opened": "Logs folder opened"
+    "logs_folder_opened": "Logs folder opened",
+    "updates_title": "Application Updates",
+    "current_version": "Current version: {version}",
+    "auto_check_updates_label": "Check automatically on startup",
+    "auto_check_updates_desc": "Silently check GitHub Releases for new versions without interrupting your work",
+    "check_updates_btn": "Check for Updates",
+    "checking_updates": "Checking...",
+    "up_to_date": "You are on the latest version",
+    "update_available_title": "New version available: {version}",
+    "update_no_notes": "No release notes provided.",
+    "update_now_btn": "Update Now",
+    "update_later_btn": "Later",
+    "downloading_update": "Downloading update...",
+    "installing_update": "Installing and restarting...",
+    "update_check_failed": "Failed to check for updates: {message}",
+    "update_install_failed": "Failed to install update: {message}"
   },
   "audio": {
     "input_device_title": "Recording Device",
