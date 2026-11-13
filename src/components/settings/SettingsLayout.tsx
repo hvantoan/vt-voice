@@ -443,6 +443,15 @@ export const SettingsLayout: React.FC = () => {
       })
       .catch(() => {});
   }, []);
+  useEffect(() => {
+    const unlistenPromise = listen("updater:open-settings", () => {
+      setActiveTab("general");
+    });
+    return () => {
+      unlistenPromise.then((fn) => fn()).catch(() => {});
+    };
+  }, []);
+
   // Merge a fresh snapshot with live-updated items so events that arrived
   // while the snapshot was in flight are not overwritten. Newer (prepended)
   // live items win; the snapshot fills in the rest.

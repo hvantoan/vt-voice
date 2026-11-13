@@ -357,7 +357,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
         </div>
       </div>
 
-      {/* Application Updates */}
+      {/* Cập nhật ứng dụng */}
       <UpdateSection
         autoCheckUpdates={autoCheckUpdates}
         setAutoCheckUpdates={setAutoCheckUpdates}

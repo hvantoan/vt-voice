@@ -1,7 +1,7 @@
 use parking_lot::Mutex;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 pub const TRAY_ID: &str = "main-tray";
 
@@ -154,12 +154,21 @@ impl TrayManager {
 
         let tray = builder
             .on_menu_event(|app, event| match event.id.as_ref() {
-                "settings" | "update_available" => {
+                "settings" => {
                     if let Some(window) = app.get_webview_window("main") {
                         let _ = window.unminimize();
                         let _ = window.show();
                         let _ = window.set_focus();
                     }
+                }
+                "update_available" => {
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.unminimize();
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                    // Chuyển sang thẻ Chung để người dùng thấy ngay nút cài đặt bản cập nhật
+                    let _ = app.emit("updater:open-settings", ());
                 }
                 "quit" => {
                     app.exit(0);
