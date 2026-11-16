@@ -3,7 +3,7 @@
 All notable changes to **vt-voice** will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
-## [Unreleased](https://github.com/hvantoan/vt-voice/compare/v0.1.2...HEAD) — 2026-11-16
+## [v0.1.3](https://github.com/hvantoan/vt-voice/compare/v0.1.2...v0.1.3) — 2026-11-16
 
 ### ✨ Features
 - **updater**: add auto-update support via GitHub Releases ([#11](https://github.com/hvantoan/vt-voice/pull/11)) ([237b8bd](https://github.com/hvantoan/vt-voice/commit/237b8bd))
