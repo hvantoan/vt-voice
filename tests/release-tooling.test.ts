@@ -93,9 +93,10 @@ describe("CI/CD and Release Tooling Suite", () => {
       fs.readFileSync(path.join(rootDir, "src-tauri/tauri.conf.json"), "utf-8"),
     ) as {
       bundle?: { createUpdaterArtifacts?: boolean };
-      plugins?: { updater?: { endpoints?: string[]; windows?: { installMode?: string } } };
+      plugins?: { updater?: { pubkey?: string; endpoints?: string[]; windows?: { installMode?: string } } };
     };
     expect(tauriConf.bundle?.createUpdaterArtifacts).toBe(true);
+    expect(tauriConf.plugins?.updater?.pubkey?.trim().length).toBeGreaterThan(0);
     expect(tauriConf.plugins?.updater?.endpoints?.length).toBeGreaterThan(0);
     expect(tauriConf.plugins?.updater?.windows?.installMode).toBe("passive");
   });

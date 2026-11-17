@@ -72,7 +72,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNCOUZBQzUwNTA1QTBFMzcKUldRM0RscFFVS3lmTzR1ay96d0FLWCtoQVBsdHJZSkJZY3lPNVB3cTFIRzlDUDdIRG5oVENIZEkK",
       "endpoints": [
         "https://github.com/hvantoan/vt-voice/releases/latest/download/latest.json"
       ],
