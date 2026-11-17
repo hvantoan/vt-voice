@@ -3,15 +3,17 @@
 All notable changes to **vt-voice** will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
-## [v0.1.3](https://github.com/hvantoan/vt-voice/compare/v0.1.2...v0.1.3) — 2026-11-16
+## [v0.1.3](https://github.com/hvantoan/vt-voice/compare/v0.1.2...v0.1.3) — 2026-11-17
 
 ### ✨ Features
 - **updater**: add auto-update support via GitHub Releases ([#11](https://github.com/hvantoan/vt-voice/pull/11)) ([237b8bd](https://github.com/hvantoan/vt-voice/commit/237b8bd))
 
 ### 📚 Documentation
+- **changelog**: update CHANGELOG.md for v0.1.3 [skip ci] ([595317c](https://github.com/hvantoan/vt-voice/commit/595317c))
 - **changelog**: update CHANGELOG.md for v0.1.2 [skip ci] ([33e2586](https://github.com/hvantoan/vt-voice/commit/33e2586))
 
 ### 🔧 Chores & Maintenance
+- **updater**: configure Minisign public key for auto-updater ([b1ee187](https://github.com/hvantoan/vt-voice/commit/b1ee187))
 - **deps**: bump @tauri-apps/api and @tauri-apps/cli to 2.12.4 ([377429f](https://github.com/hvantoan/vt-voice/commit/377429f))
 
 ---
